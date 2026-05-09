@@ -13,7 +13,7 @@
       --shadow2: 0 10px 18px rgba(0,0,0,.08);
       --radius: 18px;
 
-      --teamA:#0b5; /* Team A = grün (oben) */
+      --teamA:#c62828;
       --teamB:#d11; /* Team B = rot  (unten) */
     }
     *{ box-sizing: border-box; }
@@ -74,7 +74,7 @@
       width: 100%;
       height: min(78vh, 860px);
       border-radius: 6px;
-      border: 5px solid #1565c0;
+      border: 7px solid #1565c0;
       overflow:hidden;
       background: linear-gradient(180deg, rgba(240,248,255,1) 0%, rgba(245,245,245,1) 100%);
       touch-action: none;
@@ -87,7 +87,7 @@
     }
     @media (max-width: 980px){ #court{ height: 64vh; } }
 
-    .three-meter{ position:absolute; left:0; right:0; height:4px; background: #1565c0; pointer-events:none; }
+    .three-meter{ position:absolute; left:0; right:0; height:6px; background: #1565c0; pointer-events:none; }
     .three-meter-label{ position:absolute; right:6px; font-size:10px; font-weight:800; color:#1565c0; pointer-events:none; line-height:1; }
     .inset-outline{ display:none; }
     .net{ position:absolute; left:0; right:0; top:50%; height:6px; transform: translateY(-50%); background: rgba(0,0,0,.22); pointer-events:none; }
@@ -219,6 +219,7 @@
 
       <div id="court">
         <div class="inset-outline"></div>
+        <div style="position:absolute;top:0;left:0;right:0;height:18px;z-index:2;pointer-events:none;background-image:repeating-linear-gradient(90deg,#1565c0 0px,#1565c0 4px,transparent 4px,transparent 14px),repeating-linear-gradient(0deg,#1565c0 0px,#1565c0 3px,transparent 3px,transparent 9px);border-bottom:2px solid #1565c0;"></div>
         <div class="half top" id="halfA"></div>
       </div>
 
@@ -286,11 +287,9 @@
   // TEAM A (oben) wird beim Rendern gespiegelt (X und Y),
   // damit in der oberen Hälfte "netznah" unten ist und Links/Rechts passt.
   function localToDisplay(teamId, local){
-    if (teamId === "A") return { x: 100 - local.x, y: 100 - local.y };
     return { x: local.x, y: local.y };
   }
   function displayToLocal(teamId, disp){
-    if (teamId === "A") return { x: 100 - disp.x, y: 100 - disp.y };
     return { x: disp.x, y: disp.y };
   }
 
@@ -413,17 +412,11 @@
     zonesEl.className = "zones";
     zonesEl.innerHTML = `<div class="v1"></div><div class="v2"></div><div class="hmid"></div>`;
 
-    // Bottom half (Team B): oben = vorne = 4 3 2
-    // Top half (Team A): Anzeige gespiegelt (hinten/vorne + links/rechts)
-    const zones = (teamId === "A")
-      ? [
-          { n: 1, col: 0, row: 0 }, { n: 6, col: 1, row: 0 }, { n: 5, col: 2, row: 0 },
-          { n: 2, col: 0, row: 1 }, { n: 3, col: 1, row: 1 }, { n: 4, col: 2, row: 1 },
-        ]
-      : [
-          { n: 4, col: 0, row: 0 }, { n: 3, col: 1, row: 0 }, { n: 2, col: 2, row: 0 },
-          { n: 5, col: 0, row: 1 }, { n: 6, col: 1, row: 1 }, { n: 1, col: 2, row: 1 },
-        ];
+    // Netz oben: Vorderreihe (4,3,2) oben, Hinterreihe (5,6,1) unten
+    const zones = [
+      { n: 4, col: 0, row: 0 }, { n: 3, col: 1, row: 0 }, { n: 2, col: 2, row: 0 },
+      { n: 5, col: 0, row: 1 }, { n: 6, col: 1, row: 1 }, { n: 1, col: 2, row: 1 },
+    ];
 
     zones.forEach(z => {
       const d = document.createElement("div");
@@ -458,7 +451,7 @@
 
     // 3-Meter-Linie: 3m von Netz = 3/9 = 33.3% der Hälfte
     halfEl.querySelectorAll(".three-meter,.three-meter-label").forEach(n => n.remove());
-    const linePos = teamId === "A" ? 66.667 : 33.333; // A: Netz unten, B: Netz oben
+    const linePos = 33.333; // Netz oben, 3m-Linie bei 33%
     const line = document.createElement("div");
     line.className = "three-meter";
     line.style.top = `${linePos}%`;
@@ -503,17 +496,7 @@
 
     const head = document.createElement("div");
     head.className = "team-head";
-    head.innerHTML = `
-      <div class="dot" style="background:${t.color}"></div>
-      <input class="tname" value="${escapeAttr(t.name)}" aria-label="Teamname ${teamId}" />
-    `;
-    head.querySelector("input").addEventListener("input", (e) => {
-      state.teams[teamId].name = e.target.value;
-      saveState();
-      // update dot label if present
-      const dotLabel = mountEl.querySelector(".tname");
-      if(dotLabel && dotLabel !== e.target) dotLabel.value = e.target.value;
-    });
+    // dot and name removed
 
     const actions = document.createElement("div");
     actions.className = "team-actions";
