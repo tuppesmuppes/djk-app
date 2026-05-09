@@ -209,6 +209,7 @@
       <div class="header">
         <div>
           <div class="title">Volleyball Positions Board</div>
+          <div style="font-weight:900;font-size:22px;color:#c62828;min-height:28px;" id="formation-title"></div>
           <div class="subtitle">Drag & Drop (Touch) · Rotation +1 · Speichern (localStorage)</div>
         </div>
         <div class="row">
@@ -338,6 +339,7 @@
   }
 
   let state = loadState() || defaultState();
+  let currentFormationName = "";
   function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch{} }
 
   // Badge: oben Buchstabe+Positionsnummer, unten Name
@@ -636,6 +638,7 @@
 
   function hardReset(){
     state = defaultState();
+    setFormationTitle("");
     saveState();
     renderAll();
   }
@@ -836,6 +839,12 @@
     renderPanel();
   }
 
+  function setFormationTitle(name){
+    currentFormationName = name;
+    const el = document.getElementById("formation-title");
+    if(el) el.textContent = name ? `— ${name}` : "";
+  }
+
   function loadFromLib(teamId, name){
     const lib = loadLib(teamId);
     const entry = lib.find(e => e.name === name);
@@ -843,8 +852,10 @@
     const t = state.teams[teamId];
     t.players = t.players.map(p => {
       const saved = entry.players.find(sp => sp.id === p.id);
-      return saved ? { ...p, pos: saved.pos, x: saved.x, y: saved.y, letter: saved.letter, name: saved.name } : p;
+      // Namen und Buchstaben bleiben erhalten — nur Position und Koordinaten werden geladen
+      return saved ? { ...p, pos: saved.pos, x: saved.x, y: saved.y } : p;
     });
+    setFormationTitle(name);
     saveState();
     renderAll();
   }
