@@ -147,11 +147,23 @@
   async function loadLib(k){
     try{
       const r=await fetch(`${SERVER_URL}/lib/${k}?t=${Date.now()}`,{cache:"no-store"});
-      if(!r.ok) return [];
-      return await r.json();
-    }catch{return[];}
+      if(r.ok){
+        const data=await r.json();
+        if(data.length>0){
+          // Update local cache
+          try{localStorage.setItem(`vb_lib_cache_${k}`,JSON.stringify(data));}catch{}
+          return data;
+        }
+      }
+    }catch{}
+    // Fallback to localStorage cache
+    try{const c=localStorage.getItem(`vb_lib_cache_${k}`);if(c)return JSON.parse(c);}catch{}
+    return[];
   }
   async function saveLib(k,lib){
+    // Always save to localStorage immediately
+    try{localStorage.setItem(`vb_lib_cache_${k}`,JSON.stringify(lib));}catch{}
+    // Then push to server
     try{
       await fetch(`${SERVER_URL}/lib/${k}`,{
         method:"PUT",
