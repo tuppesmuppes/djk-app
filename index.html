@@ -690,6 +690,13 @@
     document.getElementById("pointsEntry").classList.add("visible");
   }
 
+  function adjustPoints(name, delta) {
+    points[name] = Math.max(0, (points[name] || 0) + delta);
+    if (points[name] === 0) delete points[name];
+    save();
+    renderStandings();
+  }
+
   function renderStandings(){
     const section=document.getElementById("standingsSection");
     const allPts=Object.entries(points).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
@@ -698,6 +705,7 @@
       document.getElementById("standingsTable").innerHTML=
         `<tr><td colspan="4" style="color:var(--muted);font-size:13px;padding:8px 10px">Noch keine Punkte eingetragen.</td></tr>`;
       section.classList.toggle("visible",showStandings);
+      renderManualAdjust();
       return;
     }
 
@@ -708,7 +716,7 @@
       <th style="width:36px">#</th>
       <th>Name</th>
       <th class="right" style="width:70px">Pkt</th>
-      <th style="min-width:80px"></th>
+      <th style="min-width:120px;text-align:right">±</th>
     </tr></thead><tbody>`;
 
     allPts.forEach(([name,pts],i)=>{
@@ -717,12 +725,36 @@
         <td><span class="rank-num">${medals[i]||i+1}</span></td>
         <td>${name}</td>
         <td class="right"><strong>${pts}</strong></td>
-        <td><div class="points-bar-wrap"><div class="points-bar-bg"><div class="points-bar-fill" style="width:${bar}%"></div></div></div></td>
+        <td style="text-align:right">
+          <button onclick="adjustPoints('${name.replace(/'/g,"\\'")}', -1)" style="border:1px solid var(--border);background:var(--card);border-radius:8px;width:30px;height:30px;font-weight:800;cursor:pointer;font-size:16px;">−</button>
+          <button onclick="adjustPoints('${name.replace(/'/g,"\\'")}', 1)" style="border:1px solid var(--border);background:var(--card);border-radius:8px;width:30px;height:30px;font-weight:800;cursor:pointer;font-size:16px;margin-left:4px;">+</button>
+        </td>
       </tr>`;
     });
     html+=`</tbody>`;
     document.getElementById("standingsTable").innerHTML=html;
     section.classList.toggle("visible", showStandings || allPts.length>0);
+    renderManualAdjust();
+  }
+
+  function renderManualAdjust(){
+    let el=document.getElementById("manualAdjust");
+    if(!el){
+      el=document.createElement("div");
+      el.id="manualAdjust";
+      el.style.cssText="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;";
+      document.getElementById("standingsSection").querySelector(".standings-footer").before(el);
+    }
+    // Show players not yet in standings
+    const missing=ALL_NAMES.filter(n=>!points[n]||points[n]===0);
+    if(missing.length===0){ el.innerHTML=""; return; }
+    el.innerHTML=`<div style="font-size:12px;font-weight:700;opacity:.6;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em;">Punkte manuell vergeben</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${missing.map(n=>`<div style="display:flex;align-items:center;gap:4px;border:1px solid var(--border);border-radius:10px;padding:4px 8px;background:var(--card);">
+          <span style="font-size:13px;font-weight:700;">${n}</span>
+          <button onclick="adjustPoints('${n.replace(/'/g,"\\'")}', 1)" style="border:1px solid var(--border);background:var(--bg);border-radius:7px;width:26px;height:26px;font-weight:800;cursor:pointer;font-size:14px;">+</button>
+        </div>`).join("")}
+      </div>`;
   }
 
   function renderHistory(){
@@ -1040,6 +1072,8 @@
   renderPlayerList();
   updateCount();
   renderNumTeams();
+  window.adjustPoints = adjustPoints;
+
   renderHistory();
   renderStandings();
   initCloudUI();
