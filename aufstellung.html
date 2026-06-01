@@ -8,7 +8,7 @@
     :root{
       --bg:#f6f7fb; --card:#fff; --line:rgba(0,0,0,.14);
       --shadow:0 12px 24px rgba(0,0,0,.08); --shadow2:0 10px 18px rgba(0,0,0,.08);
-      --radius:18px; --blue:#1565c0; --red:#c62828;
+      --radius:18px; --blue:#1565c0; --red:#c62828; --green:#2e7d32;
     }
     *{ box-sizing:border-box; }
     body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:#111; }
@@ -26,43 +26,64 @@
     .btn:active{ transform:translateY(1px); }
     .btn.unlock-active{ background:#fff3cd; border-color:#f0a500; color:#8a5c00; }
 
+    /* Court — full field with two halves */
     #court{ position:relative; width:100%; height:min(78vh,860px); border-radius:6px; border:7px solid var(--blue); overflow:hidden; background:linear-gradient(180deg,rgba(240,248,255,1) 0%,rgba(245,245,245,1) 100%); touch-action:none; user-select:none; transition:border-color .2s; }
     #court.unlocked{ border-color:#f0a500; box-shadow:0 0 0 3px rgba(240,165,0,.2); }
-    @media(max-width:980px){ #court{ height:64vh; } }
+    @media(max-width:980px){ #court{ height:72vh; } }
 
-    .net-grid{ position:absolute; top:0; left:0; right:0; height:18px; z-index:2; pointer-events:none; background-image:repeating-linear-gradient(90deg,var(--blue) 0px,var(--blue) 4px,transparent 4px,transparent 14px),repeating-linear-gradient(0deg,var(--blue) 0px,var(--blue) 3px,transparent 3px,transparent 9px); border-bottom:2px solid var(--blue); }
+    /* Net in centre */
+    .net{ position:absolute; left:0; right:0; top:50%; height:14px; transform:translateY(-50%); z-index:3; pointer-events:none;
+      background-image:repeating-linear-gradient(90deg,var(--blue) 0px,var(--blue) 4px,transparent 4px,transparent 14px),repeating-linear-gradient(0deg,var(--blue) 0px,var(--blue) 3px,transparent 3px,transparent 9px);
+      border-top:2px solid var(--blue); border-bottom:2px solid var(--blue);
+    }
+
+    .half{ position:absolute; left:0; width:100%; height:50%; }
+    .half.top{ top:0; }
+    .half.bottom{ top:50%; }
+
     .three-meter{ position:absolute; left:0; right:0; height:6px; background:var(--blue); pointer-events:none; }
     .three-meter-label{ position:absolute; right:6px; font-size:10px; font-weight:800; color:var(--blue); pointer-events:none; line-height:1; }
-    .half{ position:absolute; left:0; width:100%; height:100%; top:0; }
+
     .zones{ position:absolute; inset:0; pointer-events:none; }
     .zones .v1,.zones .v2{ position:absolute; top:0; bottom:0; width:1px; background:rgba(0,0,0,.06); }
     .zones .v1{ left:33.333%; } .zones .v2{ left:66.666%; }
     .zones .hmid{ position:absolute; left:0; right:0; top:50%; height:1px; background:rgba(0,0,0,.06); }
-    .zone-num{ position:absolute; display:flex; align-items:center; justify-content:center; font-weight:900; color:rgba(0,0,0,.12); font-size:22px; }
-    @media(max-width:980px){ .zone-num{ font-size:18px; } }
+    .zone-num{ position:absolute; display:flex; align-items:center; justify-content:center; font-weight:900; color:rgba(0,0,0,.10); font-size:18px; }
+    @media(max-width:980px){ .zone-num{ font-size:14px; } }
 
-    .player{ position:absolute; transform:translate(-50%,-50%); width:84px; height:84px; border-radius:999px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 20px rgba(0,0,0,.18); border:6px solid var(--red); touch-action:none; cursor:grab; padding:6px; }
-    @media(max-width:980px){ .player{ width:72px; height:72px; } }
-    .player.dragging{ cursor:grabbing; box-shadow:0 16px 30px rgba(0,0,0,.25); }
+    .player{ position:absolute; transform:translate(-50%,-50%); width:72px; height:72px; border-radius:999px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 16px rgba(0,0,0,.15); border:5px solid var(--red); touch-action:none; cursor:grab; padding:5px; }
+    @media(max-width:980px){ .player{ width:58px; height:58px; } }
+    .player.team-b{ border-color:var(--green); }
+    .player.dragging{ cursor:grabbing; box-shadow:0 14px 28px rgba(0,0,0,.22); z-index:10; }
     .player .inner{ width:100%; text-align:center; line-height:1.05; }
-    .player .topLine{ font-weight:900; font-size:18px; }
-    .player .bottomLine{ font-weight:800; font-size:12px; opacity:.85; margin-top:4px; }
-    @media(max-width:980px){ .player .topLine{ font-size:16px; } .player .bottomLine{ font-size:11px; } }
+    .player .topLine{ font-weight:900; font-size:16px; }
+    .player .bottomLine{ font-weight:800; font-size:11px; opacity:.85; margin-top:3px; }
+    @media(max-width:980px){ .player .topLine{ font-size:13px; } .player .bottomLine{ font-size:10px; } }
 
+    /* Team label on field */
+    .team-label{ position:absolute; left:6px; font-size:11px; font-weight:900; opacity:.4; pointer-events:none; letter-spacing:.06em; }
+    .team-label.a{ top:4px; color:var(--red); }
+    .team-label.b{ bottom:4px; color:var(--green); }
+
+    /* Right panel */
     .panel{ display:grid; gap:14px; }
     .team-card{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow2); padding:12px; }
+    .team-card-title{ font-weight:900; font-size:15px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+    .team-dot{ width:12px; height:12px; border-radius:999px; display:inline-block; }
     .team-actions{ display:flex; gap:8px; margin-bottom:10px; }
-    .team-actions .btn{ flex:1; padding:10px; }
+    .team-actions .btn{ flex:1; padding:8px; font-size:13px; }
+
     .grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     @media(min-width:980px){ .grid{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
     .pedit{ border:1px solid rgba(0,0,0,.10); border-radius:14px; padding:8px; }
     .pedit .top{ display:flex; align-items:center; gap:8px; }
-    .miniBadge{ min-width:56px; height:34px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-weight:900; border:2px solid var(--red); padding:0 10px; text-align:center; }
+    .miniBadge{ min-width:48px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-weight:900; border:2px solid var(--red); padding:0 8px; text-align:center; font-size:13px; }
+    .miniBadge.b{ border-color:var(--green); }
     .meta{ flex:1; min-width:0; }
     .meta .p1{ font-weight:900; font-size:12px; }
     .meta .p2{ opacity:.7; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .inputs{ display:flex; gap:6px; margin-top:8px; }
-    .small{ width:100%; padding:8px 10px; border-radius:12px; border:1px solid var(--line); outline:none; font-size:13px; background:#fff; }
+    .inputs{ display:flex; gap:6px; margin-top:6px; }
+    .small{ width:100%; padding:7px 8px; border-radius:12px; border:1px solid var(--line); outline:none; font-size:12px; background:#fff; }
 
     .lib-box{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow2); padding:12px; }
     .lib-box-title{ font-weight:900; font-size:18px; margin-bottom:10px; }
@@ -79,6 +100,7 @@
 </head>
 <body>
 <div class="wrap">
+  <!-- Left: court -->
   <div class="card">
     <div class="header">
       <div>
@@ -92,17 +114,26 @@
       </div>
     </div>
     <div id="court">
-      <div class="net-grid"></div>
-      <div class="half" id="halfA"></div>
+      <div class="net"></div>
+      <div class="half top"   id="halfA">
+        <div class="team-label a">TEAM A</div>
+      </div>
+      <div class="half bottom" id="halfB">
+        <div class="team-label b">TEAM B</div>
+      </div>
     </div>
     <div class="row" style="margin-top:10px;">
-      <button class="btn" id="rotA">Rotation +1</button>
-      <button class="btn" id="spotsA">Zurücksetzen</button>
+      <button class="btn" id="rotA">Rotation +1 (A)</button>
+      <button class="btn" id="spotsA">Zurücksetzen (A)</button>
+      <button class="btn" id="rotB">Rotation +1 (B)</button>
+      <button class="btn" id="spotsB">Zurücksetzen (B)</button>
     </div>
   </div>
 
+  <!-- Right: panels + lib boxes -->
   <div class="panel">
-    <div class="team-card" id="teamCard"></div>
+    <div class="team-card" id="teamCardA"></div>
+    <div class="team-card" id="teamCardB"></div>
     <div class="lib-box" id="libBoxAnnahme">
       <div class="lib-box-title">Annahme</div>
     </div>
@@ -114,13 +145,14 @@
 
 <script>
 (() => {
-  const LS_KEY = "vb_single_v8";
+  const LS_KEY = "vb_two_v9";
+  const SERVER_URL = "https://scoreboard-rzql.onrender.com";
 
   const SPOTS = {4:{x:20,y:22},3:{x:50,y:18},2:{x:80,y:22},5:{x:20,y:70},6:{x:50,y:78},1:{x:80,y:70}};
   const ROT1  = {1:6,6:5,5:4,4:3,3:2,2:1};
   const LETTERS = ["","Z","A","M","D","L"];
   const NAMES = ["",
-    ...["Alessa","Alma","Anna","Elif","Ella","Frida","Greta",
+    ...["Alessa","Alma","Anna","Elif","Ella","Frida","Greta","Hannah",
         "Johanna","Jule","Malou","Marie","Milva","Philippa","Zeynep"
     ].sort((a,b)=>a.localeCompare(b,"de"))];
 
@@ -132,54 +164,39 @@
   const esc=(s)=>String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
   const cssEsc=(s)=>CSS.escape(String(s));
 
-  const SERVER_URL = "https://scoreboard-rzql.onrender.com";
-
-  function defPlayers(){ return [1,2,3,4,5,6].map(n=>{const sp=spot(n);return{id:`P${n}`,letter:"",name:"",pos:n,x:sp.x,y:sp.y};}); }
-  function defState(){ return{version:8,unlocked:false,players:defPlayers()}; }
+  // ── State ──
+  function defPlayers(tid){ return [1,2,3,4,5,6].map(n=>{const sp=spot(n);return{id:`${tid}P${n}`,letter:"",name:"",pos:n,x:sp.x,y:sp.y};}); }
+  function defState(){ return{version:9,unlocked:false,A:defPlayers("A"),B:defPlayers("B")}; }
   function loadState(){
-    try{const r=localStorage.getItem(LS_KEY);if(!r)return null;const s=JSON.parse(r);if(!s||s.version!==8)return null;s.players.forEach(p=>{if(!p.letter)p.letter="";if(!p.name)p.name="";});return s;}catch{return null;}
+    try{
+      const r=localStorage.getItem(LS_KEY);if(!r)return null;
+      const s=JSON.parse(r);if(!s||s.version!==9)return null;
+      ["A","B"].forEach(t=>s[t].forEach(p=>{if(!p.letter)p.letter="";if(!p.name)p.name="";}));
+      return s;
+    }catch{return null;}
   }
-
   let state=loadState()||defState();
   let curFmt="";
-  const save=()=>{ try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch{} };
+  const save=()=>{ try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch{}; };
 
+  // ── Server / lib ──
   async function loadLib(k){
     try{
       const r=await fetch(`${SERVER_URL}/lib/${k}?t=${Date.now()}`,{cache:"no-store"});
-      if(r.ok){
-        const data=await r.json();
-        if(data.length>0){
-          // Update local cache
-          try{localStorage.setItem(`vb_lib_cache_${k}`,JSON.stringify(data));}catch{}
-          return data;
-        }
-      }
+      if(r.ok){const data=await r.json();if(data.length>0){try{localStorage.setItem(`vb_lib_cache_${k}`,JSON.stringify(data));}catch{}return data;}}
     }catch{}
-    // Fallback to localStorage cache
     try{const c=localStorage.getItem(`vb_lib_cache_${k}`);if(c)return JSON.parse(c);}catch{}
     return[];
   }
   async function saveLib(k,lib){
-    // Always save to localStorage immediately
     try{localStorage.setItem(`vb_lib_cache_${k}`,JSON.stringify(lib));}catch{}
-    // Then push to server
-    try{
-      await fetch(`${SERVER_URL}/lib/${k}`,{
-        method:"PUT",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(lib),
-      });
-    }catch{}
+    try{await fetch(`${SERVER_URL}/lib/${k}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib)});}catch{}
   }
 
   function setTitle(n){ curFmt=n; document.getElementById("formation-title").textContent=n||""; }
 
-  function byPos(){ const m={};state.players.forEach(p=>m[p.pos]=p);return m; }
-  function badgeTop(p){ return p.letter?`${p.letter}${p.pos}`:`${p.pos}`; }
-  function badgeBot(p){ return p.name||""; }
-  function badgeTit(p){ return `${badgeTop(p)}${p.name?" – "+p.name:""}`; }
-
+  // ── Constraints ──
+  function byPos(players){ const m={};players.forEach(p=>m[p.pos]=p);return m; }
   function applyC(pos,x,y,m){
     const p1=m[1],p2=m[2],p3=m[3],p4=m[4],p5=m[5],p6=m[6];
     let x0=0,x1=100,y0=0,y1=100;
@@ -189,20 +206,26 @@
     if(pos===1){y0=Math.max(y0,p2.y+MY);x0=Math.max(x0,p6.x+MX);}
     if(pos===2){x0=Math.max(x0,p3.x+MX);y1=Math.min(y1,p1.y-MY);}
     if(pos===4){x1=Math.min(x1,p3.x-MX);y1=Math.min(y1,p5.y-MY);}
-    if(x0>x1){const m2=(x0+x1)/2;x0=m2;x1=m2;}
-    if(y0>y1){const m2=(y0+y1)/2;y0=m2;y1=m2;}
+    if(x0>x1){const mv=(x0+x1)/2;x0=mv;x1=mv;}
+    if(y0>y1){const mv=(y0+y1)/2;y0=mv;y1=mv;}
     return{x:clamp(x,x0,x1),y:clamp(y,y0,y1)};
   }
 
-  const courtEl=document.getElementById("court");
-  const halfEl=document.getElementById("halfA");
-  const getRect=()=>{const r=courtEl.getBoundingClientRect();return{w:r.width,h:r.height};};
+  function badgeTop(p){ return p.letter?`${p.letter}${p.pos}`:`${p.pos}`; }
+  function badgeBot(p){ return p.name||""; }
+  function badgeTit(p){ return `${badgeTop(p)}${p.name?" – "+p.name:""}`; }
 
-  function renderZones(){
+  // ── Court ──
+  const courtEl=document.getElementById("court");
+  const halfEls={A:document.getElementById("halfA"),B:document.getElementById("halfB")};
+
+  function getHalfRect(){ const r=courtEl.getBoundingClientRect();return{w:r.width,h:r.height/2}; }
+
+  function renderHalfZones(halfEl, zoneLayout){
     halfEl.querySelectorAll(".zones").forEach(n=>n.remove());
     const z=document.createElement("div");z.className="zones";
     z.innerHTML=`<div class="v1"></div><div class="v2"></div><div class="hmid"></div>`;
-    [{n:4,c:0,r:0},{n:3,c:1,r:0},{n:2,c:2,r:0},{n:5,c:0,r:1},{n:6,c:1,r:1},{n:1,c:2,r:1}].forEach(zn=>{
+    zoneLayout.forEach(zn=>{
       const d=document.createElement("div");d.className="zone-num";d.textContent=zn.n;
       d.style.left=`${(zn.c*100)/3}%`;d.style.top=`${(zn.r*100)/2}%`;d.style.width=`${100/3}%`;d.style.height=`${100/2}%`;
       z.appendChild(d);
@@ -210,34 +233,67 @@
     halfEl.appendChild(z);
   }
 
-  function renderCourt(){
+  function renderTeamOnCourt(tid){
+    const halfEl=halfEls[tid];
     halfEl.querySelectorAll(".player,.three-meter,.three-meter-label").forEach(n=>n.remove());
-    renderZones();
-    const ln=document.createElement("div");ln.className="three-meter";ln.style.top="33.333%";
-    const lb=document.createElement("div");lb.className="three-meter-label";lb.textContent="3m";lb.style.top="calc(33.333% + 3px)";
+
+    // Team A: net at bottom → 3m line at 66.7%, zones: top=back(5,6,1), bottom=front(4,3,2)
+    // Team B: net at top    → 3m line at 33.3%, zones: top=front(4,3,2), bottom=back(5,6,1)
+    const isA = tid==="A";
+    const linePos = isA ? 66.667 : 33.333;
+    const zoneLayout = isA
+      ? [{n:5,c:0,r:0},{n:6,c:1,r:0},{n:1,c:2,r:0},{n:4,c:0,r:1},{n:3,c:1,r:1},{n:2,c:2,r:1}]
+      : [{n:4,c:0,r:0},{n:3,c:1,r:0},{n:2,c:2,r:0},{n:5,c:0,r:1},{n:6,c:1,r:1},{n:1,c:2,r:1}];
+
+    renderHalfZones(halfEl, zoneLayout);
+
+    const ln=document.createElement("div");ln.className="three-meter";ln.style.top=`${linePos}%`;
+    const lb=document.createElement("div");lb.className="three-meter-label";lb.textContent="3m";lb.style.top=`calc(${linePos}% + 3px)`;
     halfEl.appendChild(ln);halfEl.appendChild(lb);
-    const {w,h}=getRect();
-    for(const p of state.players){
-      const el=document.createElement("div");el.className="player";el.dataset.playerId=p.id;el.title=badgeTit(p);
+
+    const {w,h}=getHalfRect();
+    // For team A: display is flipped (x=100-x, y=100-y so net is bottom)
+    const toDisplay=(p)=> isA ? {x:100-p.x, y:100-p.y} : {x:p.x, y:p.y};
+
+    for(const p of state[tid]){
+      const disp=toDisplay(p);
+      const el=document.createElement("div");
+      el.className=`player${isA?"":" team-b"}`;
+      el.dataset.playerId=p.id;el.dataset.team=tid;el.title=badgeTit(p);
       el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(p))}</div><div class="bottomLine">${esc(badgeBot(p))}</div></div>`;
-      el.style.left=`${p2px(p.x,w)}px`;el.style.top=`${p2px(p.y,h)}px`;
+      el.style.left=`${p2px(disp.x,w)}px`;el.style.top=`${p2px(disp.y,h)}px`;
       halfEl.appendChild(el);
     }
   }
 
-  function renderPanel(){
-    const mount=document.getElementById("teamCard");mount.innerHTML="";
+  function renderCourt(){ renderTeamOnCourt("A");renderTeamOnCourt("B"); }
+
+  // ── Panel ──
+  function renderTeamPanel(tid){
+    const mount=document.getElementById(`teamCard${tid}`);
+    mount.innerHTML="";
+    const color=tid==="A"?"var(--red)":"var(--green)";
+    const titleDiv=document.createElement("div");titleDiv.className="team-card-title";
+    titleDiv.innerHTML=`<span class="team-dot" style="background:${color}"></span> Team ${tid}`;
+    mount.appendChild(titleDiv);
+
     const act=document.createElement("div");act.className="team-actions";
     act.innerHTML=`<button class="btn">Rotation +1</button><button class="btn">Zurücksetzen</button>`;
-    act.querySelectorAll("button")[0].addEventListener("click",rotate);
-    act.querySelectorAll("button")[1].addEventListener("click",resetSpots);
+    act.querySelectorAll("button")[0].addEventListener("click",()=>rotate(tid));
+    act.querySelectorAll("button")[1].addEventListener("click",()=>resetSpots(tid));
     mount.appendChild(act);
+
     const grid=document.createElement("div");grid.className="grid";
-    state.players.slice().sort((a,b)=>a.pos-b.pos).forEach(p=>{
-      const box=document.createElement("div");box.className="pedit";box.dataset.pid=p.id;
-      const used=()=>{const u=new Set();state.players.forEach(op=>{if(op.id!==p.id&&op.name)u.add(op.name);});return u;};
-      const opts=()=>NAMES.filter(n=>n===""||n===p.name||!used().has(n)).map(n=>`<option value="${esc(n)}" ${p.name===n?"selected":""}>${esc(n||"—")}</option>`).join("");
-      box.innerHTML=`<div class="top"><div class="miniBadge">${esc(badgeTop(p))}</div><div class="meta"><div class="p1">Pos ${p.pos}</div><div class="p2">${esc(p.name||"—")}</div></div></div>
+    state[tid].slice().sort((a,b)=>a.pos-b.pos).forEach(p=>{
+      const box=document.createElement("div");box.className="pedit";box.dataset.pid=p.id;box.dataset.team=tid;
+      const usedNames=()=>{
+        const u=new Set();
+        ["A","B"].forEach(t=>state[t].forEach(op=>{if(op.id!==p.id&&op.name)u.add(op.name);}));
+        return u;
+      };
+      const opts=()=>NAMES.filter(n=>n===""||n===p.name||!usedNames().has(n)).map(n=>`<option value="${esc(n)}" ${p.name===n?"selected":""}>${esc(n||"—")}</option>`).join("");
+      const badgeClass=tid==="B"?" b":"";
+      box.innerHTML=`<div class="top"><div class="miniBadge${badgeClass}">${esc(badgeTop(p))}</div><div class="meta"><div class="p1">Pos ${p.pos}</div><div class="p2">${esc(p.name||"—")}</div></div></div>
         <div class="inputs">
           <select class="small letter">${LETTERS.map(v=>`<option value="${esc(v)}" ${p.letter===v?"selected":""}>${esc(v||"—")}</option>`).join("")}</select>
           <select class="small name">${opts()}</select>
@@ -246,22 +302,19 @@
       const upd=()=>{
         box.querySelector(".miniBadge").textContent=badgeTop(p);
         box.querySelector(".p2").textContent=p.name||"—";
+        const halfEl=halfEls[tid];
         const chip=halfEl.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
         if(chip){chip.querySelector(".topLine").textContent=badgeTop(p);chip.querySelector(".bottomLine").textContent=badgeBot(p);chip.title=badgeTit(p);}
       };
       sl.addEventListener("change",()=>{p.letter=String(sl.value||"");save();upd();});
       sn.addEventListener("change",()=>{p.name=String(sn.value||"");save();upd();
-        // Update other name dropdowns without full re-render (avoids keyboard dismiss)
-        document.querySelectorAll(".pedit").forEach(otherBox=>{
-          const otherSn=otherBox.querySelector(".name");
-          if(!otherSn||otherBox===box)return;
-          const curVal=otherSn.value;
-          const otherId=otherBox.dataset.pid;
-          const otherP=state.players.find(p2=>p2.id===otherId);
-          if(!otherP)return;
-          const used=new Set();state.players.forEach(op=>{if(op.id!==otherP.id&&op.name)used.add(op.name);});
-          const newOpts=NAMES.filter(n=>n===""||n===otherP.name||!used.has(n)).map(n=>`<option value="${esc(n)}" ${otherP.name===n?"selected":""}>${esc(n||"—")}</option>`).join("");
-          otherSn.innerHTML=newOpts;
+        // Update other dropdowns without full re-render
+        document.querySelectorAll(".pedit").forEach(ob=>{
+          const osn=ob.querySelector(".name");if(!osn||ob===box)return;
+          const ot=ob.dataset.team;const oid=ob.dataset.pid;
+          const op=state[ot]?.find(p2=>p2.id===oid);if(!op)return;
+          const used=new Set();["A","B"].forEach(t=>state[t].forEach(x=>{if(x.id!==op.id&&x.name)used.add(x.name);}));
+          osn.innerHTML=NAMES.filter(n=>n===""||n===op.name||!used.has(n)).map(n=>`<option value="${esc(n)}" ${op.name===n?"selected":""}>${esc(n||"—")}</option>`).join("");
         });
       });
       grid.appendChild(box);
@@ -269,10 +322,12 @@
     mount.appendChild(grid);
   }
 
+  function renderPanel(){ renderTeamPanel("A");renderTeamPanel("B"); }
+
+  // ── Lib boxes ──
   async function renderLibBox(libKey,mountEl){
     const titleEl=mountEl.querySelector(".lib-box-title");
-    mountEl.innerHTML="";
-    if(titleEl)mountEl.appendChild(titleEl);
+    mountEl.innerHTML="";if(titleEl)mountEl.appendChild(titleEl);
     const lib=await loadLib(libKey);
     if(lib.length>0){
       const row=document.createElement("div");row.className="preset-row";
@@ -293,9 +348,8 @@
     }
     const sr=document.createElement("div");sr.className="lib-save-row";
     const inp=document.createElement("input");inp.className="lib-name-input";inp.placeholder="Name…";inp.maxLength=40;
-    // Use blur-based save to avoid keyboard dismissal on mobile
     const bSave=document.createElement("button");bSave.className="lib-btn save";bSave.textContent="💾 Speichern";
-    bSave.addEventListener("mousedown",e=>e.preventDefault()); // prevent blur before click
+    bSave.addEventListener("mousedown",e=>e.preventDefault());
     bSave.addEventListener("click",()=>{if(inp.value.trim())saveToLib(libKey,inp.value);});
     inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();if(inp.value.trim())saveToLib(libKey,inp.value);}});
     sr.appendChild(inp);sr.appendChild(bSave);mountEl.appendChild(sr);
@@ -306,14 +360,9 @@
     await renderLibBox("grund",  document.getElementById("libBoxGrund"));
   }
 
+  // ── Render all ──
   function renderAll(){ updateUnlockUI();renderCourt();renderPanel();renderLibBoxes(); }
-
-  async function init(){
-    updateUnlockUI();
-    renderCourt();
-    renderPanel();
-    await renderLibBoxes();
-  }
+  async function init(){ updateUnlockUI();renderCourt();renderPanel();await renderLibBoxes(); }
 
   function updateUnlockUI(){
     const btn=document.getElementById("btnUnlock");
@@ -321,20 +370,23 @@
     else{btn.textContent="🔒 Gesperrt";btn.classList.remove("unlock-active");courtEl.classList.remove("unlocked");}
   }
 
-  function rotate(){
-    state.players=state.players.map(p=>{const np=ROT1[p.pos]??p.pos;const sp=spot(np);return{...p,pos:np,x:sp.x,y:sp.y};});
+  // ── Actions ──
+  function rotate(tid){
+    state[tid]=state[tid].map(p=>{const np=ROT1[p.pos]??p.pos;const sp=spot(np);return{...p,pos:np,x:sp.x,y:sp.y};});
     save();renderAll();
   }
-  function resetSpots(){
-    state.players=state.players.map(p=>{const sp=spot(p.pos);return{...p,x:sp.x,y:sp.y};});
+  function resetSpots(tid){
+    state[tid]=state[tid].map(p=>{const sp=spot(p.pos);return{...p,x:sp.x,y:sp.y};});
     save();renderAll();
   }
   function hardReset(){ state=defState();setTitle("");save();renderAll(); }
 
+  // ── Library ──
   async function saveToLib(k,name){
     if(!name.trim())return;
     const lib=await loadLib(k);
-    const entry={name:name.trim(),players:state.players.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name}))};
+    // Save both teams
+    const entry={name:name.trim(),A:state.A.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name})),B:state.B.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name}))};
     const idx=lib.findIndex(e=>e.name===entry.name);
     if(idx>=0)lib[idx]=entry;else lib.push(entry);
     await saveLib(k,lib);
@@ -355,52 +407,86 @@
     });
     const saveRow=mountEl.querySelector(".lib-save-row");
     mountEl.insertBefore(row,saveRow);
-    const inp=mountEl.querySelector(".lib-name-input");
-    if(inp)inp.value="";
+    const inp=mountEl.querySelector(".lib-name-input");if(inp)inp.value="";
   }
+
   async function loadFromLib(k,name){
     const lib=await loadLib(k);
     const entry=lib.find(e=>e.name===name);if(!entry)return;
-    state.players=state.players.map(p=>{const s=entry.players.find(sp=>sp.id===p.id);return s?{...p,pos:s.pos,x:s.x,y:s.y}:p;});
+    // Support both old (single-team) and new (two-team) format
+    if(entry.A){
+      state.A=state.A.map(p=>{const s=entry.A.find(sp=>sp.id===p.id);return s?{...p,pos:s.pos,x:s.x,y:s.y}:p;});
+      state.B=state.B.map(p=>{const s=entry.B?.find(sp=>sp.id===p.id);return s?{...p,pos:s.pos,x:s.x,y:s.y}:p;});
+    } else if(entry.players){
+      // Legacy: load into team A only
+      state.A=state.A.map(p=>{const s=entry.players.find(sp=>sp.id===p.id||sp.id===p.id.replace("A",""));return s?{...p,pos:s.pos,x:s.x,y:s.y}:p;});
+    }
     setTitle(name);save();renderAll();
   }
+
   async function deleteFromLib(k,name){
     const lib=await loadLib(k);
     await saveLib(k,lib.filter(e=>e.name!==name));
     renderLibBoxes();
   }
 
-  // Drag
+  // ── Drag ──
   let drag=null;
   courtEl.addEventListener("pointerdown",e=>{
     const t=e.target.closest(".player");if(!t)return;e.preventDefault();
-    const p=state.players.find(p=>p.id===t.dataset.playerId);if(!p)return;
-    const cr=courtEl.getBoundingClientRect(),{w,h}=getRect();
-    drag={id:p.id,ptr:e.pointerId,ox:p2px(p.x,w)-(e.clientX-cr.left),oy:p2px(p.y,h)-(e.clientY-cr.top)};
+    const tid=t.dataset.team;
+    const p=state[tid]?.find(p=>p.id===t.dataset.playerId);if(!p)return;
+    const cr=courtEl.getBoundingClientRect(),{w,h}=getHalfRect();
+    const halfOffsetY=tid==="B"?h:0;
+    const isA=tid==="A";
+    // Convert display position to screen
+    const dispX=isA?100-p.x:p.x, dispY=isA?100-p.y:p.y;
+    drag={id:p.id,tid,ptr:e.pointerId,
+      ox:p2px(dispX,w)-(e.clientX-cr.left),
+      oy:p2px(dispY,h)-(e.clientY-cr.top-halfOffsetY),
+      isA};
     t.classList.add("dragging");t.setPointerCapture(e.pointerId);
   });
+
   courtEl.addEventListener("pointermove",e=>{
     if(!drag||e.pointerId!==drag.ptr)return;
-    const p=state.players.find(p=>p.id===drag.id);if(!p)return;
-    const cr=courtEl.getBoundingClientRect(),{w,h}=getRect();
-    const pad=window.innerWidth<980?36:42;
+    const p=state[drag.tid]?.find(p=>p.id===drag.id);if(!p)return;
+    const cr=courtEl.getBoundingClientRect(),{w,h}=getHalfRect();
+    const halfOffsetY=drag.tid==="B"?h:0;
+    const pad=window.innerWidth<980?30:36;
     const xpx=clamp(e.clientX-cr.left+drag.ox,pad,w-pad);
-    const ypx=clamp(e.clientY-cr.top+drag.oy,pad,h-pad);
-    let x=clamp(px2p(xpx,w),0,100),y=clamp(px2p(ypx,h),0,100);
-    if(!state.unlocked){const c=applyC(p.pos,x,y,byPos());x=c.x;y=c.y;}
-    p.x=x;p.y=y;
+    const ypx=clamp(e.clientY-cr.top-halfOffsetY+drag.oy,pad,h-pad);
+    let dispX=clamp(px2p(xpx,w),0,100);
+    let dispY=clamp(px2p(ypx,h),0,100);
+    // Convert display back to local coords
+    let lx=drag.isA?100-dispX:dispX;
+    let ly=drag.isA?100-dispY:dispY;
+    if(!state.unlocked){const c=applyC(p.pos,lx,ly,byPos(state[drag.tid]));lx=c.x;ly=c.y;}
+    p.x=lx;p.y=ly;
+    // Re-convert to display for chip positioning
+    const fx=drag.isA?100-lx:lx, fy=drag.isA?100-ly:ly;
+    const halfEl=halfEls[drag.tid];
     const chip=halfEl.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
-    if(chip){chip.style.left=`${p2px(x,w)}px`;chip.style.top=`${p2px(y,h)}px`;}
+    if(chip){chip.style.left=`${p2px(fx,w)}px`;chip.style.top=`${p2px(fy,h)}px`;}
     save();
   });
-  courtEl.addEventListener("pointerup",  e=>{if(!drag||e.pointerId!==drag.ptr)return;halfEl.querySelector(`.player[data-player-id="${cssEsc(drag.id)}"]`)?.classList.remove("dragging");drag=null;});
+
+  courtEl.addEventListener("pointerup",e=>{
+    if(!drag||e.pointerId!==drag.ptr)return;
+    const halfEl=halfEls[drag.tid];
+    halfEl.querySelector(`.player[data-player-id="${cssEsc(drag.id)}"]`)?.classList.remove("dragging");
+    drag=null;
+  });
   courtEl.addEventListener("pointercancel",()=>{drag=null;});
 
+  // ── Buttons ──
   document.getElementById("btnUnlock").addEventListener("click",()=>{state.unlocked=!state.unlocked;save();updateUnlockUI();});
   document.getElementById("resetAll").addEventListener("click",hardReset);
-  document.getElementById("rotA").addEventListener("click",rotate);
-  document.getElementById("spotsA").addEventListener("click",resetSpots);
-  window.addEventListener("resize", renderCourt);
+  document.getElementById("rotA").addEventListener("click",()=>rotate("A"));
+  document.getElementById("rotB").addEventListener("click",()=>rotate("B"));
+  document.getElementById("spotsA").addEventListener("click",()=>resetSpots("A"));
+  document.getElementById("spotsB").addEventListener("click",()=>resetSpots("B"));
+  window.addEventListener("resize",renderCourt);
 
   init();
 })();
