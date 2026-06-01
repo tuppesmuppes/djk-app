@@ -303,6 +303,10 @@
         <button class="link-btn" id="btnNone">Keine</button>
         <span class="present-count" id="presentCount">0 anwesend</span>
       </div>
+      <div class="name-mgr-row" style="margin-top:10px;display:flex;gap:6px;">
+        <input id="nameMgrInput" class="name-mgr-input" placeholder="Neue Spielerin hinzufügen…" maxlength="30" style="flex:1;padding:8px 10px;border-radius:12px;border:1px solid var(--border);outline:none;font-size:13px;background:#fff;" />
+        <button id="nameMgrAdd" style="-webkit-appearance:none;appearance:none;background:#e8f5e9;border:1px solid #4caf50;color:#2e7d32;padding:8px 14px;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;">+ Hinzufügen</button>
+      </div>
     </div>
 
     <div class="card settings-card">
@@ -383,10 +387,16 @@
   const LS_API_KEY = "djk_jsonbin_apikey";
   const LS_BIN_ID  = "djk_jsonbin_binid";
 
-  const ALL_NAMES = [
+  const BASE_NAMES = [
     "Alessa","Alma","Anna","Elif","Ella","Frida",
     "Greta","Hannah","Johanna","Jule","Malou","Marie","Milva","Philippa","Zeynep"
-  ].sort((a,b) => a < b ? -1 : a > b ? 1 : 0);
+  ];
+  const LS_NAMES_KEY = "vb_custom_names_v1";
+  function loadCustomNames(){ try{const r=localStorage.getItem(LS_NAMES_KEY);return r?JSON.parse(r):[];}catch{return[];} }
+  function saveCustomNames(arr){ try{localStorage.setItem(LS_NAMES_KEY,JSON.stringify(arr));}catch{} }
+  let customNames = loadCustomNames();
+  function buildAllNames(){ return [...BASE_NAMES,...customNames].sort((a,b)=>a<b?-1:a>b?1:0); }
+  let ALL_NAMES = buildAllNames();
 
   const TEAM_NAMES = ["Team 1","Team 2","Team 3","Team 4","Team 5","Team 6","Team 7","Team 8"];
   const TEAM_COLORS = ["tc-0","tc-1","tc-2","tc-3","tc-4"];
@@ -479,12 +489,31 @@
     return { teams:best, score:bestScore, novelty };
   }
 
+  function addName(name){
+    name=name.trim();
+    if(!name||BASE_NAMES.includes(name)||customNames.includes(name))return;
+    customNames.push(name);
+    saveCustomNames(customNames);
+    ALL_NAMES=buildAllNames();
+    renderPlayerList();
+  }
+
+  function removeName(name){
+    if(BASE_NAMES.includes(name))return;
+    customNames=customNames.filter(n=>n!==name);
+    present.delete(name);
+    saveCustomNames(customNames);
+    ALL_NAMES=buildAllNames();
+    save();renderPlayerList();updateCount();updateGenBtn();
+  }
+
   // ---- Render ----
   function renderPlayerList(){
     const list=document.getElementById("playerList");
     list.innerHTML="";
     for(const name of ALL_NAMES){
       const checked=present.has(name);
+      const isCustom=customNames.includes(name);
       const item=document.createElement("div");
       item.className="player-item"+(checked?" checked":"");
       item.innerHTML=`
@@ -493,12 +522,19 @@
             <path d="M1 5l3.5 3.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-        <span class="player-name">${name}</span>`;
-      item.addEventListener("click",()=>{
+        <span class="player-name">${name}</span>${isCustom?`<button class="name-del-btn" title="${name} entfernen" style="margin-left:auto;border:none;background:none;cursor:pointer;font-size:11px;color:#e91e63;padding:0 4px;line-height:1;">✕</button>`:""}`;
+      item.addEventListener("click",(e)=>{
+        if(e.target.classList.contains("name-del-btn"))return;
         if(present.has(name)) present.delete(name); else present.add(name);
         save(); renderPlayerList(); updateCount(); updateGenBtn();
         if(mode==="manual") renderManual();
       });
+      if(isCustom){
+        item.querySelector(".name-del-btn").addEventListener("click",(e)=>{
+          e.stopPropagation();
+          if(confirm(`„${name}" aus der Liste entfernen?`)) removeName(name);
+        });
+      }
       list.appendChild(item);
     }
   }
@@ -918,6 +954,13 @@
 
   document.getElementById("manualApplyBtn").addEventListener("click", applyManual);
 
+  document.getElementById("nameMgrAdd").addEventListener("click",()=>{
+    const inp=document.getElementById("nameMgrInput");
+    addName(inp.value); inp.value="";
+  });
+  document.getElementById("nameMgrInput").addEventListener("keydown",e=>{
+    if(e.key==="Enter"){e.preventDefault();const inp=e.target;addName(inp.value);inp.value="";}
+  });
   document.getElementById("btnAll").addEventListener("click",()=>{
     ALL_NAMES.forEach(n=>present.add(n));
     save(); renderPlayerList(); updateCount(); updateGenBtn();

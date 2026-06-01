@@ -96,6 +96,18 @@
     .lib-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:8px 12px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 4px 8px rgba(0,0,0,.06); white-space:nowrap; }
     .lib-btn:active{ transform:translateY(1px); }
     .lib-btn.save{ background:#e3f2fd; border-color:#2196f3; color:#1565c0; }
+
+    /* Name manager */
+    .name-mgr{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow2); padding:12px; }
+    .name-mgr-title{ font-weight:900; font-size:18px; margin-bottom:10px; }
+    .name-mgr-row{ display:flex; gap:6px; margin-bottom:8px; }
+    .name-mgr-input{ flex:1; padding:8px 10px; border-radius:12px; border:1px solid var(--line); outline:none; font-size:13px; background:#fff; }
+    .name-mgr-add{ -webkit-appearance:none; appearance:none; background:#e8f5e9; border:1px solid #4caf50; color:#2e7d32; padding:8px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
+    .name-mgr-add:active{ transform:translateY(1px); }
+    .name-tags{ display:flex; flex-wrap:wrap; gap:6px; }
+    .name-tag{ display:inline-flex; align-items:center; gap:4px; background:#f0f4ff; border:1px solid #c5cae9; border-radius:20px; padding:4px 10px; font-size:12px; font-weight:700; }
+    .name-tag.base{ background:#f5f5f5; border-color:#e0e0e0; color:#555; }
+    .name-tag-del{ border:none; background:none; cursor:pointer; font-size:11px; color:#e91e63; padding:0; line-height:1; }
   </style>
 </head>
 <body>
@@ -134,11 +146,25 @@
   <div class="panel">
     <div class="team-card" id="teamCardA"></div>
     <div class="team-card" id="teamCardB"></div>
-    <div class="lib-box" id="libBoxAnnahme">
-      <div class="lib-box-title">Annahme</div>
+    <div class="name-mgr" id="nameMgr">
+      <div class="name-mgr-title">Spielerinnen</div>
+      <div class="name-mgr-row">
+        <input class="name-mgr-input" id="nameMgrInput" placeholder="Neue Spielerin…" maxlength="30" />
+        <button class="name-mgr-add" id="nameMgrAdd">+ Hinzufügen</button>
+      </div>
+      <div class="name-tags" id="nameTags"></div>
     </div>
-    <div class="lib-box" id="libBoxGrund">
-      <div class="lib-box-title">Grundaufstellung</div>
+    <div class="lib-box" id="libBoxAnnahmeA">
+      <div class="lib-box-title" style="color:var(--red)">Annahme · Team A</div>
+    </div>
+    <div class="lib-box" id="libBoxAnnahmeB">
+      <div class="lib-box-title" style="color:var(--green)">Annahme · Team B</div>
+    </div>
+    <div class="lib-box" id="libBoxGrundA">
+      <div class="lib-box-title" style="color:var(--red)">Grundaufstellung · Team A</div>
+    </div>
+    <div class="lib-box" id="libBoxGrundB">
+      <div class="lib-box-title" style="color:var(--green)">Grundaufstellung · Team B</div>
     </div>
   </div>
 </div>
@@ -151,10 +177,16 @@
   const SPOTS = {4:{x:20,y:22},3:{x:50,y:18},2:{x:80,y:22},5:{x:20,y:70},6:{x:50,y:78},1:{x:80,y:70}};
   const ROT1  = {1:6,6:5,5:4,4:3,3:2,2:1};
   const LETTERS = ["","Z","A","M","D","L"];
-  const NAMES = ["",
-    ...["Alessa","Alma","Anna","Elif","Ella","Frida","Greta","Hannah",
-        "Johanna","Jule","Malou","Marie","Milva","Philippa","Zeynep"
-    ].sort((a,b)=>a.localeCompare(b,"de"))];
+  const BASE_NAMES = ["Alessa","Alma","Anna","Elif","Ella","Frida","Greta","Hannah",
+      "Johanna","Jule","Malou","Marie","Milva","Philippa","Zeynep"];
+  const LS_NAMES_KEY = "vb_custom_names_v1";
+  function loadCustomNames(){ try{const r=localStorage.getItem(LS_NAMES_KEY);return r?JSON.parse(r):[];}catch{return[];} }
+  function saveCustomNames(arr){ try{localStorage.setItem(LS_NAMES_KEY,JSON.stringify(arr));}catch{} }
+  let customNames = loadCustomNames();
+  function buildNames(){
+    return ["",...[...BASE_NAMES,...customNames].sort((a,b)=>a.localeCompare(b,"de"))];
+  }
+  let NAMES = buildNames();
 
   const MX=4, MY=4;
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -193,7 +225,42 @@
     try{await fetch(`${SERVER_URL}/lib/${k}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib)});}catch{}
   }
 
-  function setTitle(n){ curFmt=n; document.getElementById("formation-title").textContent=n||""; }
+  function renderNameMgr(){
+    const tags=document.getElementById("nameTags");
+    tags.innerHTML="";
+    // Custom names with delete button
+    customNames.slice().sort((a,b)=>a.localeCompare(b,"de")).forEach(n=>{
+      const tag=document.createElement("span");tag.className="name-tag";
+      tag.innerHTML=`${esc(n)} <button class="name-tag-del" title="${esc(n)} entfernen">✕</button>`;
+      tag.querySelector("button").addEventListener("click",()=>removeName(n));
+      tags.appendChild(tag);
+    });
+    // Base names (read-only)
+    BASE_NAMES.slice().sort((a,b)=>a.localeCompare(b,"de")).forEach(n=>{
+      const tag=document.createElement("span");tag.className="name-tag base";
+      tag.textContent=n;
+      tags.appendChild(tag);
+    });
+  }
+
+  function addName(name){
+    name=name.trim();
+    if(!name)return;
+    if(BASE_NAMES.includes(name)||customNames.includes(name))return;
+    customNames.push(name);
+    saveCustomNames(customNames);
+    NAMES=buildNames();
+    renderNameMgr();
+    renderPanel(); // refresh dropdowns
+  }
+
+  function removeName(name){
+    customNames=customNames.filter(n=>n!==name);
+    saveCustomNames(customNames);
+    NAMES=buildNames();
+    renderNameMgr();
+    renderPanel();
+  }
 
   // ── Constraints ──
   function byPos(players){ const m={};players.forEach(p=>m[p.pos]=p);return m; }
@@ -325,7 +392,7 @@
   function renderPanel(){ renderTeamPanel("A");renderTeamPanel("B"); }
 
   // ── Lib boxes ──
-  async function renderLibBox(libKey,mountEl){
+  async function renderLibBox(libKey, tid, mountEl){
     const titleEl=mountEl.querySelector(".lib-box-title");
     mountEl.innerHTML="";if(titleEl)mountEl.appendChild(titleEl);
     const lib=await loadLib(libKey);
@@ -334,7 +401,7 @@
       lib.forEach(e=>{
         const wrap=document.createElement("span");wrap.style.cssText="display:inline-flex;align-items:center;gap:3px;";
         const btn=document.createElement("button");btn.className="preset-btn";btn.textContent=e.name;
-        btn.addEventListener("click",()=>loadFromLib(libKey,e.name));
+        btn.addEventListener("click",()=>loadFromLib(libKey,tid,e.name));
         wrap.appendChild(btn);
         const del=document.createElement("button");
         del.style.cssText="border:none;background:none;cursor:pointer;font-size:11px;color:#e91e63;padding:0 2px;line-height:1;";
@@ -350,19 +417,21 @@
     const inp=document.createElement("input");inp.className="lib-name-input";inp.placeholder="Name…";inp.maxLength=40;
     const bSave=document.createElement("button");bSave.className="lib-btn save";bSave.textContent="💾 Speichern";
     bSave.addEventListener("mousedown",e=>e.preventDefault());
-    bSave.addEventListener("click",()=>{if(inp.value.trim())saveToLib(libKey,inp.value);});
-    inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();if(inp.value.trim())saveToLib(libKey,inp.value);}});
+    bSave.addEventListener("click",()=>{if(inp.value.trim())saveToLib(libKey,tid,inp.value);});
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();if(inp.value.trim())saveToLib(libKey,tid,inp.value);}});
     sr.appendChild(inp);sr.appendChild(bSave);mountEl.appendChild(sr);
   }
 
   async function renderLibBoxes(){
-    await renderLibBox("annahme",document.getElementById("libBoxAnnahme"));
-    await renderLibBox("grund",  document.getElementById("libBoxGrund"));
+    await renderLibBox("annahme_a", "A", document.getElementById("libBoxAnnahmeA"));
+    await renderLibBox("annahme_b", "B", document.getElementById("libBoxAnnahmeB"));
+    await renderLibBox("grund_a",   "A", document.getElementById("libBoxGrundA"));
+    await renderLibBox("grund_b",   "B", document.getElementById("libBoxGrundB"));
   }
 
   // ── Render all ──
   function renderAll(){ updateUnlockUI();renderCourt();renderPanel();renderLibBoxes(); }
-  async function init(){ updateUnlockUI();renderCourt();renderPanel();await renderLibBoxes(); }
+  async function init(){ updateUnlockUI();renderCourt();renderPanel();renderNameMgr();await renderLibBoxes(); }
 
   function updateUnlockUI(){
     const btn=document.getElementById("btnUnlock");
@@ -382,22 +451,21 @@
   function hardReset(){ state=defState();setTitle("");save();renderAll(); }
 
   // ── Library ──
-  async function saveToLib(k,name){
+  async function saveToLib(k,tid,name){
     if(!name.trim())return;
     const lib=await loadLib(k);
-    // Save both teams
-    const entry={name:name.trim(),A:state.A.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name})),B:state.B.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name}))};
+    const entry={name:name.trim(),players:state[tid].map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name}))};
     const idx=lib.findIndex(e=>e.name===entry.name);
     if(idx>=0)lib[idx]=entry;else lib.push(entry);
     await saveLib(k,lib);
-    const mountId=k==="annahme"?"libBoxAnnahme":"libBoxGrund";
-    const mountEl=document.getElementById(mountId);
+    const mountIdMap={"annahme_a":"libBoxAnnahmeA","annahme_b":"libBoxAnnahmeB","grund_a":"libBoxGrundA","grund_b":"libBoxGrundB"};
+    const mountEl=document.getElementById(mountIdMap[k]);
     mountEl.querySelectorAll(".preset-row,.no-lib").forEach(n=>n.remove());
     const row=document.createElement("div");row.className="preset-row";
     lib.forEach(e=>{
       const wrap=document.createElement("span");wrap.style.cssText="display:inline-flex;align-items:center;gap:3px;";
       const btn=document.createElement("button");btn.className="preset-btn";btn.textContent=e.name;
-      btn.addEventListener("click",()=>loadFromLib(k,e.name));
+      btn.addEventListener("click",()=>loadFromLib(k,tid,e.name));
       wrap.appendChild(btn);
       const del=document.createElement("button");
       del.style.cssText="border:none;background:none;cursor:pointer;font-size:11px;color:#e91e63;padding:0 2px;line-height:1;";
@@ -410,17 +478,13 @@
     const inp=mountEl.querySelector(".lib-name-input");if(inp)inp.value="";
   }
 
-  async function loadFromLib(k,name){
+  async function loadFromLib(k,tid,name){
     const lib=await loadLib(k);
     const entry=lib.find(e=>e.name===name);if(!entry)return;
-    // Support both old (single-team) and new (two-team) format
-    if(entry.A){
-      state.A=state.A.map(p=>{const s=entry.A.find(sp=>sp.id===p.id);return s?{...p,pos:s.pos,x:s.x,y:s.y}:p;});
-      state.B=state.B.map(p=>{const s=entry.B?.find(sp=>sp.id===p.id);return s?{...p,pos:s.pos,x:s.x,y:s.y}:p;});
-    } else if(entry.players){
-      // Legacy: load into team A only
-      state.A=state.A.map(p=>{const s=entry.players.find(sp=>sp.id===p.id||sp.id===p.id.replace("A",""));return s?{...p,pos:s.pos,x:s.x,y:s.y}:p;});
-    }
+    state[tid]=state[tid].map(p=>{
+      const s=entry.players?.find(sp=>sp.id===p.id||sp.id===p.id.replace(tid,""));
+      return s?{...p,pos:s.pos,x:s.x,y:s.y}:p;
+    });
     setTitle(name);save();renderAll();
   }
 
@@ -480,6 +544,13 @@
   courtEl.addEventListener("pointercancel",()=>{drag=null;});
 
   // ── Buttons ──
+  document.getElementById("nameMgrAdd").addEventListener("click",()=>{
+    const inp=document.getElementById("nameMgrInput");
+    addName(inp.value);inp.value="";
+  });
+  document.getElementById("nameMgrInput").addEventListener("keydown",e=>{
+    if(e.key==="Enter"){e.preventDefault();const inp=e.target;addName(inp.value);inp.value="";}
+  });
   document.getElementById("btnUnlock").addEventListener("click",()=>{state.unlocked=!state.unlocked;save();updateUnlockUI();});
   document.getElementById("resetAll").addEventListener("click",hardReset);
   document.getElementById("rotA").addEventListener("click",()=>rotate("A"));
