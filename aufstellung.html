@@ -51,14 +51,14 @@
     .zone-num{ position:absolute; display:flex; align-items:center; justify-content:center; font-weight:900; color:rgba(0,0,0,.10); font-size:18px; }
     @media(max-width:980px){ .zone-num{ font-size:14px; } }
 
-    .player{ position:absolute; transform:translate(-50%,-50%); width:72px; height:72px; border-radius:999px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 16px rgba(0,0,0,.15); border:5px solid var(--red); touch-action:none; cursor:grab; padding:5px; }
-    @media(max-width:980px){ .player{ width:58px; height:58px; } }
+    .player{ position:absolute; transform:translate(-50%,-50%); width:min(9vw,96px); height:min(9vw,96px); border-radius:999px; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 8px 16px rgba(0,0,0,.15); border:5px solid var(--red); touch-action:none; cursor:grab; padding:5px; }
+    @media(max-width:980px){ .player{ width:min(13vw,72px); height:min(13vw,72px); } }
     .player.team-b{ border-color:var(--green); }
     .player.dragging{ cursor:grabbing; box-shadow:0 14px 28px rgba(0,0,0,.22); z-index:10; }
     .player .inner{ width:100%; text-align:center; line-height:1.05; }
-    .player .topLine{ font-weight:900; font-size:16px; }
-    .player .bottomLine{ font-weight:800; font-size:11px; opacity:.85; margin-top:3px; }
-    @media(max-width:980px){ .player .topLine{ font-size:13px; } .player .bottomLine{ font-size:10px; } }
+    .player .topLine{ font-weight:900; font-size:min(2.2vw,22px); }
+    .player .bottomLine{ font-weight:800; font-size:min(1.4vw,14px); opacity:.85; margin-top:3px; }
+    @media(max-width:980px){ .player .topLine{ font-size:min(3.5vw,16px); } .player .bottomLine{ font-size:min(2.5vw,12px); } }
 
     /* Team label on field */
     .team-label{ position:absolute; left:6px; font-size:11px; font-weight:900; opacity:.4; pointer-events:none; letter-spacing:.06em; }
@@ -552,8 +552,12 @@
   async function loadFromLib(k,tid,name){
     const lib=await loadLib(k);
     const entry=lib.find(e=>e.name===name);if(!entry)return;
+    const savedPlayers=entry.players||entry[tid]||[];
     state[tid]=state[tid].map(p=>{
-      const s=entry.players?.find(sp=>sp.id===p.id||sp.id===p.id.replace(tid,""));
+      // Try exact match first, then strip team prefix, then match by position
+      const s=savedPlayers.find(sp=>sp.id===p.id)
+        || savedPlayers.find(sp=>sp.id===p.id.replace(tid,""))
+        || savedPlayers.find(sp=>sp.pos===p.pos);
       return s?{...p,pos:s.pos,x:s.x,y:s.y}:p;
     });
     setTitle(name);saveAndPush();renderAll();
