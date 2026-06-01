@@ -118,7 +118,7 @@
       <div>
         <div class="board-title">Volleyball Aufstellungen</div>
         <div class="formation-title" id="formation-title"></div>
-        <div class="subtitle">Drag &amp; Drop · Rotation +1 · Speichern</div>
+        <div class="subtitle">Drag &amp; Drop · Rotation +1 · Speichern &nbsp;<span id="syncStatus" style="font-size:11px;font-weight:700;"></span></div>
       </div>
       <div class="row">
         <button class="btn" id="btnUnlock">🔒 Gesperrt</button>
@@ -210,6 +210,77 @@
   let state=loadState()||defState();
   let curFmt="";
   const save=()=>{ try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch{}; };
+
+  // ── Field sync ──
+  let lastPushedField = "";
+  let lastPulledField = "";
+  let isSyncing = false;
+
+  function fieldSnapshot(){
+    return JSON.stringify({
+      A: state.A.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name})),
+      B: state.B.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name})),
+    });
+  }
+
+  function setSyncStatus(txt,color){ const el=document.getElementById("syncStatus");if(el){el.textContent=txt;el.style.color=color;} }
+
+  async function pushField(){
+    const snap = fieldSnapshot();
+    if(snap === lastPushedField) return;
+    lastPushedField = snap;
+    try{
+      await fetch(`${SERVER_URL}/field`,{
+        method:"PUT",
+        headers:{"Content-Type":"application/json"},
+        body:snap,
+      });
+      setSyncStatus("● LIVE","#2e7d32");
+    }catch{ setSyncStatus("✕ OFFLINE","#c62828"); }
+  }
+
+  function applyRemoteField(remote){
+    let changed = false;
+    ["A","B"].forEach(tid=>{
+      if(!remote[tid]) return;
+      remote[tid].forEach(rp=>{
+        const lp = state[tid].find(p=>p.id===rp.id);
+        if(!lp) return;
+        if(lp.x!==rp.x||lp.y!==rp.y||lp.pos!==rp.pos||lp.letter!==rp.letter||lp.name!==rp.name){
+          lp.x=rp.x; lp.y=rp.y; lp.pos=rp.pos; lp.letter=rp.letter; lp.name=rp.name;
+          changed=true;
+        }
+      });
+    });
+    return changed;
+  }
+
+  async function pollField(){
+    if(isSyncing) return;
+    isSyncing=true;
+    try{
+      const r=await fetch(`${SERVER_URL}/field?t=${Date.now()}`,{cache:"no-store"});
+      if(!r.ok){setSyncStatus("✕ OFFLINE","#c62828");isSyncing=false;return;}
+      const remote=await r.json();
+      const remoteSnap=JSON.stringify(remote);
+      setSyncStatus("● LIVE","#2e7d32");
+      if(remoteSnap===lastPulledField){isSyncing=false;return;}
+      if(remoteSnap!==lastPushedField){
+        lastPulledField=remoteSnap;
+        const changed=applyRemoteField(remote);
+        if(changed){ save(); renderCourt(); }
+      }
+    }catch{ setSyncStatus("✕ OFFLINE","#c62828"); }
+    isSyncing=false;
+  }
+
+  function saveAndPush(){
+    save();
+    pushField();
+  }
+
+  // Start polling every 2 seconds
+  setInterval(pollField, 2000);
 
   // ── Server / lib ──
   async function loadLib(k){
@@ -373,8 +444,8 @@
         const chip=halfEl.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
         if(chip){chip.querySelector(".topLine").textContent=badgeTop(p);chip.querySelector(".bottomLine").textContent=badgeBot(p);chip.title=badgeTit(p);}
       };
-      sl.addEventListener("change",()=>{p.letter=String(sl.value||"");save();upd();});
-      sn.addEventListener("change",()=>{p.name=String(sn.value||"");save();upd();
+      sl.addEventListener("change",()=>{p.letter=String(sl.value||"");saveAndPush();upd();});
+      sn.addEventListener("change",()=>{p.name=String(sn.value||"");saveAndPush();upd();
         // Update other dropdowns without full re-render
         document.querySelectorAll(".pedit").forEach(ob=>{
           const osn=ob.querySelector(".name");if(!osn||ob===box)return;
@@ -442,13 +513,13 @@
   // ── Actions ──
   function rotate(tid){
     state[tid]=state[tid].map(p=>{const np=ROT1[p.pos]??p.pos;const sp=spot(np);return{...p,pos:np,x:sp.x,y:sp.y};});
-    save();renderAll();
+    saveAndPush();renderAll();
   }
   function resetSpots(tid){
     state[tid]=state[tid].map(p=>{const sp=spot(p.pos);return{...p,x:sp.x,y:sp.y};});
-    save();renderAll();
+    saveAndPush();renderAll();
   }
-  function hardReset(){ state=defState();setTitle("");save();renderAll(); }
+  function hardReset(){ state=defState();setTitle("");saveAndPush();renderAll(); }
 
   // ── Library ──
   async function saveToLib(k,tid,name){
@@ -485,7 +556,7 @@
       const s=entry.players?.find(sp=>sp.id===p.id||sp.id===p.id.replace(tid,""));
       return s?{...p,pos:s.pos,x:s.x,y:s.y}:p;
     });
-    setTitle(name);save();renderAll();
+    setTitle(name);saveAndPush();renderAll();
   }
 
   async function deleteFromLib(k,name){
@@ -532,7 +603,7 @@
     const halfEl=halfEls[drag.tid];
     const chip=halfEl.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
     if(chip){chip.style.left=`${p2px(fx,w)}px`;chip.style.top=`${p2px(fy,h)}px`;}
-    save();
+    saveAndPush();
   });
 
   courtEl.addEventListener("pointerup",e=>{
