@@ -174,7 +174,12 @@
   const LS_KEY = "vb_two_v9";
   const SERVER_URL = "https://scoreboard-rzql.onrender.com";
 
-  const SPOTS = {4:{x:20,y:22},3:{x:50,y:18},2:{x:80,y:22},5:{x:20,y:70},6:{x:50,y:78},1:{x:80,y:70}};
+  // Team B: net at top, front row (4,3,2) near top
+  const SPOTS_B = {4:{x:20,y:22},3:{x:50,y:18},2:{x:80,y:22},5:{x:20,y:70},6:{x:50,y:78},1:{x:80,y:70}};
+  // Team A: net at bottom, front row (4,3,2) near bottom
+  const SPOTS_A = {4:{x:20,y:78},3:{x:50,y:82},2:{x:80,y:78},5:{x:20,y:30},6:{x:50,y:22},1:{x:80,y:30}};
+  const SPOTS = SPOTS_B; // default for backwards compat
+  const spot=(pos,tid)=>(tid==="A"?SPOTS_A:SPOTS_B)[pos]||{x:50,y:50};
   const ROT1  = {1:6,6:5,5:4,4:3,3:2,2:1};
   const LETTERS = ["","Z","A","M","D","L"];
   const BASE_NAMES = ["Alessa","Alma","Anna","Elif","Ella","Frida","Greta","Hannah",
@@ -192,12 +197,9 @@
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
   const px2p=(px,s)=>s===0?0:(px/s)*100;
   const p2px=(p,s)=>(p/100)*s;
-  const spot=(pos)=>SPOTS[pos]||{x:50,y:50};
+  function defPlayers(tid){ return [1,2,3,4,5,6].map(n=>{const sp=spot(n,tid);return{id:`${tid}P${n}`,letter:"",name:"",pos:n,x:sp.x,y:sp.y};}); }
   const esc=(s)=>String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
   const cssEsc=(s)=>CSS.escape(String(s));
-
-  // ── State ──
-  function defPlayers(tid){ return [1,2,3,4,5,6].map(n=>{const sp=spot(n);return{id:`${tid}P${n}`,letter:"",name:"",pos:n,x:sp.x,y:sp.y};}); }
   function defState(){ return{version:9,unlocked:false,A:defPlayers("A"),B:defPlayers("B")}; }
   function loadState(){
     try{
@@ -210,6 +212,8 @@
   let state=loadState()||defState();
   let curFmt="";
   const save=()=>{ try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch{}; };
+
+  function setTitle(n){ curFmt=n; const el=document.getElementById("formation-title"); if(el) el.textContent=n||""; }
 
   // ── Field sync ──
   let lastPushedField = "";
@@ -378,8 +382,8 @@
     const halfEl=halfEls[tid];
     halfEl.querySelectorAll(".player,.three-meter,.three-meter-label").forEach(n=>n.remove());
 
-    // Team A: net at bottom → 3m line at 66.7%, zones: top=back(5,6,1), bottom=front(4,3,2)
-    // Team B: net at top    → 3m line at 33.3%, zones: top=front(4,3,2), bottom=back(5,6,1)
+    // Team A: net at bottom → 3m line at 66.7%, front row (4,3,2) at bottom
+    // Team B: net at top    → 3m line at 33.3%, front row (4,3,2) at top
     const isA = tid==="A";
     const linePos = isA ? 66.667 : 33.333;
     const zoneLayout = isA
@@ -393,16 +397,13 @@
     halfEl.appendChild(ln);halfEl.appendChild(lb);
 
     const {w,h}=getHalfRect();
-    // For team A: display is flipped (x=100-x, y=100-y so net is bottom)
-    const toDisplay=(p)=> isA ? {x:100-p.x, y:100-p.y} : {x:p.x, y:p.y};
 
     for(const p of state[tid]){
-      const disp=toDisplay(p);
       const el=document.createElement("div");
       el.className=`player${isA?"":" team-b"}`;
       el.dataset.playerId=p.id;el.dataset.team=tid;el.title=badgeTit(p);
       el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(p))}</div><div class="bottomLine">${esc(badgeBot(p))}</div></div>`;
-      el.style.left=`${p2px(disp.x,w)}px`;el.style.top=`${p2px(disp.y,h)}px`;
+      el.style.left=`${p2px(p.x,w)}px`;el.style.top=`${p2px(p.y,h)}px`;
       halfEl.appendChild(el);
     }
   }
@@ -515,11 +516,11 @@
 
   // ── Actions ──
   function rotate(tid){
-    state[tid]=state[tid].map(p=>{const np=ROT1[p.pos]??p.pos;const sp=spot(np);return{...p,pos:np,x:sp.x,y:sp.y};});
+    state[tid]=state[tid].map(p=>{const np=ROT1[p.pos]??p.pos;const sp=spot(np,tid);return{...p,pos:np,x:sp.x,y:sp.y};});
     saveAndPush();renderAll();
   }
   function resetSpots(tid){
-    state[tid]=state[tid].map(p=>{const sp=spot(p.pos);return{...p,x:sp.x,y:sp.y};});
+    state[tid]=state[tid].map(p=>{const sp=spot(p.pos,tid);return{...p,x:sp.x,y:sp.y};});
     saveAndPush();renderAll();
   }
   function hardReset(){ state=defState();setTitle("");saveAndPush();renderAll(); }
@@ -580,13 +581,9 @@
     const p=state[tid]?.find(p=>p.id===t.dataset.playerId);if(!p)return;
     const cr=courtEl.getBoundingClientRect(),{w,h}=getHalfRect();
     const halfOffsetY=tid==="B"?h:0;
-    const isA=tid==="A";
-    // Convert display position to screen
-    const dispX=isA?100-p.x:p.x, dispY=isA?100-p.y:p.y;
     drag={id:p.id,tid,ptr:e.pointerId,
-      ox:p2px(dispX,w)-(e.clientX-cr.left),
-      oy:p2px(dispY,h)-(e.clientY-cr.top-halfOffsetY),
-      isA};
+      ox:p2px(p.x,w)-(e.clientX-cr.left),
+      oy:p2px(p.y,h)-(e.clientY-cr.top-halfOffsetY)};
     t.classList.add("dragging");t.setPointerCapture(e.pointerId);
   });
 
@@ -598,18 +595,13 @@
     const pad=window.innerWidth<980?30:36;
     const xpx=clamp(e.clientX-cr.left+drag.ox,pad,w-pad);
     const ypx=clamp(e.clientY-cr.top-halfOffsetY+drag.oy,pad,h-pad);
-    let dispX=clamp(px2p(xpx,w),0,100);
-    let dispY=clamp(px2p(ypx,h),0,100);
-    // Convert display back to local coords
-    let lx=drag.isA?100-dispX:dispX;
-    let ly=drag.isA?100-dispY:dispY;
-    if(!state.unlocked){const c=applyC(p.pos,lx,ly,byPos(state[drag.tid]));lx=c.x;ly=c.y;}
-    p.x=lx;p.y=ly;
-    // Re-convert to display for chip positioning
-    const fx=drag.isA?100-lx:lx, fy=drag.isA?100-ly:ly;
+    let x=clamp(px2p(xpx,w),0,100);
+    let y=clamp(px2p(ypx,h),0,100);
+    if(!state.unlocked){const c=applyC(p.pos,x,y,byPos(state[drag.tid]));x=c.x;y=c.y;}
+    p.x=x;p.y=y;
     const halfEl=halfEls[drag.tid];
     const chip=halfEl.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
-    if(chip){chip.style.left=`${p2px(fx,w)}px`;chip.style.top=`${p2px(fy,h)}px`;}
+    if(chip){chip.style.left=`${p2px(x,w)}px`;chip.style.top=`${p2px(y,h)}px`;}
     saveAndPush();
   });
 
