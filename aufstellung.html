@@ -215,6 +215,7 @@
   let lastPushedField = "";
   let lastPulledField = "";
   let isSyncing = false;
+  let pushPending = false;
 
   function fieldSnapshot(){
     return JSON.stringify({
@@ -229,6 +230,8 @@
     const snap = fieldSnapshot();
     if(snap === lastPushedField) return;
     lastPushedField = snap;
+    lastPulledField = snap; // prevent poll from overwriting immediately
+    pushPending = true;
     try{
       await fetch(`${SERVER_URL}/field`,{
         method:"PUT",
@@ -237,6 +240,7 @@
       });
       setSyncStatus("● LIVE","#2e7d32");
     }catch{ setSyncStatus("✕ OFFLINE","#c62828"); }
+    pushPending = false;
   }
 
   function applyRemoteField(remote){
@@ -256,7 +260,7 @@
   }
 
   async function pollField(){
-    if(isSyncing) return;
+    if(isSyncing||pushPending) return;
     isSyncing=true;
     try{
       const r=await fetch(`${SERVER_URL}/field?t=${Date.now()}`,{cache:"no-store"});
@@ -264,12 +268,11 @@
       const remote=await r.json();
       const remoteSnap=JSON.stringify(remote);
       setSyncStatus("● LIVE","#2e7d32");
-      if(remoteSnap===lastPulledField){isSyncing=false;return;}
-      if(remoteSnap!==lastPushedField){
-        lastPulledField=remoteSnap;
-        const changed=applyRemoteField(remote);
-        if(changed){ save(); renderCourt(); }
-      }
+      // Skip if same as last seen or same as what we just pushed
+      if(remoteSnap===lastPulledField||remoteSnap===lastPushedField){isSyncing=false;return;}
+      lastPulledField=remoteSnap;
+      const changed=applyRemoteField(remote);
+      if(changed){ save(); renderCourt(); }
     }catch{ setSyncStatus("✕ OFFLINE","#c62828"); }
     isSyncing=false;
   }
