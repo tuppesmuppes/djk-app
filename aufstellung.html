@@ -361,8 +361,8 @@
 
     const {w,h}=getDisplayRect();
     for(const p of activeFormation.players){
-      // Merge current names/letters from state by position
-      const live=state.players.find(sp=>sp.pos===p.pos);
+      // Merge current names/letters from state by player ID
+      const live=state.players.find(sp=>sp.id===p.id);
       const displayP={...p, name:live?.name||p.name, letter:live?.letter||p.letter};
       const isFront=[2,3,4].includes(p.pos);
       const el=document.createElement("div");el.className="player display-player";
