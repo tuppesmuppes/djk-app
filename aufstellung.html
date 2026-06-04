@@ -33,12 +33,12 @@
       background:linear-gradient(180deg,rgba(240,248,255,1) 0%,rgba(245,245,245,1) 100%);
       overflow:hidden;
     }
-    .half-court.interactive{ height:min(42vh,480px); touch-action:none; user-select:none; transition:border-color .2s; }
+    .half-court.interactive{ height:min(48vh,560px); touch-action:none; user-select:none; transition:border-color .2s; }
     .half-court.interactive.unlocked{ border-color:#f0a500; box-shadow:0 0 0 3px rgba(240,165,0,.2); }
-    .half-court.display{ height:min(42vh,480px); margin-top:10px; }
+    .half-court.display{ height:min(48vh,560px); margin-top:10px; }
     @media(max-width:980px){
-      .half-court.interactive{ height:38vh; }
-      .half-court.display{ height:38vh; }
+      .half-court.interactive{ height:42vh; }
+      .half-court.display{ height:42vh; }
     }
 
     /* Net grid at top of interactive field (net is above) */
@@ -69,23 +69,23 @@
     /* Players */
     .player{
       position:absolute; transform:translate(-50%,-50%);
-      width:min(9vw,88px); height:min(9vw,88px);
+      width:min(11vw,110px); height:min(11vw,110px);
       border-radius:999px; background:#fff;
       display:flex; align-items:center; justify-content:center;
       box-shadow:0 8px 16px rgba(0,0,0,.15); border:6px solid var(--red);
-      touch-action:none; cursor:grab; padding:5px;
+      touch-action:none; cursor:grab; padding:8px;
     }
     .player.display-player{
       cursor:default;
       box-shadow:0 4px 10px rgba(0,0,0,.10);
       opacity:.92;
     }
-    @media(max-width:980px){ .player{ width:min(13vw,68px); height:min(13vw,68px); } }
+    @media(max-width:980px){ .player{ width:min(15vw,80px); height:min(15vw,80px); } }
     .player.dragging{ cursor:grabbing; box-shadow:0 14px 28px rgba(0,0,0,.22); z-index:10; }
     .player .inner{ width:100%; text-align:center; line-height:1.05; }
-    .player .topLine{ font-weight:900; font-size:min(2.2vw,20px); }
-    .player .bottomLine{ font-weight:800; font-size:min(1.4vw,13px); opacity:.85; margin-top:3px; }
-    @media(max-width:980px){ .player .topLine{ font-size:min(3.5vw,15px); } .player .bottomLine{ font-size:min(2.5vw,11px); } }
+    .player .topLine{ font-weight:900; font-size:min(2.6vw,24px); }
+    .player .bottomLine{ font-weight:800; font-size:min(1.6vw,15px); opacity:.85; margin-top:3px; }
+    @media(max-width:980px){ .player .topLine{ font-size:min(4vw,17px); } .player .bottomLine{ font-size:min(2.8vw,12px); } }
 
     /* Display field tabs */
     .display-tabs{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
