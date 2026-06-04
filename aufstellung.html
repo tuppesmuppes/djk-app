@@ -176,6 +176,10 @@
       <div class="display-label" id="displayLabel">Läufer wählen</div>
       <div id="halfDisplay"></div>
     </div>
+    <div class="row" style="margin-top:10px;">
+      <div style="font-size:13px;opacity:.6;flex:1;" id="saveHint">Läufer wählen, dann aktuelle Aufstellung oben speichern</div>
+      <button class="btn" id="btnSaveCurrent" style="background:#e3f2fd;border-color:#2196f3;color:#1565c0;" disabled>💾 Aktuelle Aufstellung speichern</button>
+    </div>
   </div>
 
   <!-- Right: panel + libs -->
@@ -488,6 +492,7 @@
     document.getElementById("displayTitle").textContent=`${tabLabels[k]} · ${name}`;
     document.getElementById("displayLabel").style.display="none";
     renderDisplayField();
+    updateSaveBtn();
   }
 
   async function deleteFromLib(k,name){
@@ -580,7 +585,24 @@
   courtEdit.addEventListener("pointercancel",()=>{drag=null;});
 
   // ── Buttons ──
-  document.getElementById("btnUnlock") && document.getElementById("btnUnlock").addEventListener("click",()=>{});
+  function updateSaveBtn(){
+    const btn=document.getElementById("btnSaveCurrent");
+    const hint=document.getElementById("saveHint");
+    if(activeFormation){
+      btn.disabled=false;
+      hint.textContent=`Speichert aktuelle Aufstellung oben als „${activeFormation.name}"`;
+    } else {
+      btn.disabled=true;
+      hint.textContent="Läufer wählen, dann aktuelle Aufstellung oben speichern";
+    }
+  }
+
+  document.getElementById("btnSaveCurrent").addEventListener("click", async ()=>{
+    if(!activeFormation)return;
+    await saveToLib(activeTab, activeFormation.name);
+    // Reload display with new data
+    await saveCurrentAndLoad(activeTab, activeFormation.name);
+  });
   document.getElementById("rotA").addEventListener("click",rotate);
   document.getElementById("spotsA").addEventListener("click",resetSpots);
   window.addEventListener("resize",()=>{ renderEditField(); renderDisplayField(); });
