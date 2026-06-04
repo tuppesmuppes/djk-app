@@ -147,7 +147,6 @@
     <div class="header">
       <div>
         <div class="board-title">Volleyball Aufstellungen</div>
-        <div class="formation-title" id="formation-title"></div>
         <div class="subtitle">Drag &amp; Drop · Rotation +1</div>
       </div>
     </div>
@@ -240,16 +239,28 @@
 
   // ── Server lib ──
   async function loadLib(k){
+    // Try localStorage cache first (instant)
+    let cached=null;
+    try{const c=localStorage.getItem(`vb_lib_cache_${k}`);if(c){const d=JSON.parse(c);if(d.length>0)cached=d;}}catch{}
+    if(cached)return cached;
+    // Fall back to server with 5s timeout
     try{
-      const r=await fetch(`${SERVER_URL}/lib/${k}?t=${Date.now()}`,{cache:"no-store"});
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),5000);
+      const r=await fetch(`${SERVER_URL}/lib/${k}?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
+      clearTimeout(tid);
       if(r.ok){const d=await r.json();if(d.length>0){try{localStorage.setItem(`vb_lib_cache_${k}`,JSON.stringify(d));}catch{}return d;}}
     }catch{}
-    try{const c=localStorage.getItem(`vb_lib_cache_${k}`);if(c)return JSON.parse(c);}catch{}
     return[];
   }
   async function saveLib(k,lib){
     try{localStorage.setItem(`vb_lib_cache_${k}`,JSON.stringify(lib));}catch{}
-    try{await fetch(`${SERVER_URL}/lib/${k}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib)});}catch{}
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),5000);
+      await fetch(`${SERVER_URL}/lib/${k}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib),signal:ctrl.signal});
+      clearTimeout(tid);
+    }catch{}
   }
 
   // ── Display state ──
@@ -501,11 +512,6 @@
   }
 
   // ── Actions ──
-  function updateUnlockUI(){
-    const btn=document.getElementById("btnUnlock");
-    if(state.unlocked){btn.textContent="🔓 Frei";btn.classList.add("unlock-active");courtEdit.classList.add("unlocked");}
-    else{btn.textContent="🔒 Gesperrt";btn.classList.remove("unlock-active");courtEdit.classList.remove("unlocked");}
-  }
   function rotate(){
     state.players=state.players.map(p=>{const np=ROT1[p.pos]??p.pos;const sp=spot(np);return{...p,pos:np,x:sp.x,y:sp.y};});
     save();renderEditField();renderPanel();
