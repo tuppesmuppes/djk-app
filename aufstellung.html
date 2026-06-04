@@ -308,7 +308,9 @@
     render3mLine(halfEdit, 33.333);
     const {w,h}=getEditRect();
     for(const p of state.players){
+      const isFront=[2,3,4].includes(p.pos);
       const el=document.createElement("div");el.className="player";
+      el.style.borderWidth=isFront?"9px":"5px";
       el.dataset.playerId=p.id;el.title=`${badgeTop(p)}${p.name?" – "+p.name:""}`;
       el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(p))}</div><div class="bottomLine">${esc(badgeBot(p))}</div></div>`;
       el.style.left=`${p2px(p.x,w)}px`;el.style.top=`${p2px(p.y,h)}px`;
@@ -336,7 +338,9 @@
       // Merge current names/letters from state by position
       const live=state.players.find(sp=>sp.pos===p.pos);
       const displayP={...p, name:live?.name||p.name, letter:live?.letter||p.letter};
+      const isFront=[2,3,4].includes(p.pos);
       const el=document.createElement("div");el.className="player display-player";
+      el.style.borderWidth=isFront?"9px":"5px";
       el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
       el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
       el.style.left=`${p2px(p.x,w)}px`;el.style.top=`${p2px(p.y,h)}px`;
