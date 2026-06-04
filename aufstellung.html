@@ -361,9 +361,14 @@
 
     const {w,h}=getDisplayRect();
     for(const p of activeFormation.players){
-      // Merge current names/letters from state by player ID
+      // Use saved letter/name from the formation entry directly
+      // Only override name if the live state has a name assigned and the saved one is empty
       const live=state.players.find(sp=>sp.id===p.id);
-      const displayP={...p, name:live?.name||p.name, letter:live?.letter||p.letter};
+      const displayP={
+        ...p,
+        letter: p.letter || live?.letter || "",
+        name: p.name || live?.name || "",
+      };
       const isFront=[2,3,4].includes(p.pos);
       const el=document.createElement("div");el.className="player display-player";
       el.style.borderWidth=isFront?"9px":"5px";
