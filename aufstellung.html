@@ -165,6 +165,7 @@
     <div class="row" style="margin-top:10px;">
       <button class="btn" id="rotA">Rotation +1</button>
       <button class="btn" id="spotsA">Zurücksetzen</button>
+      <button class="btn" id="btnBall">🏐 Ball</button>
     </div>
 
     <!-- Display half field -->
@@ -296,14 +297,32 @@
     halfEl.appendChild(ln);halfEl.appendChild(lb);
   }
 
+  // ── Ball state ──
+  let ball = { x: 50, y: 50, visible: false };
+  function saveBall(){ try{localStorage.setItem("vb_ball_v1",JSON.stringify(ball));}catch{} }
+  function loadBall(){ try{const r=localStorage.getItem("vb_ball_v1");if(r){const b=JSON.parse(r);ball.x=b.x;ball.y=b.y;ball.visible=b.visible??false;}}catch{} }
+  loadBall();
+
   // ── Render interactive field ──
   const courtEdit=document.getElementById("courtEdit");
   const halfEdit=document.getElementById("halfEdit");
 
   function getEditRect(){ const r=courtEdit.getBoundingClientRect();return{w:r.width,h:r.height}; }
 
+  function renderBall(){
+    halfEdit.querySelectorAll(".ball-chip").forEach(n=>n.remove());
+    if(!ball.visible) return;
+    const {w,h}=getEditRect();
+    const el=document.createElement("div");
+    el.className="ball-chip";
+    el.dataset.ball="1";
+    el.style.cssText=`position:absolute;transform:translate(-50%,-50%);width:min(7vw,68px);height:min(7vw,68px);border-radius:999px;background:radial-gradient(circle at 35% 35%,#fff8e1,#ff8f00);border:3px solid #e65100;display:flex;align-items:center;justify-content:center;font-size:min(2.5vw,26px);cursor:grab;touch-action:none;z-index:5;box-shadow:0 6px 14px rgba(0,0,0,.25);left:${p2px(ball.x,w)}px;top:${p2px(ball.y,h)}px;`;
+    el.textContent="🏐";
+    halfEdit.appendChild(el);
+  }
+
   function renderEditField(){
-    halfEdit.querySelectorAll(".player,.three-meter,.three-meter-label").forEach(n=>n.remove());
+    halfEdit.querySelectorAll(".player,.three-meter,.three-meter-label,.ball-chip").forEach(n=>n.remove());
     renderZones(halfEdit);
     render3mLine(halfEdit, 33.333);
     const {w,h}=getEditRect();
@@ -316,6 +335,7 @@
       el.style.left=`${p2px(p.x,w)}px`;el.style.top=`${p2px(p.y,h)}px`;
       halfEdit.appendChild(el);
     }
+    renderBall();
   }
 
   // ── Render display field ──
@@ -515,9 +535,17 @@
     });
   });
 
-  // ── Drag ──
+  // ── Drag (players + ball) ──
   let drag=null;
   courtEdit.addEventListener("pointerdown",e=>{
+    // Check ball first
+    const ballChip=e.target.closest(".ball-chip");
+    if(ballChip){
+      e.preventDefault();
+      const cr=courtEdit.getBoundingClientRect(),{w,h}=getEditRect();
+      drag={isBall:true,ptr:e.pointerId,ox:p2px(ball.x,w)-(e.clientX-cr.left),oy:p2px(ball.y,h)-(e.clientY-cr.top)};
+      ballChip.style.cursor="grabbing";ballChip.setPointerCapture(e.pointerId);return;
+    }
     const t=e.target.closest(".player");if(!t)return;e.preventDefault();
     const p=state.players.find(p=>p.id===t.dataset.playerId);if(!p)return;
     const cr=courtEdit.getBoundingClientRect(),{w,h}=getEditRect();
@@ -526,6 +554,14 @@
   });
   courtEdit.addEventListener("pointermove",e=>{
     if(!drag||e.pointerId!==drag.ptr)return;
+    if(drag.isBall){
+      const cr=courtEdit.getBoundingClientRect(),{w,h}=getEditRect();
+      ball.x=clamp(px2p(e.clientX-cr.left+drag.ox,w),0,100);
+      ball.y=clamp(px2p(e.clientY-cr.top+drag.oy,h),0,100);
+      const chip=halfEdit.querySelector(".ball-chip");
+      if(chip){chip.style.left=`${p2px(ball.x,w)}px`;chip.style.top=`${p2px(ball.y,h)}px`;}
+      saveBall();return;
+    }
     const p=state.players.find(p=>p.id===drag.id);if(!p)return;
     const cr=courtEdit.getBoundingClientRect(),{w,h}=getEditRect();
     const pad=window.innerWidth<980?30:36;
@@ -540,12 +576,19 @@
   });
   courtEdit.addEventListener("pointerup",e=>{
     if(!drag||e.pointerId!==drag.ptr)return;
-    halfEdit.querySelector(`.player[data-player-id="${cssEsc(drag.id)}"]`)?.classList.remove("dragging");
+    if(drag.isBall){const chip=halfEdit.querySelector(".ball-chip");if(chip)chip.style.cursor="grab";}
+    else halfEdit.querySelector(`.player[data-player-id="${cssEsc(drag.id)}"]`)?.classList.remove("dragging");
     drag=null;
   });
   courtEdit.addEventListener("pointercancel",()=>{drag=null;});
 
   // ── Buttons ──
+  document.getElementById("btnBall").addEventListener("click",()=>{
+    ball.visible=!ball.visible;
+    if(ball.visible){ ball.x=50;ball.y=50; }
+    saveBall();renderBall();
+    document.getElementById("btnBall").classList.toggle("unlock-active",ball.visible);
+  });
   document.getElementById("btnUnlock").addEventListener("click",()=>{state.unlocked=!state.unlocked;save();updateUnlockUI();});
   document.getElementById("resetAll").addEventListener("click",hardReset);
   document.getElementById("rotA").addEventListener("click",rotate);
