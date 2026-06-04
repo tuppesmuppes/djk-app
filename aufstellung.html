@@ -148,15 +148,12 @@
       <div>
         <div class="board-title">Volleyball Aufstellungen</div>
         <div class="formation-title" id="formation-title"></div>
-        <div class="subtitle">Drag &amp; Drop · Rotation +1 · Speichern &nbsp;<span id="syncStatus" style="font-size:11px;font-weight:700;"></span></div>
-      </div>
-      <div class="row">
-        <button class="btn" id="btnUnlock">🔒 Gesperrt</button>
-        <button class="btn" id="resetAll">Reset</button>
+        <div class="subtitle">Drag &amp; Drop · Rotation +1</div>
       </div>
     </div>
 
     <!-- Interactive half field -->
+    <div class="formation-title" id="formation-title" style="margin-bottom:6px;"></div>
     <div class="half-court interactive" id="courtEdit">
       <div class="net-grid"></div>
       <div id="halfEdit"></div>
@@ -165,7 +162,6 @@
     <div class="row" style="margin-top:10px;">
       <button class="btn" id="rotA">Rotation +1</button>
       <button class="btn" id="spotsA">Zurücksetzen</button>
-      <button class="btn" id="btnBall">🏐 Ball</button>
     </div>
 
     <!-- Display half field -->
@@ -256,8 +252,10 @@
   let activeTab="grund";
   let activeFormation=null; // { name, players }
 
-  function setTitle(n){ document.getElementById("formation-title").textContent=n||""; }
-  function setSyncStatus(t,c){ const el=document.getElementById("syncStatus");if(el){el.textContent=t;el.style.color=c;} }
+  function setTitle(n){
+    const el=document.getElementById("formation-title");
+    if(el) el.textContent=n||"";
+  }
 
   // ── Constraints ──
   function byPos(players){ const m={};players.forEach(p=>m[p.pos]=p);return m; }
@@ -284,7 +282,15 @@
     z.innerHTML=`<div class="v1"></div><div class="v2"></div><div class="hmid"></div>`;
     [{n:4,c:0,r:0},{n:3,c:1,r:0},{n:2,c:2,r:0},{n:5,c:0,r:1},{n:6,c:1,r:1},{n:1,c:2,r:1}].forEach(zn=>{
       const d=document.createElement("div");d.className="zone-num";d.textContent=zn.n;
-      d.style.left=`${(zn.c*100)/3}%`;d.style.top=`${(zn.r*100)/2}%`;d.style.width=`${100/3}%`;d.style.height=`${100/2}%`;
+      d.style.left=`${(zn.c*100)/3}%`;d.style.top=`${(zn.r*100)/2}%`;
+      d.style.width=`${100/3}%`;d.style.height=`${100/2}%`;
+      // Position number in top-left corner of each zone
+      d.style.alignItems="flex-end";
+      d.style.justifyContent="flex-end";
+      d.style.padding="4px 6px";
+      d.style.fontSize="min(3.5vw,28px)";
+      d.style.fontWeight="900";
+      d.style.color="rgba(0,0,0,.35)";
       z.appendChild(d);
     });
     halfEl.appendChild(z);
@@ -421,27 +427,15 @@
     if(lib.length>0){
       const row=document.createElement("div");row.className="preset-row";
       lib.forEach(e=>{
-        const wrap=document.createElement("span");wrap.style.cssText="display:inline-flex;align-items:center;gap:3px;";
-        const btn=document.createElement("button");btn.className="preset-btn";btn.textContent=e.name;
+        const btn=document.createElement("button");btn.className="preset-btn";
+        btn.textContent=e.name; // direct textContent avoids encoding issues
         btn.addEventListener("click",()=>saveCurrentAndLoad(key,e.name));
-        wrap.appendChild(btn);
-        const del=document.createElement("button");
-        del.style.cssText="border:none;background:none;cursor:pointer;font-size:11px;color:#e91e63;padding:0 2px;line-height:1;";
-        del.textContent="✕";
-        del.addEventListener("click",()=>{if(confirm(`„${e.name}" löschen?`)){deleteFromLib(key,e.name);}});
-        wrap.appendChild(del);row.appendChild(wrap);
+        row.appendChild(btn);
       });
       mountEl.appendChild(row);
     } else {
       const h=document.createElement("div");h.className="no-lib";h.textContent="Noch keine Aufstellungen gespeichert.";mountEl.appendChild(h);
     }
-    const sr=document.createElement("div");sr.className="lib-save-row";
-    const inp=document.createElement("input");inp.className="lib-name-input";inp.placeholder="Name…";inp.maxLength=40;
-    const bSave=document.createElement("button");bSave.className="lib-btn save";bSave.textContent="💾 Speichern";
-    bSave.addEventListener("mousedown",e=>e.preventDefault());
-    bSave.addEventListener("click",()=>{if(inp.value.trim())saveToLib(key,inp.value);});
-    inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();if(inp.value.trim())saveToLib(key,inp.value);}});
-    sr.appendChild(inp);sr.appendChild(bSave);mountEl.appendChild(sr);
   }
 
   async function renderLibBoxes(){
@@ -486,6 +480,7 @@
     activeTab=k;
     document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===k));
     activeFormation={name,players:entry.players};
+    setTitle(name);
     const tabLabels={grund:"Grundaufstellung",annahme:"Annahme",aufschlag:"Bei eigenem Aufschlag"};
     document.getElementById("displayTitle").textContent=`${tabLabels[k]} · ${name}`;
     document.getElementById("displayLabel").style.display="none";
@@ -568,7 +563,7 @@
     const xpx=clamp(e.clientX-cr.left+drag.ox,pad,w-pad);
     const ypx=clamp(e.clientY-cr.top+drag.oy,pad,h-pad);
     let x=clamp(px2p(xpx,w),0,100),y=clamp(px2p(ypx,h),0,100);
-    if(!state.unlocked){const c=applyC(p.pos,x,y,byPos(state.players));x=c.x;y=c.y;}
+    const c=applyC(p.pos,x,y,byPos(state.players));x=c.x;y=c.y;
     p.x=x;p.y=y;
     const chip=halfEdit.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
     if(chip){chip.style.left=`${p2px(x,w)}px`;chip.style.top=`${p2px(y,h)}px`;}
@@ -583,21 +578,13 @@
   courtEdit.addEventListener("pointercancel",()=>{drag=null;});
 
   // ── Buttons ──
-  document.getElementById("btnBall").addEventListener("click",()=>{
-    ball.visible=!ball.visible;
-    if(ball.visible){ ball.x=50;ball.y=50; }
-    saveBall();renderBall();
-    document.getElementById("btnBall").classList.toggle("unlock-active",ball.visible);
-  });
-  document.getElementById("btnUnlock").addEventListener("click",()=>{state.unlocked=!state.unlocked;save();updateUnlockUI();});
-  document.getElementById("resetAll").addEventListener("click",hardReset);
+  document.getElementById("btnUnlock") && document.getElementById("btnUnlock").addEventListener("click",()=>{});
   document.getElementById("rotA").addEventListener("click",rotate);
   document.getElementById("spotsA").addEventListener("click",resetSpots);
   window.addEventListener("resize",()=>{ renderEditField(); renderDisplayField(); });
 
   // ── Init ──
   async function init(){
-    updateUnlockUI();
     renderEditField();
     renderPanel();
     await renderLibBoxes();
