@@ -377,11 +377,6 @@
   // ── Panel ──
   function renderPanel(){
     const mount=document.getElementById("teamCard");mount.innerHTML="";
-    const act=document.createElement("div");act.className="team-actions";
-    act.innerHTML=`<button class="btn">Rotation +1</button><button class="btn">Zurücksetzen</button>`;
-    act.querySelectorAll("button")[0].addEventListener("click",rotate);
-    act.querySelectorAll("button")[1].addEventListener("click",resetSpots);
-    mount.appendChild(act);
     const grid=document.createElement("div");grid.className="grid";
     state.players.slice().sort((a,b)=>a.pos-b.pos).forEach(p=>{
       const box=document.createElement("div");box.className="pedit";box.dataset.pid=p.id;
@@ -563,7 +558,6 @@
     const xpx=clamp(e.clientX-cr.left+drag.ox,pad,w-pad);
     const ypx=clamp(e.clientY-cr.top+drag.oy,pad,h-pad);
     let x=clamp(px2p(xpx,w),0,100),y=clamp(px2p(ypx,h),0,100);
-    const c=applyC(p.pos,x,y,byPos(state.players));x=c.x;y=c.y;
     p.x=x;p.y=y;
     const chip=halfEdit.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
     if(chip){chip.style.left=`${p2px(x,w)}px`;chip.style.top=`${p2px(y,h)}px`;}
