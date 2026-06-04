@@ -467,11 +467,14 @@
     const inp=mountEl.querySelector(".lib-name-input");if(inp)inp.value="";
   }
 
-  // Load a lib entry into the display field
+  // Load a lib entry into the display field — cache first for instant response
   async function saveCurrentAndLoad(k,name){
-    const lib=await loadLib(k);
+    // Try localStorage cache first (instant, no server wait)
+    let lib=[];
+    try{const c=localStorage.getItem(`vb_lib_cache_${k}`);if(c){const d=JSON.parse(c);if(d.length>0)lib=d;}}catch{}
+    // Fallback to server only if cache empty
+    if(!lib.length) lib=await loadLib(k);
     const entry=lib.find(e=>e.name===name);if(!entry)return;
-    // Switch to matching tab
     activeTab=k;
     document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===k));
     activeFormation={name,players:entry.players};
