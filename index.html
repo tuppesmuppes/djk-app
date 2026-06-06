@@ -278,15 +278,11 @@
     <div class="sync-bar">
       <span class="sync-label">☁ Sync</span>
       <div class="sync-body">
-        <div class="sync-hint" id="syncHint">JSONBin API-Key eingeben für automatische Cloud-Synchronisation zwischen allen Geräten:</div>
-        <div class="api-setup">
-          <input class="api-input" id="apiKeyInput" type="password" placeholder="$2a$10$… (API Key von jsonbin.io)"/>
-          <button class="api-save-btn" id="apiSaveBtn">Speichern</button>
-          <span class="sync-status" id="syncStatus">Nicht verbunden</span>
-        </div>
+        <div class="sync-hint" id="syncHint">Automatische Synchronisation über den DJK-Server:</div>
         <div class="sync-btns">
-          <button class="sync-btn cloud" id="cloudPushBtn" disabled>⬆ Jetzt hochladen</button>
-          <button class="sync-btn cloud" id="cloudPullBtn" disabled>⬇ Jetzt herunterladen</button>
+          <span class="sync-status" id="syncStatus">Nicht verbunden</span>
+          <button class="sync-btn cloud" id="cloudPushBtn">⬆ Hochladen</button>
+          <button class="sync-btn cloud" id="cloudPullBtn">⬇ Herunterladen</button>
           <span style="font-size:11px;color:var(--muted);align-self:center">oder manuell:</span>
           <button class="sync-btn export" id="exportBtn">⬇ JSON Export</button>
           <button class="sync-btn" id="importBtn">⬆ JSON Import</button>
@@ -384,8 +380,69 @@
 <script>
 (() => {
   const LS_KEY     = "djk_teamzulosung_v2";
-  const LS_API_KEY = "djk_jsonbin_apikey";
-  const LS_BIN_ID  = "djk_jsonbin_binid";
+  const SERVER_URL = "https://scoreboard-rzql.onrender.com";
+
+  function setStatus(msg, type){
+    const el=document.getElementById("syncStatus");
+    if(!el) return;
+    el.textContent=msg;
+    el.className="sync-status"+(type?" "+type:"");
+  }
+
+  async function cloudPush(){
+    setStatus("Wird hochgeladen…","loading");
+    const data={ present:[...present], numTeams, history, points };
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),8000);
+      const res=await fetch(`${SERVER_URL}/turnier`,{
+        method:"PUT",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(data),
+        signal:ctrl.signal,
+      });
+      clearTimeout(tid);
+      if(!res.ok) throw new Error(res.status);
+      setStatus("Hochgeladen ✓","ok");
+    } catch(e){
+      setStatus("Fehler beim Hochladen","err");
+    }
+  }
+
+  async function cloudPull(){
+    setStatus("Wird geladen…","loading");
+    try{
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),8000);
+      const res=await fetch(`${SERVER_URL}/turnier?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
+      clearTimeout(tid);
+      if(!res.ok) throw new Error(res.status);
+      const d=await res.json();
+      if(!d||!Array.isArray(d.history)) throw new Error("Ungültiges Format");
+      const ok=confirm(
+        `Daten vom Server:\n`+
+        `• ${d.history.length} Einteilungen\n`+
+        `• ${Object.keys(d.points||{}).length} Spielerinnen mit Punkten\n\n`+
+        `Lokale Daten werden ersetzt. Fortfahren?`
+      );
+      if(!ok){ setStatus("Abgebrochen",""); return; }
+      if(d.present)  present  = new Set(d.present);
+      if(d.numTeams) numTeams = Number(d.numTeams)||2;
+      if(Array.isArray(d.history)) history=d.history;
+      if(d.points&&typeof d.points==="object") points=d.points;
+      save();
+      renderPlayerList(); updateCount(); renderNumTeams();
+      renderHistory(); renderStandings();
+      setStatus("Geladen ✓","ok");
+    } catch(e){
+      setStatus("Fehler beim Laden","err");
+    }
+  }
+
+  async function saveAndSync(){
+    save();
+    await cloudPush();
+  }
 
   const BASE_NAMES = [
     "Alessa","Alma","Anna","Elif","Ella","Frida",
@@ -817,125 +874,6 @@
   }
 
   // ---- JSONBin Cloud Sync ----
-  function getApiKey(){ try{ return localStorage.getItem(LS_API_KEY)||""; }catch{ return ""; } }
-  function getBinId(){  try{ return localStorage.getItem(LS_BIN_ID)||"";  }catch{ return ""; } }
-  function setApiKey(k){ try{ localStorage.setItem(LS_API_KEY,k); }catch{} }
-  function setBinId(id){ try{ localStorage.setItem(LS_BIN_ID,id); }catch{} }
-
-  function setStatus(msg, type=""){
-    const el=document.getElementById("syncStatus");
-    el.textContent=msg;
-    el.className="sync-status"+(type?" "+type:"");
-  }
-
-  function initCloudUI(){
-    const key=getApiKey();
-    const binId=getBinId();
-    const inp=document.getElementById("apiKeyInput");
-    if(key) inp.value=key;
-    if(key){
-      document.getElementById("cloudPushBtn").disabled=false;
-      document.getElementById("cloudPullBtn").disabled=false;
-      setStatus(binId?"Verbunden ✓":"API-Key gesetzt","ok");
-      document.getElementById("syncHint").textContent=
-        "Cloud-Sync aktiv. Daten werden auf allen Geräten geteilt.";
-    }
-  }
-
-  async function cloudPush(){
-    const key=getApiKey();
-    if(!key){ alert("Bitte zuerst den API-Key eingeben."); return; }
-    setStatus("Wird hochgeladen…","loading");
-    const data={ present:[...present], numTeams, history, points };
-    try{
-      const binId=getBinId();
-      let res;
-      if(!binId){
-        // Create new bin
-        res=await fetch("https://api.jsonbin.io/v3/b",{
-          method:"POST",
-          headers:{"Content-Type":"application/json","X-Master-Key":key,"X-Bin-Name":"DJK-Teamzulosung"},
-          body:JSON.stringify(data)
-        });
-        if(!res.ok) throw new Error(res.status);
-        const json=await res.json();
-        setBinId(json.metadata.id);
-        setStatus("Hochgeladen ✓","ok");
-      } else {
-        // Update existing bin
-        res=await fetch(`https://api.jsonbin.io/v3/b/${binId}`,{
-          method:"PUT",
-          headers:{"Content-Type":"application/json","X-Master-Key":key},
-          body:JSON.stringify(data)
-        });
-        if(!res.ok) throw new Error(res.status);
-        setStatus("Hochgeladen ✓","ok");
-      }
-    } catch(e){
-      setStatus("Fehler beim Hochladen","err");
-      console.error(e);
-    }
-  }
-
-  async function cloudPull(){
-    const key=getApiKey();
-    if(!key){ alert("Bitte zuerst den API-Key eingeben."); return; }
-    setStatus("Wird geladen…","loading");
-    try{
-      let binId=getBinId();
-
-      // If no binId stored locally, search for it in the account
-      if(!binId){
-        const listRes=await fetch("https://api.jsonbin.io/v3/b",{
-          headers:{"X-Master-Key":key}
-        });
-        if(!listRes.ok) throw new Error("Bins konnten nicht abgerufen werden: "+listRes.status);
-        const listJson=await listRes.json();
-        const bins=listJson.result||[];
-        const found=bins.find(b=>b.snippetMeta?.name==="DJK-Teamzulosung");
-        if(!found){
-          setStatus("Keine Daten gefunden","err");
-          alert("Keine Cloud-Daten gefunden.\nZuerst von einem Gerät mit ⬆ Hochladen einrichten.");
-          return;
-        }
-        binId=found.id;
-        setBinId(binId);
-      }
-
-      const res=await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`,{
-        headers:{"X-Master-Key":key}
-      });
-      if(!res.ok) throw new Error(res.status);
-      const json=await res.json();
-      const d=json.record;
-      if(!d||!Array.isArray(d.history)) throw new Error("Ungültiges Format");
-      const ok=confirm(
-        `Daten aus der Cloud:\n`+
-        `• ${d.history.length} Einteilungen\n`+
-        `• ${Object.keys(d.points||{}).length} Spielerinnen mit Punkten\n\n`+
-        `Lokale Daten werden ersetzt. Fortfahren?`
-      );
-      if(!ok){ setStatus("Abgebrochen",""); return; }
-      if(d.present)  present  = new Set(d.present);
-      if(d.numTeams) numTeams = Number(d.numTeams)||2;
-      if(Array.isArray(d.history)) history=d.history;
-      if(d.points&&typeof d.points==="object") points=d.points;
-      save();
-      renderPlayerList(); updateCount(); renderNumTeams();
-      renderHistory(); renderStandings();
-      setStatus("Geladen ✓","ok");
-    } catch(e){
-      setStatus("Fehler beim Laden","err");
-      console.error(e);
-    }
-  }
-
-  // Auto-push after every save if cloud is configured
-  async function saveAndSync(){
-    save();
-    if(getApiKey()&&getBinId()) await cloudPush();
-  }
-
   // ---- Wire UI ----
   document.getElementById("modeRandom").addEventListener("click",()=>{
     mode="random";
@@ -1046,17 +984,6 @@
     renderStandings();
   });
 
-  // ---- Cloud sync buttons ----
-  document.getElementById("apiSaveBtn").addEventListener("click",()=>{
-    const key=document.getElementById("apiKeyInput").value.trim();
-    if(!key){ alert("Bitte einen API-Key eingeben."); return; }
-    setApiKey(key);
-    document.getElementById("cloudPushBtn").disabled=false;
-    document.getElementById("cloudPullBtn").disabled=false;
-    setStatus("API-Key gespeichert","ok");
-    document.getElementById("syncHint").textContent="Cloud-Sync aktiv. Daten werden auf allen Geräten geteilt.";
-  });
-
   document.getElementById("cloudPushBtn").addEventListener("click", cloudPush);
   document.getElementById("cloudPullBtn").addEventListener("click", cloudPull);
 
@@ -1119,8 +1046,9 @@
 
   renderHistory();
   renderStandings();
-  initCloudUI();
+  setStatus("Bereit","ok");
 })();
 </script>
 </body>
 </html>
+
