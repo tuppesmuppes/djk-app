@@ -404,7 +404,7 @@
       if(existing[p.id]){
         // Animate existing chip to new position
         const el=existing[p.id];
-        el.style.transition="left 0.5s cubic-bezier(.4,0,.2,1), top 0.5s cubic-bezier(.4,0,.2,1)";
+        el.style.transition="left 1.25s cubic-bezier(.4,0,.2,1), top 1.25s cubic-bezier(.4,0,.2,1)";
         el.style.left=targetLeft;
         el.style.top=targetTop;
         el.style.borderWidth=isFront?"9px":"5px";
@@ -418,7 +418,7 @@
         el.dataset.playerId=p.id;
         el.style.borderWidth=isFront?"9px":"5px";
         el.style.opacity="0";
-        el.style.transition="opacity 0.4s ease 0.3s";
+        el.style.transition="opacity 1s ease 0.75s";
         el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
         el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
         el.style.left=targetLeft;
@@ -430,9 +430,9 @@
 
     // Remove chips no longer in formation
     Object.values(existing).forEach(el=>{
-      el.style.transition="opacity 0.2s ease";
+      el.style.transition="opacity 0.5s ease";
       el.style.opacity="0";
-      setTimeout(()=>el.remove(), 250);
+      setTimeout(()=>el.remove(), 600);
     });
   }
 
