@@ -400,19 +400,17 @@
       el.remove();
     });
 
-    // Build a map: letter+pos → name from live state
-    // This ensures M on pos 3 gets the name of whoever is M on pos 3 right now
-    const liveMap={};
-    state.players.forEach(sp=>{
-      if(sp.letter) liveMap[`${sp.letter}${sp.pos}`]=sp.name;
-    });
+    // Build map: pos → live player from current state
+    const livePosMap={};
+    state.players.forEach(sp=>{ livePosMap[sp.pos]=sp; });
 
     for(const p of activeFormation.players){
-      const liveName = liveMap[`${p.letter}${p.pos}`] || "";
+      // Find the live player currently on this position
+      const live = livePosMap[p.pos];
       const displayP = {
         ...p,
-        letter: p.letter || "",
-        name: liveName,
+        letter: live?.letter || p.letter || "",
+        name: live?.name || "",
       };
       const isFront=[2,3,4].includes(p.pos);
       const targetLeft=`${p2px(p.x,w)}px`;
