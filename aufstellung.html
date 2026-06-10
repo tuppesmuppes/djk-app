@@ -386,22 +386,31 @@
     lbl.style.display="none";
 
     const {w,h}=getDisplayRect();
-    // Build map: id → live player (letter and name stay bound to the player)
-    const liveIdMap={};
-    state.players.forEach(sp=>{ liveIdMap[sp.id]=sp; });
+
+    // Gespeicherte Läufer sind nur Positions-Schablonen.
+    // Name, Spezialisierung und aktuelle Feldpositionsnummer kommen immer aus der aktuellen Rotation.
+    const liveById={};
+    const liveBySavedPos={};
+    state.players.forEach(sp=>{
+      liveById[sp.id]=sp;
+      liveBySavedPos[sp.pos]=sp;
+    });
 
     for(const p of activeFormation.players){
-      // Get the live player with same ID - they keep their specialization and name
-      const live=liveIdMap[p.id];
+      // Primär über die Spielerinnen-Identität auflösen. Alte Einträge ohne ID werden über die gespeicherte Position abgefangen.
+      const live=liveById[p.id] || liveBySavedPos[p.pos] || null;
+
       const displayP={
         ...p,
-        letter: live?.letter||p.letter||"",
-        name: live?.name||p.name||"",
+        pos: live?.pos ?? p.pos,
+        letter: live?.letter ?? "",
+        name: live?.name ?? "",
       };
-      const isFront=[2,3,4].includes(p.pos);
+
+      const isFront=[2,3,4].includes(displayP.pos);
       const el=document.createElement("div");
       el.className="player display-player";
-      el.dataset.playerId=p.id;
+      el.dataset.playerId=live?.id || p.id || "";
       el.style.borderWidth=isFront?"9px":"5px";
       el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
       el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
@@ -480,7 +489,9 @@
   async function saveToLib(k,name){
     if(!name.trim())return;
     const lib=await loadLib(k);
-    const entry={name:name.trim(),players:state.players.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name}))};
+    // Nur die Schablone speichern: Spieler-ID + aktuelle Feldposition + Zielkoordinaten.
+    // Namen und Spezialisierungen bleiben live im aktuellen Teamzustand und werden beim Anzeigen dynamisch ergänzt.
+    const entry={name:name.trim(),players:state.players.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y}))};
     const idx=lib.findIndex(e=>e.name===entry.name);
     if(idx>=0)lib[idx]=entry;else lib.push(entry);
     await saveLib(k,lib);
