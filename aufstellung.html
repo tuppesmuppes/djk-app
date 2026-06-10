@@ -288,14 +288,19 @@ function renderDisplayField(){
   halfDisplay.appendChild(ln); halfDisplay.appendChild(lb);
 
   const {w,h}=getRect(courtDisplay);
-    activeFormation.players.forEach(p=>{
-      const size=Math.min(w,h)*0.18;
-      const el=document.createElement("div");
-      el.className="chip display-chip"+(([2,3,4].includes(p.pos))?" front":"");
-      el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(p.x,w)}px;top:${p2px(p.y,h)}px;font-size:${size*0.22}px;z-index:4;`;
-      el.innerHTML=`<div><div class="spec">${p.spec||""}${p.pos||""}</div><div class="pname">${esc(p.name||"")}</div></div>`;
-      halfDisplay.appendChild(el);
-    });
+  const liveById={};
+  state.players.forEach(p=>{ liveById[p.id]=p; });
+
+  activeFormation.players.forEach(p=>{
+    const live=liveById[p.id];
+    const name=(live?.name!==undefined&&live.name!=="")?live.name:(p.name||"");
+    const size=Math.min(w,h)*0.18;
+    const el=document.createElement("div");
+    el.className="chip display-chip"+(([2,3,4].includes(p.pos))?" front":"");
+    el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(p.x,w)}px;top:${p2px(p.y,h)}px;font-size:${size*0.22}px;z-index:4;`;
+    el.innerHTML=`<div><div class="spec">${p.spec||""}${p.pos||""}</div><div class="pname">${esc(name)}</div></div>`;
+    halfDisplay.appendChild(el);
+  });
 }
 
 // ── Name panel ──
