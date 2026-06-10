@@ -400,14 +400,13 @@
     });
 
     for(const p of activeFormation.players){
-      // Match by letter (role) so names stay correct across rotations
-      const live = p.letter
-        ? state.players.find(sp=>sp.letter===p.letter)
-        : state.players.find(sp=>sp.id===p.id);
-      const displayP={
+      // p = saved formation player (has correct pos, x, y, letter for this Läufer)
+      // Find live player with same letter to get the assigned name
+      const live = state.players.find(sp => sp.letter === p.letter && p.letter !== "")
+                || state.players.find(sp => sp.id === p.id);
+      const displayP = {
         ...p,
-        letter: p.letter||live?.letter||"",
-        name: live?.name||"",
+        name: live?.name || "",
       };
       const isFront=[2,3,4].includes(p.pos);
       const targetLeft=`${p2px(p.x,w)}px`;
