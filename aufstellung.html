@@ -161,7 +161,6 @@
     <div class="row" style="margin-top:10px;">
       <button class="btn" id="rotA">Rotation +1</button>
       <button class="btn" id="spotsA">Zurücksetzen</button>
-      <button class="btn" id="resetNames" style="border-color:#e91e63;color:#e91e63;">Reset</button>
     </div>
 
     <!-- Display half field -->
@@ -421,8 +420,7 @@
           const osn=ob.querySelector(".name");if(!osn||ob===box)return;
           const oid=ob.dataset.pid;const op=state.players.find(p2=>p2.id===oid);if(!op)return;
           const u=new Set();state.players.forEach(x=>{if(x.id!==op.id&&x.name)u.add(x.name);});
-          osn.innerHTML=NAMES.filter(n=>n===""||n===op.name||!u.has(n)).map(n=>`<option value="${esc(n)}">${esc(n||"—")}</option>`).join("");
-          osn.value=op.name||"";
+          osn.innerHTML=NAMES.filter(n=>n===""||n===op.name||!u.has(n)).map(n=>`<option value="${esc(n)}" ${op.name===n?"selected":""}>${esc(n||"—")}</option>`).join("");
         });
       });
       grid.appendChild(box);
@@ -610,10 +608,6 @@
     await saveToLib(activeTab, activeFormation.name);
     // Reload display with new data
     await saveCurrentAndLoad(activeTab, activeFormation.name);
-  });
-  document.getElementById("resetNames").addEventListener("click",()=>{
-    state.players=state.players.map(p=>({...p,letter:"",name:""}));
-    save();renderPanel();renderEditField();renderDisplayField();
   });
   document.getElementById("rotA").addEventListener("click",rotate);
   document.getElementById("spotsA").addEventListener("click",resetSpots);
