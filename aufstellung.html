@@ -393,25 +393,18 @@
 
     const {w,h}=getDisplayRect();
 
-    // Record current positions of existing chips before removing
-    const prevPos={};
-    halfDisplay.querySelectorAll(".player").forEach(el=>{
-      prevPos[el.dataset.playerId]={left:el.style.left, top:el.style.top};
-      el.remove();
-    });
-
-    // Build map: pos → live player from current state
+    // Build map: pos → live player
     const livePosMap={};
     state.players.forEach(sp=>{ livePosMap[sp.pos]=sp; });
 
-    for(const p of activeFormation.players){
-      // Find the live player currently on this position
-      const live = livePosMap[p.pos];
-      const displayP = {
-        ...p,
-        letter: live?.letter || p.letter || "",
-        name: live?.name || "",
-      };
+    // Save current chip positions keyed by index (0-5)
+    const oldChips=[...halfDisplay.querySelectorAll(".player")];
+    const oldPositions=oldChips.map(el=>({left:el.style.left,top:el.style.top}));
+    oldChips.forEach(el=>el.remove());
+
+    activeFormation.players.forEach((p,i)=>{
+      const live=livePosMap[p.pos];
+      const displayP={...p, letter:live?.letter||p.letter||"", name:live?.name||""};
       const isFront=[2,3,4].includes(p.pos);
       const targetLeft=`${p2px(p.x,w)}px`;
       const targetTop=`${p2px(p.y,h)}px`;
@@ -423,29 +416,22 @@
       el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
       el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
 
-      if(prevPos[p.id]){
-        // Start from old position, animate to new
-        el.style.left=prevPos[p.id].left;
-        el.style.top=prevPos[p.id].top;
+      if(oldPositions[i]){
+        el.style.left=oldPositions[i].left;
+        el.style.top=oldPositions[i].top;
         el.style.transition="none";
         halfDisplay.appendChild(el);
-        requestAnimationFrame(()=>{
-          requestAnimationFrame(()=>{
-            el.style.transition="left 1.25s cubic-bezier(.4,0,.2,1), top 1.25s cubic-bezier(.4,0,.2,1)";
-            el.style.left=targetLeft;
-            el.style.top=targetTop;
-          });
-        });
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          el.style.transition="left 1.25s cubic-bezier(.4,0,.2,1), top 1.25s cubic-bezier(.4,0,.2,1)";
+          el.style.left=targetLeft;
+          el.style.top=targetTop;
+        }));
       } else {
-        // New chip — appear at target position
         el.style.left=targetLeft;
         el.style.top=targetTop;
-        el.style.opacity="0";
-        el.style.transition="opacity 1s ease 0.75s";
         halfDisplay.appendChild(el);
-        requestAnimationFrame(()=>{ el.style.opacity="1"; });
       }
-    }
+    });
   }
 
   // ── Panel ──
