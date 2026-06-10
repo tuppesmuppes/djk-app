@@ -1,627 +1,522 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>Volleyball Läufer-Anzeige</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>Volleyball Aufstellungen</title>
   <style>
-    :root{
-      --bg:#f6f7fb; --card:#fff; --line:rgba(0,0,0,.14);
-      --shadow:0 12px 24px rgba(0,0,0,.08); --shadow2:0 10px 18px rgba(0,0,0,.08);
-      --radius:18px; --blue:#1565c0; --red:#c62828;
-    }
-    *{ box-sizing:border-box; }
-    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:#111; }
+    :root{ --bg:#f5f5f5; --card:#fff; --red:#CC0000; --blue:#1565c0; --line:rgba(0,0,0,.12); --muted:#888; }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{ font-family:system-ui,sans-serif; background:var(--bg); color:#111; }
+    .wrap{ max-width:1300px; margin:0 auto; padding:12px; display:grid; grid-template-columns:1.2fr .8fr; gap:14px; align-items:start; }
+    @media(max-width:900px){ .wrap{ grid-template-columns:1fr; } }
 
-    .wrap{ max-width:1300px; margin:0 auto; padding:12px; display:grid; gap:14px; grid-template-columns:1.15fr .85fr; align-items:start; }
-    @media(max-width:980px){ .wrap{ grid-template-columns:1fr; } }
+    /* Cards */
+    .card{ background:var(--card); border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,.07); padding:12px; border:1px solid var(--line); }
 
-    .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:12px; }
-    .header{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
-    .board-title{ font-weight:900; font-size:22px; }
-    .formation-title{ font-weight:900; font-size:20px; color:var(--red); min-height:26px; margin-top:2px; }
-    .subtitle{ opacity:.7; font-size:12px; margin-top:2px; }
-    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:10px 12px; border-radius:14px; font-weight:800; cursor:pointer; box-shadow:0 6px 12px rgba(0,0,0,.08); }
-    .btn:active{ transform:translateY(1px); }
-    .btn.unlock-active{ background:#fff3cd; border-color:#f0a500; color:#8a5c00; }
+    /* Header */
+    .app-title{ font-size:22px; font-weight:900; margin-bottom:2px; }
+    .app-title span{ color:var(--red); }
+    .current-laufer{ font-size:20px; font-weight:900; color:var(--red); min-height:26px; margin-top:2px; }
+    .subtitle{ font-size:12px; color:var(--muted); margin-top:2px; }
 
-    /* Half courts */
-    .half-court{
-      position:relative; width:100%; border-radius:6px;
-      border:7px solid var(--blue);
-      background:linear-gradient(180deg,rgba(240,248,255,1) 0%,rgba(245,245,245,1) 100%);
-      overflow:hidden;
-    }
-    .half-court.interactive{ height:min(48vh,560px); touch-action:none; user-select:none; transition:border-color .2s; }
-    .half-court.interactive.unlocked{ border-color:#f0a500; box-shadow:0 0 0 3px rgba(240,165,0,.2); }
-    .half-court.display{ height:min(48vh,560px); margin-top:10px; }
-    @media(max-width:980px){
-      .half-court.interactive{ height:42vh; }
-      .half-court.display{ height:42vh; }
-    }
-
-    /* Net grid at top of interactive field (net is above) */
-    .net-grid{
-      position:absolute; top:0; left:0; right:0; height:16px; z-index:2; pointer-events:none;
-      background-image:
-        repeating-linear-gradient(90deg,var(--blue) 0px,var(--blue) 4px,transparent 4px,transparent 14px),
-        repeating-linear-gradient(0deg,var(--blue) 0px,var(--blue) 3px,transparent 3px,transparent 9px);
-      border-bottom:2px solid var(--blue);
-    }
-
-    .three-meter{ position:absolute; left:0; right:0; height:6px; background:var(--blue); pointer-events:none; }
-    .three-meter-label{ position:absolute; right:6px; font-size:10px; font-weight:800; color:var(--blue); pointer-events:none; line-height:1; }
-
+    /* Court */
+    .court{ position:relative; width:100%; border-radius:6px; border:6px solid var(--blue); overflow:hidden; background:linear-gradient(180deg,#f0f8ff,#f5f5f5); touch-action:none; user-select:none; }
+    .court.interactive{ height:min(44vh,500px); }
+    .court.display{ height:min(44vh,500px); margin-top:10px; }
+    @media(max-width:900px){ .court.interactive,.court.display{ height:40vh; } }
+    .net-grid{ position:absolute; top:0; left:0; right:0; height:16px; z-index:2; pointer-events:none;
+      background-image:repeating-linear-gradient(90deg,var(--blue) 0,var(--blue) 4px,transparent 4px,transparent 14px),
+        repeating-linear-gradient(0deg,var(--blue) 0,var(--blue) 3px,transparent 3px,transparent 9px);
+      border-bottom:2px solid var(--blue); }
+    .three-m{ position:absolute; left:0; right:0; height:5px; background:var(--blue); pointer-events:none; top:33.333%; z-index:1; }
+    .three-m-lbl{ position:absolute; right:5px; font-size:10px; font-weight:800; color:var(--blue); top:calc(33.333% + 4px); pointer-events:none; }
     .zones{ position:absolute; inset:0; pointer-events:none; }
-    .zones .v1,.zones .v2{ position:absolute; top:0; bottom:0; width:1px; background:rgba(0,0,0,.06); }
-    .zones .v1{ left:33.333%; } .zones .v2{ left:66.666%; }
-    .zones .hmid{ position:absolute; left:0; right:0; top:50%; height:1px; background:rgba(0,0,0,.06); }
-    .zone-num{ position:absolute; display:flex; align-items:center; justify-content:center; font-weight:900; color:rgba(0,0,0,.10); font-size:min(2vw,20px); }
+    .zone-line-v{ position:absolute; top:0; bottom:0; width:1px; background:rgba(0,0,0,.07); }
+    .zone-line-h{ position:absolute; left:0; right:0; height:1px; background:rgba(0,0,0,.07); top:50%; }
+    .zone-num{ position:absolute; font-size:min(3vw,24px); font-weight:900; color:rgba(0,0,0,.18); display:flex; align-items:flex-end; justify-content:flex-end; padding:0 6px 4px 0; }
+    .display-hint{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:14px; font-weight:700; color:var(--muted); pointer-events:none; text-align:center; }
 
-    /* Display field label */
-    .display-label{
-      position:absolute; top:20px; left:50%; transform:translateX(-50%);
-      font-size:13px; font-weight:900; opacity:.35; letter-spacing:.08em;
-      pointer-events:none; text-transform:uppercase;
-    }
+    /* Player circles */
+    .chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:#fff;
+      display:flex; align-items:center; justify-content:center; text-align:center; line-height:1.1;
+      box-shadow:0 6px 14px rgba(0,0,0,.14); border:6px solid var(--red); cursor:grab; touch-action:none; z-index:3; }
+    .chip.front{ border-width:9px; }
+    .chip.display-chip{ cursor:default; }
+    .chip .spec{ font-weight:900; font-size:min(2.4vw,22px); }
+    .chip .pname{ font-size:min(1.5vw,13px); font-weight:700; opacity:.85; margin-top:2px; }
+    @media(max-width:900px){ .chip .spec{ font-size:min(4vw,17px); } .chip .pname{ font-size:min(2.8vw,11px); } }
+    .chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.2); z-index:10; }
 
-    /* Players */
-    .player{
-      position:absolute; transform:translate(-50%,-50%);
-      width:min(11vw,110px); height:min(11vw,110px);
-      border-radius:999px; background:#fff;
-      display:flex; align-items:center; justify-content:center;
-      box-shadow:0 8px 16px rgba(0,0,0,.15); border:6px solid var(--red);
-      touch-action:none; cursor:grab; padding:8px;
-    }
-    .player.display-player{
-      cursor:default;
-      box-shadow:0 4px 10px rgba(0,0,0,.10);
-      opacity:.92;
-    }
-    @media(max-width:980px){ .player{ width:min(15vw,80px); height:min(15vw,80px); } }
-    .player.dragging{ cursor:grabbing; box-shadow:0 14px 28px rgba(0,0,0,.22); z-index:10; }
-    .player .inner{ width:100%; text-align:center; line-height:1.05; }
-    .player .topLine{ font-weight:900; font-size:min(2.6vw,24px); }
-    .player .bottomLine{ font-weight:800; font-size:min(1.6vw,15px); opacity:.85; margin-top:3px; }
-    @media(max-width:980px){ .player .topLine{ font-size:min(4vw,17px); } .player .bottomLine{ font-size:min(2.8vw,12px); } }
+    /* Buttons row */
+    .btn-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:10px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.07); }
+    .btn:active{ transform:translateY(1px); }
+    .btn.red{ border-color:var(--red); color:var(--red); }
 
-    /* Display field tabs */
-    .display-tabs{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-    .tab-btn{
-      -webkit-appearance:none; appearance:none;
-      border:2px solid var(--line); background:#fff;
-      padding:8px 16px; border-radius:12px; font-weight:800; font-size:13px;
-      cursor:pointer; transition:all .15s;
-    }
-    .tab-btn.active{ background:var(--red); border-color:var(--red); color:#fff; }
-    .tab-btn:not(.active):hover{ border-color:var(--red); color:var(--red); }
-    .display-title{ font-weight:900; font-size:16px; margin-top:10px; margin-bottom:4px; color:var(--red); min-height:22px; }
+    /* Tabs */
+    .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .tab{ -webkit-appearance:none; appearance:none; border:2px solid var(--line); background:#fff; padding:8px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
+    .tab.active{ background:var(--red); border-color:var(--red); color:#fff; }
+    .display-title{ font-size:15px; font-weight:900; color:var(--red); margin-top:8px; min-height:20px; }
 
     /* Right panel */
-    .panel{ display:grid; gap:14px; }
-    .team-card{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow2); padding:12px; }
-    .team-actions{ display:flex; gap:8px; margin-bottom:10px; }
-    .team-actions .btn{ flex:1; padding:8px; font-size:13px; }
-    .grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-    @media(min-width:980px){ .grid{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
-    .pedit{ border:1px solid rgba(0,0,0,.10); border-radius:14px; padding:8px; }
-    .pedit .top{ display:flex; align-items:center; gap:8px; }
-    .miniBadge{ min-width:48px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-weight:900; border:2px solid var(--red); padding:0 8px; text-align:center; font-size:13px; }
-    .meta{ flex:1; min-width:0; }
-    .meta .p1{ font-weight:900; font-size:12px; }
-    .meta .p2{ opacity:.7; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .inputs{ display:flex; gap:6px; margin-top:6px; }
-    .small{ width:100%; padding:7px 8px; border-radius:12px; border:1px solid var(--line); outline:none; font-size:12px; background:#fff; }
+    .panel{ display:grid; gap:12px; }
+
+    /* Name grid */
+    .name-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+    @media(min-width:900px){ .name-grid{ grid-template-columns:1fr 1fr 1fr; } }
+    .name-cell{ border:1px solid var(--line); border-radius:12px; padding:8px; }
+    .name-cell .badge{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+    .name-cell .spec-badge{ min-width:44px; height:28px; border-radius:999px; border:2px solid var(--red); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; }
+    .name-cell .pos-label{ font-size:11px; font-weight:700; color:var(--muted); }
+    .name-sel{ width:100%; padding:7px 8px; border-radius:10px; border:1px solid var(--line); font-size:13px; background:#fff; outline:none; }
 
     /* Lib boxes */
-    .lib-box{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow2); padding:12px; }
-    .lib-box-title{ font-weight:900; font-size:16px; margin-bottom:8px; }
-    .preset-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
-    .preset-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#f8f9fa; padding:6px 10px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; }
-    .preset-btn:active{ transform:translateY(1px); background:#e9ecef; }
-    .no-lib{ font-size:12px; opacity:.5; margin-bottom:8px; }
+    .lib-box{ background:var(--card); border-radius:14px; box-shadow:0 6px 14px rgba(0,0,0,.06); padding:12px; border:1px solid var(--line); }
+    .lib-title{ font-weight:900; font-size:15px; color:var(--red); margin-bottom:8px; }
+    .lib-btns{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; min-height:24px; }
+    .lib-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#f8f8f8; padding:5px 10px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; }
+    .lib-btn:active{ background:#eee; }
     .lib-save-row{ display:flex; gap:6px; }
-    .lib-name-input{ flex:1; padding:8px 10px; border-radius:12px; border:1px solid var(--line); outline:none; font-size:13px; background:#fff; }
-    .lib-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:8px 12px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap; }
-    .lib-btn.save{ background:#e3f2fd; border-color:#2196f3; color:#1565c0; }
+    .lib-inp{ flex:1; padding:7px 10px; border-radius:10px; border:1px solid var(--line); font-size:13px; outline:none; }
+    .lib-save-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:#1565c0; padding:7px 12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .no-lib{ font-size:12px; color:var(--muted); margin-bottom:6px; }
 
-    /* Name manager */
-    .name-mgr{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow2); padding:12px; }
-    .name-mgr-title{ font-weight:900; font-size:16px; margin-bottom:8px; }
-    .name-mgr-row{ display:flex; gap:6px; margin-bottom:8px; }
-    .name-mgr-input{ flex:1; padding:8px 10px; border-radius:12px; border:1px solid var(--line); outline:none; font-size:13px; background:#fff; }
-    .name-mgr-add{ -webkit-appearance:none; appearance:none; background:#e8f5e9; border:1px solid #4caf50; color:#2e7d32; padding:8px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
-    .name-tags{ display:flex; flex-wrap:wrap; gap:6px; }
-    .name-tag{ display:inline-flex; align-items:center; gap:4px; background:#f0f4ff; border:1px solid #c5cae9; border-radius:20px; padding:4px 10px; font-size:12px; font-weight:700; }
-    .name-tag.base{ background:#f5f5f5; border-color:#e0e0e0; color:#555; }
-    .name-tag-del{ border:none; background:none; cursor:pointer; font-size:11px; color:#e91e63; padding:0; line-height:1; }
+    /* Save current button */
+    .save-current-row{ display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+    .save-current-hint{ font-size:12px; color:var(--muted); flex:1; }
+    .save-current-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:#1565c0; padding:9px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
+    .save-current-btn:disabled{ opacity:.4; cursor:not-allowed; }
   </style>
 </head>
 <body>
+<div style="background:var(--red);height:5px;"></div>
 <div class="wrap">
 
   <!-- Left: courts -->
   <div class="card">
-    <div class="header">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">
       <div>
-        <div class="board-title">Volleyball Aufstellungen</div>
+        <div class="app-title">Volleyball <span>Aufstellungen</span></div>
+        <div class="current-laufer" id="currentLaufer"></div>
         <div class="subtitle">Drag &amp; Drop · Rotation +1</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn red" id="btnReset">Reset</button>
       </div>
     </div>
 
-    <!-- Interactive half field -->
-    <div class="formation-title" id="formation-title" style="margin-bottom:6px;"></div>
-    <div class="half-court interactive" id="courtEdit">
+    <!-- Interactive field -->
+    <div class="court interactive" id="courtEdit">
       <div class="net-grid"></div>
       <div id="halfEdit"></div>
     </div>
 
-    <div class="row" style="margin-top:10px;">
-      <button class="btn" id="rotA">Rotation +1</button>
-      <button class="btn" id="spotsA">Zurücksetzen</button>
+    <div class="btn-row">
+      <button class="btn" id="btnRot">Rotation +1</button>
+      <button class="btn" id="btnSpots">Zurücksetzen</button>
     </div>
 
-    <!-- Display half field -->
-    <div class="display-tabs">
-      <button class="tab-btn active" data-tab="grund">Grundaufstellung</button>
-      <button class="tab-btn" data-tab="annahme">Annahme</button>
-      <button class="tab-btn" data-tab="aufschlag">Bei eigenem Aufschlag</button>
+    <!-- Display field -->
+    <div class="tabs" id="tabsRow">
+      <button class="tab active" data-tab="grund">Grundaufstellung</button>
+      <button class="tab" data-tab="annahme">Annahme</button>
+      <button class="tab" data-tab="aufschlag">Bei eigenem Aufschlag</button>
     </div>
-    <div class="display-title" id="displayTitle">— Läufer wählen —</div>
-    <div class="half-court display" id="courtDisplay">
+    <div class="display-title" id="displayTitle"></div>
+    <div class="court display" id="courtDisplay">
       <div class="net-grid"></div>
-      <div class="display-label" id="displayLabel">Läufer wählen</div>
-      <div id="halfDisplay"></div>
+      <div id="halfDisplay">
+        <div class="display-hint">Läufer wählen →</div>
+      </div>
     </div>
-    <div class="row" style="margin-top:10px;">
-      <div style="font-size:13px;opacity:.6;flex:1;" id="saveHint">Läufer wählen, dann aktuelle Aufstellung oben speichern</div>
-      <button class="btn" id="btnSaveCurrent" style="background:#e3f2fd;border-color:#2196f3;color:#1565c0;" disabled>💾 Aktuelle Aufstellung speichern</button>
+
+    <div class="save-current-row">
+      <div class="save-current-hint" id="saveHint">Läufer wählen, dann hier speichern</div>
+      <button class="save-current-btn" id="btnSaveCurrent" disabled>💾 Aktuelle Aufstellung speichern</button>
     </div>
   </div>
 
-  <!-- Right: panel + libs -->
+  <!-- Right: name panel + libs -->
   <div class="panel">
-    <div class="team-card" id="teamCard"></div>
+    <div class="card">
+      <div class="name-grid" id="nameGrid"></div>
+    </div>
 
-    <div class="lib-box" id="libBoxGrund">
-      <div class="lib-box-title" style="color:var(--red)">Grundaufstellung</div>
-    </div>
-    <div class="lib-box" id="libBoxAnnahme">
-      <div class="lib-box-title" style="color:var(--red)">Annahme</div>
-    </div>
-    <div class="lib-box" id="libBoxAufschlag">
-      <div class="lib-box-title" style="color:var(--red)">Bei eigenem Aufschlag</div>
-    </div>
+    <div class="lib-box" id="libGrund"><div class="lib-title">Grundaufstellung</div></div>
+    <div class="lib-box" id="libAnnahme"><div class="lib-title">Annahme</div></div>
+    <div class="lib-box" id="libAufschlag"><div class="lib-title">Bei eigenem Aufschlag</div></div>
   </div>
 </div>
 
 <script>
 (() => {
-  const LS_KEY = "vb_viewer_v1";
-  const SERVER_URL = "https://scoreboard-rzql.onrender.com";
+'use strict';
 
-  // Net at top → front row (4,3,2) near top, back row (5,6,1) near bottom
-  const SPOTS = {4:{x:20,y:22},3:{x:50,y:18},2:{x:80,y:22},5:{x:20,y:72},6:{x:50,y:80},1:{x:80,y:72}};
-  const ROT1  = {1:6,6:5,5:4,4:3,3:2,2:1};
-  const LETTERS = ["","Z","A","M","D","L"];
-  const BASE_NAMES = ["Alessa","Alma","Anna","Elif","Ella","Emma","Frida","Greta","Hannah",
-      "Johanna","Jule","Malou","Marie","Milva","Philippa","Zeynep"];
-  const LS_NAMES_KEY = "vb_custom_names_v1";
-  function loadCustomNames(){ try{const r=localStorage.getItem(LS_NAMES_KEY);return r?JSON.parse(r):[];}catch{return[];} }
-  function saveCustomNames(a){ try{localStorage.setItem(LS_NAMES_KEY,JSON.stringify(a));}catch{} }
-  let customNames=loadCustomNames();
-  function buildNames(){ return ["",...[...BASE_NAMES,...customNames].sort((a,b)=>a.localeCompare(b,"de"))]; }
-  let NAMES=buildNames();
+// ── Constants ──
+const SERVER = "https://scoreboard-rzql.onrender.com";
+const LS_KEY = "vb_neu_v1";
 
-  const MX=4,MY=4;
-  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-  const px2p=(px,s)=>s===0?0:(px/s)*100;
-  const p2px=(p,s)=>(p/100)*s;
-  const spot=(pos)=>SPOTS[pos]||{x:50,y:50};
-  const esc=(s)=>String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
-  const cssEsc=(s)=>CSS.escape(String(s));
+// Fixed specializations for positions 1-6 (start positions)
+const SPECS = {1:'Z', 2:'M', 3:'A', 4:'D', 5:'M', 6:'A'};
+const ROT = {1:6, 2:1, 3:2, 4:3, 5:4, 6:5}; // rotation +1: pos→new pos
 
-  // ── State ──
-  function defPlayers(){ return [1,2,3,4,5,6].map(n=>{const sp=spot(n);return{id:`P${n}`,letter:"",name:"",pos:n,x:sp.x,y:sp.y};}); }
-  function defState(){ return{version:1,unlocked:false,players:defPlayers()}; }
-  function loadState(){
-    try{
-      const r=localStorage.getItem(LS_KEY);if(!r)return null;
-      const s=JSON.parse(r);if(!s||s.version!==1)return null;
-      s.players.forEach(p=>{if(!p.letter)p.letter="";if(!p.name)p.name="";});
-      return s;
-    }catch{return null;}
-  }
-  let state=loadState()||defState();
-  const save=()=>{ try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch{}; };
+// Net at top: front row = 4,3,2 (netznah), back row = 5,6,1
+const DEFAULT_XY = {
+  4:{x:20,y:22}, 3:{x:50,y:18}, 2:{x:80,y:22},
+  5:{x:20,y:72}, 6:{x:50,y:80}, 1:{x:80,y:72}
+};
 
-  // ── Server lib ──
-  async function loadLib(k){
-    // Try localStorage cache first (instant)
-    let cached=null;
-    try{const c=localStorage.getItem(`vb_lib_cache_${k}`);if(c){const d=JSON.parse(c);if(d.length>0)cached=d;}}catch{}
-    if(cached)return cached;
-    // Fall back to server with 5s timeout
-    try{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),5000);
-      const r=await fetch(`${SERVER_URL}/lib/${k}?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
-      clearTimeout(tid);
-      if(r.ok){const d=await r.json();if(d.length>0){try{localStorage.setItem(`vb_lib_cache_${k}`,JSON.stringify(d));}catch{}return d;}}
-    }catch{}
-    return[];
-  }
-  async function saveLib(k,lib){
-    try{localStorage.setItem(`vb_lib_cache_${k}`,JSON.stringify(lib));}catch{}
-    try{
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),5000);
-      await fetch(`${SERVER_URL}/lib/${k}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib),signal:ctrl.signal});
-      clearTimeout(tid);
-    }catch{}
-  }
+const NAMES = ["","Alessa","Alma","Anna","Elif","Ella","Emma","Frida","Greta","Hannah",
+  "Johanna","Jule","Malou","Marie","Milva","Philippa","Zeynep"];
 
-  // ── Display state ──
-  let activeTab="grund";
-  let activeFormation=null; // { name, players }
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const cssEsc = s => CSS.escape(String(s));
+const p2px = (p,s) => (p/100)*s;
+const px2p = (px,s) => s===0?0:(px/s)*100;
+const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
 
-  function setTitle(n){
-    const el=document.getElementById("formation-title");
-    if(el) el.textContent=n||"";
-  }
+// ── State ──
+// Each player: { id, spec, name, pos, x, y }
+// spec is fixed to the player (Z stays Z), pos changes with rotation
+function defPlayers(){
+  return [1,2,3,4,5,6].map(pos => ({
+    id: `S${pos}`,
+    spec: SPECS[pos],
+    name: "",
+    pos,
+    x: DEFAULT_XY[pos].x,
+    y: DEFAULT_XY[pos].y,
+  }));
+}
+function defState(){ return { v:1, players: defPlayers() }; }
+function loadState(){
+  try{
+    const r=localStorage.getItem(LS_KEY);
+    if(!r)return null;
+    const s=JSON.parse(r);
+    if(!s||s.v!==1)return null;
+    return s;
+  }catch{return null;}
+}
+let state = loadState() || defState();
+const save = () => { try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch{} };
 
-  // ── Constraints ──
-  function byPos(players){ const m={};players.forEach(p=>m[p.pos]=p);return m; }
-  function applyC(pos,x,y,m){
-    const p1=m[1],p2=m[2],p3=m[3],p4=m[4],p5=m[5],p6=m[6];
-    let x0=0,x1=100,y0=0,y1=100;
-    if(pos===3){y1=Math.min(y1,p6.y-MY);x0=Math.max(x0,p4.x+MX);x1=Math.min(x1,p2.x-MX);}
-    if(pos===6){y0=Math.max(y0,p3.y+MY);x0=Math.max(x0,p5.x+MX);x1=Math.min(x1,p1.x-MX);}
-    if(pos===5){y0=Math.max(y0,p4.y+MY);x1=Math.min(x1,p6.x-MX);}
-    if(pos===1){y0=Math.max(y0,p2.y+MY);x0=Math.max(x0,p6.x+MX);}
-    if(pos===2){x0=Math.max(x0,p3.x+MX);y1=Math.min(y1,p1.y-MY);}
-    if(pos===4){x1=Math.min(x1,p3.x-MX);y1=Math.min(y1,p5.y-MY);}
-    if(x0>x1){const mv=(x0+x1)/2;x0=mv;x1=mv;}
-    if(y0>y1){const mv=(y0+y1)/2;y0=mv;y1=mv;}
-    return{x:clamp(x,x0,x1),y:clamp(y,y0,y1)};
-  }
-  function badgeTop(p){ return p.letter?`${p.letter}${p.pos}`:`${p.pos}`; }
-  function badgeBot(p){ return p.name||""; }
+// ── Lib ──
+async function loadLib(k){
+  try{const c=localStorage.getItem(`vb_lib2_${k}`);if(c){const d=JSON.parse(c);if(d.length)return d;}}catch{}
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),5000);
+    const r=await fetch(`${SERVER}/lib/${k}?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){const d=await r.json();if(d.length){try{localStorage.setItem(`vb_lib2_${k}`,JSON.stringify(d));}catch{}return d;}}
+  }catch{}
+  return[];
+}
+async function saveLib(k,lib){
+  try{localStorage.setItem(`vb_lib2_${k}`,JSON.stringify(lib));}catch{}
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),5000);
+    await fetch(`${SERVER}/lib/${k}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib),signal:ctrl.signal});
+    clearTimeout(tid);
+  }catch{}
+}
 
-  // ── Render zones ──
-  function renderZones(halfEl){
-    halfEl.querySelectorAll(".zones").forEach(n=>n.remove());
-    const z=document.createElement("div");z.className="zones";
-    z.innerHTML=`<div class="v1"></div><div class="v2"></div><div class="hmid"></div>`;
-    [{n:4,c:0,r:0},{n:3,c:1,r:0},{n:2,c:2,r:0},{n:5,c:0,r:1},{n:6,c:1,r:1},{n:1,c:2,r:1}].forEach(zn=>{
-      const d=document.createElement("div");d.className="zone-num";d.textContent=zn.n;
-      d.style.left=`${(zn.c*100)/3}%`;d.style.top=`${(zn.r*100)/2}%`;
-      d.style.width=`${100/3}%`;d.style.height=`${100/2}%`;
-      // Position number in top-left corner of each zone
-      d.style.alignItems="flex-end";
-      d.style.justifyContent="flex-end";
-      d.style.padding="4px 6px";
-      d.style.fontSize="min(3.5vw,28px)";
-      d.style.fontWeight="900";
-      d.style.color="rgba(0,0,0,.35)";
-      z.appendChild(d);
-    });
-    halfEl.appendChild(z);
-  }
+// ── Active display state ──
+let activeTab = "grund";
+let activeFormation = null; // { name, players: [{id,spec,pos,x,y}] }
 
-  function render3mLine(halfEl, linePos){
-    halfEl.querySelectorAll(".three-meter,.three-meter-label").forEach(n=>n.remove());
-    const ln=document.createElement("div");ln.className="three-meter";ln.style.top=`${linePos}%`;
-    const lb=document.createElement("div");lb.className="three-meter-label";lb.textContent="3m";lb.style.top=`calc(${linePos}% + 3px)`;
-    halfEl.appendChild(ln);halfEl.appendChild(lb);
-  }
+// ── Courts ──
+const courtEdit = document.getElementById("courtEdit");
+const halfEdit = document.getElementById("halfEdit");
+const courtDisplay = document.getElementById("courtDisplay");
+const halfDisplay = document.getElementById("halfDisplay");
 
-  // ── Ball state ──
-  let ball = { x: 50, y: 50, visible: false };
-  function saveBall(){ try{localStorage.setItem("vb_ball_v1",JSON.stringify(ball));}catch{} }
-  function loadBall(){ try{const r=localStorage.getItem("vb_ball_v1");if(r){const b=JSON.parse(r);ball.x=b.x;ball.y=b.y;ball.visible=b.visible??false;}}catch{} }
-  loadBall();
+function getRect(el){ const r=el.getBoundingClientRect(); return {w:r.width,h:r.height}; }
 
-  // ── Render interactive field ──
-  const courtEdit=document.getElementById("courtEdit");
-  const halfEdit=document.getElementById("halfEdit");
+function renderZones(el){
+  el.querySelectorAll(".zones").forEach(n=>n.remove());
+  const z=document.createElement("div"); z.className="zones";
+  const v1=document.createElement("div"); v1.className="zone-line-v"; v1.style.left="33.333%";
+  const v2=document.createElement("div"); v2.className="zone-line-v"; v2.style.left="66.666%";
+  const h=document.createElement("div"); h.className="zone-line-h";
+  z.appendChild(v1); z.appendChild(v2); z.appendChild(h);
+  [[4,0,0],[3,1,0],[2,2,0],[5,0,1],[6,1,1],[1,2,1]].forEach(([n,c,r])=>{
+    const d=document.createElement("div"); d.className="zone-num";
+    d.style.left=`${c*100/3}%`; d.style.top=`${r*50}%`;
+    d.style.width=`${100/3}%`; d.style.height="50%";
+    d.textContent=n; z.appendChild(d);
+  });
+  el.appendChild(z);
+}
 
-  function getEditRect(){ const r=courtEdit.getBoundingClientRect();return{w:r.width,h:r.height}; }
+function renderEditField(){
+  halfEdit.querySelectorAll(".chip,.three-m,.three-m-lbl").forEach(n=>n.remove());
+  renderZones(halfEdit);
+  const ln=document.createElement("div"); ln.className="three-m";
+  const lb=document.createElement("div"); lb.className="three-m-lbl"; lb.textContent="3m";
+  halfEdit.appendChild(ln); halfEdit.appendChild(lb);
 
-  function renderBall(){
-    halfEdit.querySelectorAll(".ball-chip").forEach(n=>n.remove());
-    if(!ball.visible) return;
-    const {w,h}=getEditRect();
+  const {w,h}=getRect(courtEdit);
+  state.players.forEach(p=>{
+    const size=Math.min(w,h)*0.18;
     const el=document.createElement("div");
-    el.className="ball-chip";
-    el.dataset.ball="1";
-    el.style.cssText=`position:absolute;transform:translate(-50%,-50%);width:min(7vw,68px);height:min(7vw,68px);border-radius:999px;background:radial-gradient(circle at 35% 35%,#fff8e1,#ff8f00);border:3px solid #e65100;display:flex;align-items:center;justify-content:center;font-size:min(2.5vw,26px);cursor:grab;touch-action:none;z-index:5;box-shadow:0 6px 14px rgba(0,0,0,.25);left:${p2px(ball.x,w)}px;top:${p2px(ball.y,h)}px;`;
-    el.textContent="🏐";
+    el.className="chip"+(([2,3,4].includes(p.pos))?" front":"");
+    el.dataset.id=p.id;
+    el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(p.x,w)}px;top:${p2px(p.y,h)}px;font-size:${size*0.22}px;`;
+    el.innerHTML=`<div><div class="spec">${p.spec}${p.pos}</div><div class="pname">${esc(p.name)}</div></div>`;
     halfEdit.appendChild(el);
-  }
+  });
+}
 
-  function renderEditField(){
-    halfEdit.querySelectorAll(".player,.three-meter,.three-meter-label,.ball-chip").forEach(n=>n.remove());
-    renderZones(halfEdit);
-    render3mLine(halfEdit, 33.333);
-    const {w,h}=getEditRect();
-    for(const p of state.players){
-      const isFront=[2,3,4].includes(p.pos);
-      const el=document.createElement("div");el.className="player";
-      el.style.borderWidth=isFront?"9px":"5px";
-      el.dataset.playerId=p.id;el.title=`${badgeTop(p)}${p.name?" – "+p.name:""}`;
-      el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(p))}</div><div class="bottomLine">${esc(badgeBot(p))}</div></div>`;
-      el.style.left=`${p2px(p.x,w)}px`;el.style.top=`${p2px(p.y,h)}px`;
-      halfEdit.appendChild(el);
-    }
-    renderBall();
-  }
+function renderDisplayField(){
+  halfDisplay.innerHTML="";
+  const hint=document.createElement("div"); hint.className="display-hint"; hint.textContent="Läufer wählen →";
 
-  // ── Render display field ──
-  const courtDisplay=document.getElementById("courtDisplay");
-  const halfDisplay=document.getElementById("halfDisplay");
+  if(!activeFormation){ halfDisplay.appendChild(hint); return; }
 
-  function getDisplayRect(){ const r=courtDisplay.getBoundingClientRect();return{w:r.width,h:r.height}; }
+  renderZones(halfDisplay);
+  const ln=document.createElement("div"); ln.className="three-m";
+  const lb=document.createElement("div"); lb.className="three-m-lbl"; lb.textContent="3m";
+  halfDisplay.appendChild(ln); halfDisplay.appendChild(lb);
 
-  function renderDisplayField(){
-    halfDisplay.querySelectorAll(".player,.three-meter,.three-meter-label").forEach(n=>n.remove());
-    renderZones(halfDisplay);
-    render3mLine(halfDisplay, 33.333);
+  const {w,h}=getRect(courtDisplay);
+  // Build map: saved player id → live player (for name lookup)
+  const liveById={};
+  state.players.forEach(p=>{ liveById[p.id]=p; });
 
-    const lbl=document.getElementById("displayLabel");
-    if(!activeFormation){ lbl.style.display="block"; return; }
-    lbl.style.display="none";
+  activeFormation.players.forEach(p=>{
+    const live=liveById[p.id];
+    const size=Math.min(w,h)*0.18;
+    const el=document.createElement("div");
+    el.className="chip display-chip"+(([2,3,4].includes(p.pos))?" front":"");
+    el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(p.x,w)}px;top:${p2px(p.y,h)}px;font-size:${size*0.22}px;z-index:4;`;
+    el.innerHTML=`<div><div class="spec">${p.spec}${p.pos}</div><div class="pname">${esc(live?.name||"")}</div></div>`;
+    halfDisplay.appendChild(el);
+  });
+}
 
-    const {w,h}=getDisplayRect();
-    // Build map: id → live player (letter+name always from current dropdowns)
-    const liveById={};
-    state.players.forEach(sp=>{ liveById[sp.id]=sp; });
-    for(const p of activeFormation.players){
-      const live=liveById[p.id];
-      const displayP={
-        ...p,
-        letter: live?.letter || p.letter || "",
-        name: live?.name || "",
-      };
-      const isFront=[2,3,4].includes(p.pos);
-      const el=document.createElement("div");el.className="player display-player";
-      el.style.borderWidth=isFront?"9px":"5px";
-      el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
-      el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
-      el.style.left=`${p2px(p.x,w)}px`;el.style.top=`${p2px(p.y,h)}px`;
-      halfDisplay.appendChild(el);
-    }
-  }
-
-  // ── Panel ──
-  function renderPanel(){
-    const mount=document.getElementById("teamCard");mount.innerHTML="";
-    const grid=document.createElement("div");grid.className="grid";
-    state.players.slice().sort((a,b)=>a.pos-b.pos).forEach(p=>{
-      const box=document.createElement("div");box.className="pedit";box.dataset.pid=p.id;
-      const used=()=>{const u=new Set();state.players.forEach(op=>{if(op.id!==p.id&&op.name)u.add(op.name);});return u;};
-      const opts=()=>NAMES.filter(n=>n===""||n===p.name||!used().has(n)).map(n=>`<option value="${esc(n)}" ${p.name===n?"selected":""}>${esc(n||"—")}</option>`).join("");
-      box.innerHTML=`<div class="top"><div class="miniBadge">${esc(badgeTop(p))}</div><div class="meta"><div class="p1">Pos ${p.pos}</div><div class="p2">${esc(p.name||"—")}</div></div></div>
-        <div class="inputs">
-          <select class="small letter">${LETTERS.map(v=>`<option value="${esc(v)}" ${p.letter===v?"selected":""}>${esc(v||"—")}</option>`).join("")}</select>
-          <select class="small name">${opts()}</select>
-        </div>`;
-      const sl=box.querySelector(".letter"),sn=box.querySelector(".name");
-      const upd=()=>{
-        box.querySelector(".miniBadge").textContent=badgeTop(p);
-        box.querySelector(".p2").textContent=p.name||"—";
-        const chip=halfEdit.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
-        if(chip){chip.querySelector(".topLine").textContent=badgeTop(p);chip.querySelector(".bottomLine").textContent=badgeBot(p);}
-      };
-      sl.addEventListener("change",()=>{p.letter=String(sl.value||"");save();upd();renderDisplayField();});
-      sn.addEventListener("change",()=>{p.name=String(sn.value||"");save();upd();renderDisplayField();
-        document.querySelectorAll(".pedit").forEach(ob=>{
-          const osn=ob.querySelector(".name");if(!osn||ob===box)return;
-          const oid=ob.dataset.pid;const op=state.players.find(p2=>p2.id===oid);if(!op)return;
-          const u=new Set();state.players.forEach(x=>{if(x.id!==op.id&&x.name)u.add(x.name);});
-          osn.innerHTML=NAMES.filter(n=>n===""||n===op.name||!u.has(n)).map(n=>`<option value="${esc(n)}">${esc(n||"—")}</option>`).join("");
-          osn.value=op.name||"";
-        });
+// ── Name panel ──
+function renderNameGrid(){
+  const grid=document.getElementById("nameGrid");
+  grid.innerHTML="";
+  state.players.slice().sort((a,b)=>a.pos-b.pos).forEach(p=>{
+    const cell=document.createElement("div"); cell.className="name-cell"; cell.dataset.id=p.id;
+    const usedNames=new Set(state.players.filter(x=>x.id!==p.id&&x.name).map(x=>x.name));
+    const opts=NAMES.filter(n=>n===""||n===p.name||!usedNames.has(n))
+      .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
+    cell.innerHTML=`
+      <div class="badge">
+        <div class="spec-badge">${p.spec}${p.pos}</div>
+        <div class="pos-label">Pos ${p.pos}</div>
+      </div>
+      <select class="name-sel">${opts}</select>`;
+    const sel=cell.querySelector("select");
+    sel.value=p.name||"";
+    sel.addEventListener("change",()=>{
+      p.name=sel.value;
+      save();
+      // Update chip on field
+      const chip=halfEdit.querySelector(`.chip[data-id="${cssEsc(p.id)}"]`);
+      if(chip) chip.querySelector(".pname").textContent=p.name;
+      // Update display field if active
+      renderDisplayField();
+      // Update other selects without losing their values
+      grid.querySelectorAll(".name-cell").forEach(other=>{
+        if(other===cell)return;
+        const oid=other.dataset.id;
+        const op=state.players.find(x=>x.id===oid); if(!op)return;
+        const otherSel=other.querySelector("select");
+        const curVal=otherSel.value;
+        const usedN=new Set(state.players.filter(x=>x.id!==op.id&&x.name).map(x=>x.name));
+        otherSel.innerHTML=NAMES.filter(n=>n===""||n===op.name||!usedN.has(n))
+          .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
+        otherSel.value=curVal;
       });
-      grid.appendChild(box);
+      updateCurrentLaufer();
     });
-    mount.appendChild(grid);
-  }
+    grid.appendChild(cell);
+  });
+}
 
-  // ── Lib boxes ──
-  const LIB_CONFIG = [
-    {key:"grund",    mountId:"libBoxGrund"},
-    {key:"annahme",  mountId:"libBoxAnnahme"},
-    {key:"aufschlag",mountId:"libBoxAufschlag"},
-  ];
+// ── Auto title ──
+function updateCurrentLaufer(){
+  const z=state.players.find(p=>p.spec==="Z");
+  document.getElementById("currentLaufer").textContent=z?`Läufer ${z.pos}`:"";
+}
 
-  async function renderLibBox(key, mountEl){
-    const titleEl=mountEl.querySelector(".lib-box-title");
-    mountEl.innerHTML="";if(titleEl)mountEl.appendChild(titleEl);
-    const lib=await loadLib(key);
-    if(lib.length>0){
-      const row=document.createElement("div");row.className="preset-row";
-      lib.forEach(e=>{
-        const btn=document.createElement("button");btn.className="preset-btn";
-        btn.textContent=e.name; // direct textContent avoids encoding issues
-        btn.addEventListener("click",()=>saveCurrentAndLoad(key,e.name));
-        row.appendChild(btn);
-      });
-      mountEl.appendChild(row);
-    } else {
-      const h=document.createElement("div");h.className="no-lib";h.textContent="Noch keine Aufstellungen gespeichert.";mountEl.appendChild(h);
-    }
-  }
+// ── Actions ──
+function rotate(){
+  state.players=state.players.map(p=>{
+    const newPos=ROT[p.pos];
+    return {...p, pos:newPos, x:DEFAULT_XY[newPos].x, y:DEFAULT_XY[newPos].y};
+  });
+  save(); renderEditField(); renderNameGrid(); updateCurrentLaufer();
+}
 
-  async function renderLibBoxes(){
-    for(const {key,mountId} of LIB_CONFIG){
-      await renderLibBox(key, document.getElementById(mountId));
-    }
-  }
+function resetSpots(){
+  state.players=state.players.map(p=>({...p, x:DEFAULT_XY[p.pos].x, y:DEFAULT_XY[p.pos].y}));
+  save(); renderEditField();
+}
 
-  async function saveToLib(k,name){
-    if(!name.trim())return;
-    const lib=await loadLib(k);
-    const entry={name:name.trim(),players:state.players.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name}))};
-    const idx=lib.findIndex(e=>e.name===entry.name);
-    if(idx>=0)lib[idx]=entry;else lib.push(entry);
-    await saveLib(k,lib);
-    const cfg=LIB_CONFIG.find(c=>c.key===k);
-    if(!cfg)return;
-    const mountEl=document.getElementById(cfg.mountId);
-    mountEl.querySelectorAll(".preset-row,.no-lib").forEach(n=>n.remove());
-    const row=document.createElement("div");row.className="preset-row";
+function resetAll(){
+  state=defState(); save();
+  renderEditField(); renderNameGrid(); updateCurrentLaufer();
+}
+
+// ── Lib ──
+const LIB_MAP={grund:"libGrund", annahme:"libAnnahme", aufschlag:"libAufschlag"};
+
+async function renderLibBox(k){
+  const box=document.getElementById(LIB_MAP[k]);
+  const title=box.querySelector(".lib-title");
+  box.innerHTML=""; box.appendChild(title);
+
+  const lib=await loadLib(k);
+  const btns=document.createElement("div"); btns.className="lib-btns";
+  if(lib.length===0){
+    const h=document.createElement("div"); h.className="no-lib"; h.textContent="Noch keine Aufstellungen.";
+    btns.appendChild(h);
+  } else {
     lib.forEach(e=>{
-      const wrap=document.createElement("span");wrap.style.cssText="display:inline-flex;align-items:center;gap:3px;";
-      const btn=document.createElement("button");btn.className="preset-btn";btn.textContent=e.name;
-      btn.addEventListener("click",()=>saveCurrentAndLoad(k,e.name));
-      wrap.appendChild(btn);
-      const del=document.createElement("button");
-      del.style.cssText="border:none;background:none;cursor:pointer;font-size:11px;color:#e91e63;padding:0 2px;line-height:1;";
-      del.textContent="✕";
-      del.addEventListener("click",()=>{if(confirm(`„${e.name}" löschen?`)){deleteFromLib(k,e.name);}});
-      wrap.appendChild(del);row.appendChild(wrap);
+      const b=document.createElement("button"); b.className="lib-btn"; b.textContent=e.name;
+      b.addEventListener("click",()=>loadFormation(k,e.name));
+      btns.appendChild(b);
     });
-    const saveRow=mountEl.querySelector(".lib-save-row");
-    mountEl.insertBefore(row,saveRow);
-    const inp=mountEl.querySelector(".lib-name-input");if(inp)inp.value="";
   }
+  box.appendChild(btns);
 
-  // Load a lib entry into the display field — cache first for instant response
-  async function saveCurrentAndLoad(k,name){
-    // Try localStorage cache first (instant, no server wait)
-    let lib=[];
-    try{const c=localStorage.getItem(`vb_lib_cache_${k}`);if(c){const d=JSON.parse(c);if(d.length>0)lib=d;}}catch{}
-    // Fallback to server only if cache empty
-    if(!lib.length) lib=await loadLib(k);
-    const entry=lib.find(e=>e.name===name);if(!entry)return;
-    activeTab=k;
-    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===k));
-    activeFormation={name,players:entry.players};
-    setTitle(name);
-    const tabLabels={grund:"Grundaufstellung",annahme:"Annahme",aufschlag:"Bei eigenem Aufschlag"};
-    document.getElementById("displayTitle").textContent=`${tabLabels[k]} · ${name}`;
-    document.getElementById("displayLabel").style.display="none";
-    renderDisplayField();
-    updateSaveBtn();
-  }
+  const sr=document.createElement("div"); sr.className="lib-save-row";
+  const inp=document.createElement("input"); inp.className="lib-inp"; inp.placeholder="Name…"; inp.maxLength=40;
+  const sbtn=document.createElement("button"); sbtn.className="lib-save-btn"; sbtn.textContent="💾 Speichern";
+  sbtn.addEventListener("mousedown",e=>e.preventDefault());
+  sbtn.addEventListener("click",()=>{ if(inp.value.trim()) saveFormation(k,inp.value); });
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"&&inp.value.trim()) saveFormation(k,inp.value); });
+  sr.appendChild(inp); sr.appendChild(sbtn);
+  box.appendChild(sr);
+}
 
-  async function deleteFromLib(k,name){
-    const lib=await loadLib(k);await saveLib(k,lib.filter(e=>e.name!==name));
-    await renderLibBox(k,document.getElementById(LIB_CONFIG.find(c=>c.key===k).mountId));
-  }
-
-  // ── Actions ──
-  function rotate(){
-    state.players=state.players.map(p=>{const np=ROT1[p.pos]??p.pos;const sp=spot(np);return{...p,pos:np,x:sp.x,y:sp.y};});
-    save();renderEditField();renderPanel();
-  }
-  function resetSpots(){
-    state.players=state.players.map(p=>{const sp=spot(p.pos);return{...p,x:sp.x,y:sp.y};});
-    save();renderEditField();
-  }
-  function hardReset(){ state=defState();setTitle("");save();renderEditField();renderPanel(); }
-
-  // ── Tab buttons ──
-  document.querySelectorAll(".tab-btn").forEach(btn=>{
-    btn.addEventListener("click",async ()=>{
-      activeTab=btn.dataset.tab;
-      document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b===btn));
-      // Try to reload current formation in new tab
-      if(activeFormation){
-        const lib=await loadLib(activeTab);
-        const entry=lib.find(e=>e.name===activeFormation.name);
-        if(entry){
-          activeFormation={name:entry.name,players:entry.players};
-          const tabLabels={grund:"Grundaufstellung",annahme:"Annahme",aufschlag:"Bei eigenem Aufschlag"};
-          document.getElementById("displayTitle").textContent=`${tabLabels[activeTab]} · ${activeFormation.name}`;
-        } else {
-          activeFormation=null;
-          document.getElementById("displayTitle").textContent="— Kein Eintrag für diesen Tab —";
-        }
-        renderDisplayField();
-      }
-    });
+async function saveFormation(k,name){
+  name=name.trim(); if(!name)return;
+  const lib=await loadLib(k);
+  const entry={
+    name,
+    players: state.players.map(p=>({id:p.id,spec:p.spec,pos:p.pos,x:p.x,y:p.y}))
+  };
+  const idx=lib.findIndex(e=>e.name===name);
+  if(idx>=0)lib[idx]=entry; else lib.push(entry);
+  await saveLib(k,lib);
+  // Update buttons without rebuilding input
+  const box=document.getElementById(LIB_MAP[k]);
+  let btns=box.querySelector(".lib-btns");
+  if(btns) btns.remove();
+  btns=document.createElement("div"); btns.className="lib-btns";
+  lib.forEach(e=>{
+    const b=document.createElement("button"); b.className="lib-btn"; b.textContent=e.name;
+    b.addEventListener("click",()=>loadFormation(k,e.name));
+    btns.appendChild(b);
   });
+  box.insertBefore(btns, box.querySelector(".lib-save-row"));
+  box.querySelector(".lib-inp").value="";
+}
 
-  // ── Drag (players + ball) ──
-  let drag=null;
-  courtEdit.addEventListener("pointerdown",e=>{
-    // Check ball first
-    const ballChip=e.target.closest(".ball-chip");
-    if(ballChip){
-      e.preventDefault();
-      const cr=courtEdit.getBoundingClientRect(),{w,h}=getEditRect();
-      drag={isBall:true,ptr:e.pointerId,ox:p2px(ball.x,w)-(e.clientX-cr.left),oy:p2px(ball.y,h)-(e.clientY-cr.top)};
-      ballChip.style.cursor="grabbing";ballChip.setPointerCapture(e.pointerId);return;
-    }
-    const t=e.target.closest(".player");if(!t)return;e.preventDefault();
-    const p=state.players.find(p=>p.id===t.dataset.playerId);if(!p)return;
-    const cr=courtEdit.getBoundingClientRect(),{w,h}=getEditRect();
-    drag={id:p.id,ptr:e.pointerId,ox:p2px(p.x,w)-(e.clientX-cr.left),oy:p2px(p.y,h)-(e.clientY-cr.top)};
-    t.classList.add("dragging");t.setPointerCapture(e.pointerId);
-  });
-  courtEdit.addEventListener("pointermove",e=>{
-    if(!drag||e.pointerId!==drag.ptr)return;
-    if(drag.isBall){
-      const cr=courtEdit.getBoundingClientRect(),{w,h}=getEditRect();
-      ball.x=clamp(px2p(e.clientX-cr.left+drag.ox,w),0,100);
-      ball.y=clamp(px2p(e.clientY-cr.top+drag.oy,h),0,100);
-      const chip=halfEdit.querySelector(".ball-chip");
-      if(chip){chip.style.left=`${p2px(ball.x,w)}px`;chip.style.top=`${p2px(ball.y,h)}px`;}
-      saveBall();return;
-    }
-    const p=state.players.find(p=>p.id===drag.id);if(!p)return;
-    const cr=courtEdit.getBoundingClientRect(),{w,h}=getEditRect();
-    const pad=window.innerWidth<980?30:36;
-    const xpx=clamp(e.clientX-cr.left+drag.ox,pad,w-pad);
-    const ypx=clamp(e.clientY-cr.top+drag.oy,pad,h-pad);
-    let x=clamp(px2p(xpx,w),0,100),y=clamp(px2p(ypx,h),0,100);
-    p.x=x;p.y=y;
-    const chip=halfEdit.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
-    if(chip){chip.style.left=`${p2px(x,w)}px`;chip.style.top=`${p2px(y,h)}px`;}
-    save();
-  });
-  courtEdit.addEventListener("pointerup",e=>{
-    if(!drag||e.pointerId!==drag.ptr)return;
-    if(drag.isBall){const chip=halfEdit.querySelector(".ball-chip");if(chip)chip.style.cursor="grab";}
-    else halfEdit.querySelector(`.player[data-player-id="${cssEsc(drag.id)}"]`)?.classList.remove("dragging");
-    drag=null;
-  });
-  courtEdit.addEventListener("pointercancel",()=>{drag=null;});
+async function loadFormation(k,name){
+  const lib=await loadLib(k);
+  const entry=lib.find(e=>e.name===name); if(!entry)return;
+  activeTab=k; activeFormation=entry;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===k));
+  const labels={grund:"Grundaufstellung",annahme:"Annahme",aufschlag:"Bei eigenem Aufschlag"};
+  document.getElementById("displayTitle").textContent=`${labels[k]} · ${name}`;
+  renderDisplayField();
+  updateSaveBtn();
+}
 
-  // ── Buttons ──
-  function updateSaveBtn(){
-    const btn=document.getElementById("btnSaveCurrent");
-    const hint=document.getElementById("saveHint");
+function updateSaveBtn(){
+  const btn=document.getElementById("btnSaveCurrent");
+  const hint=document.getElementById("saveHint");
+  if(activeFormation){
+    btn.disabled=false;
+    hint.textContent=`Speichert aktuelle Positionen als „${activeFormation.name}"`;
+  } else {
+    btn.disabled=true;
+    hint.textContent="Läufer wählen, dann hier speichern";
+  }
+}
+
+document.getElementById("btnSaveCurrent").addEventListener("click",async()=>{
+  if(!activeFormation)return;
+  await saveFormation(activeTab, activeFormation.name);
+  await loadFormation(activeTab, activeFormation.name);
+});
+
+// ── Tabs ──
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",async()=>{
+    activeTab=tab.dataset.tab;
+    document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t===tab));
     if(activeFormation){
-      btn.disabled=false;
-      hint.textContent=`Speichert aktuelle Aufstellung oben als „${activeFormation.name}"`;
-    } else {
-      btn.disabled=true;
-      hint.textContent="Läufer wählen, dann aktuelle Aufstellung oben speichern";
+      const lib=await loadLib(activeTab);
+      const entry=lib.find(e=>e.name===activeFormation.name);
+      if(entry){
+        activeFormation=entry;
+        const labels={grund:"Grundaufstellung",annahme:"Annahme",aufschlag:"Bei eigenem Aufschlag"};
+        document.getElementById("displayTitle").textContent=`${labels[activeTab]} · ${activeFormation.name}`;
+      } else {
+        activeFormation=null;
+        document.getElementById("displayTitle").textContent="";
+      }
+      renderDisplayField();
     }
-  }
-
-  document.getElementById("btnSaveCurrent").addEventListener("click", async ()=>{
-    if(!activeFormation)return;
-    await saveToLib(activeTab, activeFormation.name);
-    // Reload display with new data
-    await saveCurrentAndLoad(activeTab, activeFormation.name);
   });
-  document.getElementById("rotA").addEventListener("click",rotate);
-  document.getElementById("spotsA").addEventListener("click",resetSpots);
-  window.addEventListener("resize",()=>{ renderEditField(); renderDisplayField(); });
+});
 
-  // ── Init ──
-  async function init(){
-    renderEditField();
-    renderPanel();
-    await renderLibBoxes();
-  }
-  init();
+// ── Drag ──
+let drag=null;
+courtEdit.addEventListener("pointerdown",e=>{
+  const t=e.target.closest(".chip"); if(!t)return; e.preventDefault();
+  const p=state.players.find(x=>x.id===t.dataset.id); if(!p)return;
+  const cr=courtEdit.getBoundingClientRect();
+  const {w,h}=getRect(courtEdit);
+  drag={id:p.id,ptr:e.pointerId,ox:p2px(p.x,w)-(e.clientX-cr.left),oy:p2px(p.y,h)-(e.clientY-cr.top)};
+  t.classList.add("dragging"); t.setPointerCapture(e.pointerId);
+});
+courtEdit.addEventListener("pointermove",e=>{
+  if(!drag||e.pointerId!==drag.ptr)return;
+  const p=state.players.find(x=>x.id===drag.id); if(!p)return;
+  const cr=courtEdit.getBoundingClientRect();
+  const {w,h}=getRect(courtEdit);
+  const pad=Math.min(w,h)*0.09;
+  p.x=clamp(px2p(e.clientX-cr.left+drag.ox,w),0,100);
+  p.y=clamp(px2p(e.clientY-cr.top+drag.oy,h),0,100);
+  const chip=halfEdit.querySelector(`.chip[data-id="${cssEsc(p.id)}"]`);
+  if(chip){chip.style.left=`${p2px(p.x,w)}px`;chip.style.top=`${p2px(p.y,h)}px`;}
+  save();
+});
+courtEdit.addEventListener("pointerup",e=>{
+  if(!drag||e.pointerId!==drag.ptr)return;
+  halfEdit.querySelector(`.chip[data-id="${cssEsc(drag.id)}"]`)?.classList.remove("dragging");
+  drag=null;
+});
+courtEdit.addEventListener("pointercancel",()=>{ drag=null; });
+
+// ── Wire buttons ──
+document.getElementById("btnRot").addEventListener("click",rotate);
+document.getElementById("btnSpots").addEventListener("click",resetSpots);
+document.getElementById("btnReset").addEventListener("click",()=>{ if(confirm("Alles zurücksetzen?")) resetAll(); });
+window.addEventListener("resize",()=>{ renderEditField(); renderDisplayField(); });
+
+// ── Init ──
+async function init(){
+  renderEditField();
+  renderNameGrid();
+  updateCurrentLaufer();
+  await Promise.all([renderLibBox("grund"),renderLibBox("annahme"),renderLibBox("aufschlag")]);
+}
+init();
+
 })();
 </script>
 </body>
