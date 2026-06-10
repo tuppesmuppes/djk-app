@@ -156,7 +156,7 @@
 
 // ── Constants ──
 const SERVER = "https://scoreboard-rzql.onrender.com";
-const LS_KEY = "vb_neu_v1";
+const LS_KEY = "vb_neu_v2";
 
 // Fixed specializations for positions 1-6 (start positions)
 const SPECS = {1:'Z', 2:'A', 3:'M', 4:'D', 5:'A', 6:'M'};
@@ -190,13 +190,13 @@ function defPlayers(){
     y: DEFAULT_XY[pos].y,
   }));
 }
-function defState(){ return { v:1, players: defPlayers() }; }
+function defState(){ return { v:2, players: defPlayers() }; }
 function loadState(){
   try{
     const r=localStorage.getItem(LS_KEY);
     if(!r)return null;
     const s=JSON.parse(r);
-    if(!s||s.v!==1)return null;
+    if(!s||s.v!==2)return null;
     return s;
   }catch{return null;}
 }
