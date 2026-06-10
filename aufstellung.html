@@ -197,6 +197,8 @@ function loadState(){
     if(!r)return null;
     const s=JSON.parse(r);
     if(!s||s.v!==2)return null;
+    // Ensure all players have name field
+    s.players.forEach(p=>{ if(p.name===undefined) p.name=""; });
     return s;
   }catch{return null;}
 }
@@ -294,7 +296,7 @@ function renderDisplayField(){
     const el=document.createElement("div");
     el.className="chip display-chip"+(([2,3,4].includes(p.pos))?" front":"");
     el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(p.x,w)}px;top:${p2px(p.y,h)}px;font-size:${size*0.22}px;z-index:4;`;
-    el.innerHTML=`<div><div class="spec">${p.spec||""}${p.pos||""}</div><div class="pname">${esc(live?.name||p.name||"")}</div></div>`;
+    el.innerHTML=`<div><div class="spec">${p.spec||""}${p.pos||""}</div><div class="pname">${esc((live?.name!==undefined?live.name:p.name)||"")}</div></div>`;
     halfDisplay.appendChild(el);
   });
 }
