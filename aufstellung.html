@@ -400,10 +400,13 @@
     });
 
     for(const p of activeFormation.players){
-      const live=state.players.find(sp=>sp.id===p.id);
+      // Match by letter (role) so names stay correct across rotations
+      const live = p.letter
+        ? state.players.find(sp=>sp.letter===p.letter)
+        : state.players.find(sp=>sp.id===p.id);
       const displayP={
         ...p,
-        letter: live?.letter||"",
+        letter: p.letter||live?.letter||"",
         name: live?.name||"",
       };
       const isFront=[2,3,4].includes(p.pos);
