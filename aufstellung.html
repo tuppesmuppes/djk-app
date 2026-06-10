@@ -386,12 +386,8 @@
     lbl.style.display="none";
 
     const {w,h}=getDisplayRect();
-    const livePosMap={};
-    state.players.forEach(sp=>{ livePosMap[sp.pos]=sp; });
-
     for(const p of activeFormation.players){
-      const live=livePosMap[p.pos];
-      const displayP={...p, letter:live?.letter||p.letter||"", name:live?.name||""};
+      const displayP={...p};
       const isFront=[2,3,4].includes(p.pos);
       const el=document.createElement("div");
       el.className="player display-player";
