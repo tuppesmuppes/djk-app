@@ -403,8 +403,8 @@
       const live=state.players.find(sp=>sp.id===p.id);
       const displayP={
         ...p,
-        letter: p.letter||live?.letter||"",
-        name: p.name||live?.name||"",
+        letter: live?.letter||"",
+        name: live?.name||"",
       };
       const isFront=[2,3,4].includes(p.pos);
       const targetLeft=`${p2px(p.x,w)}px`;
