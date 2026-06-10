@@ -273,6 +273,15 @@
     if(el) el.textContent=n||"";
   }
 
+  function updateAutoTitle(){
+    // Find player with letter "Z" and show "Läufer X" based on their position
+    const zPlayer=state.players.find(p=>p.letter==="Z");
+    const el=document.getElementById("formation-title");
+    if(!el) return;
+    if(zPlayer) el.textContent=`Läufer ${zPlayer.pos}`;
+    else el.textContent="";
+  }
+
   // ── Constraints ──
   function byPos(players){ const m={};players.forEach(p=>m[p.pos]=p);return m; }
   function applyC(pos,x,y,m){
@@ -456,7 +465,7 @@
         const chip=halfEdit.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
         if(chip){chip.querySelector(".topLine").textContent=badgeTop(p);chip.querySelector(".bottomLine").textContent=badgeBot(p);}
       };
-      sl.addEventListener("change",()=>{p.letter=String(sl.value||"");save();upd();renderDisplayField();});
+      sl.addEventListener("change",()=>{p.letter=String(sl.value||"");save();upd();updateAutoTitle();renderDisplayField();});
       sn.addEventListener("change",()=>{p.name=String(sn.value||"");save();upd();renderDisplayField();
         document.querySelectorAll(".pedit").forEach(ob=>{
           const osn=ob.querySelector(".name");if(!osn||ob===box)return;
@@ -557,11 +566,11 @@
   // ── Actions ──
   function rotate(){
     state.players=state.players.map(p=>{const np=ROT1[p.pos]??p.pos;const sp=spot(np);return{...p,pos:np,x:sp.x,y:sp.y};});
-    save();renderEditField();renderPanel();
+    save();updateAutoTitle();renderEditField();renderPanel();
   }
   function resetSpots(){
     state.players=state.players.map(p=>{const sp=spot(p.pos);return{...p,x:sp.x,y:sp.y};});
-    save();renderEditField();
+    save();updateAutoTitle();renderEditField();
   }
   function hardReset(){ state=defState();setTitle("");save();renderEditField();renderPanel(); }
 
@@ -654,7 +663,7 @@
   });
   document.getElementById("resetNames").addEventListener("click",()=>{
     state.players=state.players.map(p=>({...p,letter:"",name:""}));
-    save();renderPanel();renderEditField();renderDisplayField();
+    save();updateAutoTitle();renderPanel();renderEditField();renderDisplayField();
   });
   document.getElementById("rotA").addEventListener("click",rotate);
   document.getElementById("spotsA").addEventListener("click",resetSpots);
@@ -662,6 +671,7 @@
 
   // ── Init ──
   async function init(){
+    updateAutoTitle();
     renderEditField();
     renderPanel();
     await renderLibBoxes();
