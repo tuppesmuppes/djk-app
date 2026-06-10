@@ -420,7 +420,8 @@
           const osn=ob.querySelector(".name");if(!osn||ob===box)return;
           const oid=ob.dataset.pid;const op=state.players.find(p2=>p2.id===oid);if(!op)return;
           const u=new Set();state.players.forEach(x=>{if(x.id!==op.id&&x.name)u.add(x.name);});
-          osn.innerHTML=NAMES.filter(n=>n===""||n===op.name||!u.has(n)).map(n=>`<option value="${esc(n)}" ${op.name===n?"selected":""}>${esc(n||"—")}</option>`).join("");
+          osn.innerHTML=NAMES.filter(n=>n===""||n===op.name||!u.has(n)).map(n=>`<option value="${esc(n)}">${esc(n||"—")}</option>`).join("");
+          osn.value=op.name||"";
         });
       });
       grid.appendChild(box);
