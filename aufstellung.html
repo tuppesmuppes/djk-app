@@ -207,7 +207,7 @@ const save = () => { try{localStorage.setItem(LS_KEY,JSON.stringify(state));}cat
 
 // ── Lib ──
 async function loadLib(k){
-  try{const c=localStorage.getItem(`vb_lib2_${k}`);if(c){const d=JSON.parse(c);if(d.length)return d;}}catch{}
+  // Always try server first
   try{
     const ctrl=new AbortController();
     const tid=setTimeout(()=>ctrl.abort(),5000);
@@ -215,6 +215,8 @@ async function loadLib(k){
     clearTimeout(tid);
     if(r.ok){const d=await r.json();if(d.length){try{localStorage.setItem(`vb_lib2_${k}`,JSON.stringify(d));}catch{}return d;}}
   }catch{}
+  // Fall back to cache
+  try{const c=localStorage.getItem(`vb_lib2_${k}`);if(c){const d=JSON.parse(c);if(d.length)return d;}}catch{}
   return[];
 }
 async function saveLib(k,lib){
