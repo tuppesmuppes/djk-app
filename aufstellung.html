@@ -367,32 +367,73 @@
   function getDisplayRect(){ const r=courtDisplay.getBoundingClientRect();return{w:r.width,h:r.height}; }
 
   function renderDisplayField(){
-    halfDisplay.querySelectorAll(".player,.three-meter,.three-meter-label").forEach(n=>n.remove());
+    const lbl=document.getElementById("displayLabel");
+    if(!activeFormation){
+      halfDisplay.querySelectorAll(".player,.three-meter,.three-meter-label").forEach(n=>n.remove());
+      renderZones(halfDisplay);
+      render3mLine(halfDisplay, 33.333);
+      lbl.style.display="block";
+      return;
+    }
+    lbl.style.display="none";
+
+    // Rebuild zones and 3m line
+    halfDisplay.querySelectorAll(".zones,.three-meter,.three-meter-label").forEach(n=>n.remove());
     renderZones(halfDisplay);
     render3mLine(halfDisplay, 33.333);
 
-    const lbl=document.getElementById("displayLabel");
-    if(!activeFormation){ lbl.style.display="block"; return; }
-    lbl.style.display="none";
-
     const {w,h}=getDisplayRect();
+
+    // Keep existing player elements and animate them to new positions
+    const existing={};
+    halfDisplay.querySelectorAll(".player").forEach(el=>{
+      existing[el.dataset.playerId]=el;
+    });
+
     for(const p of activeFormation.players){
-      // Use saved letter/name from the formation entry directly
-      // Only override name if the live state has a name assigned and the saved one is empty
       const live=state.players.find(sp=>sp.id===p.id);
       const displayP={
         ...p,
-        letter: p.letter || live?.letter || "",
-        name: p.name || live?.name || "",
+        letter: p.letter||live?.letter||"",
+        name: p.name||live?.name||"",
       };
       const isFront=[2,3,4].includes(p.pos);
-      const el=document.createElement("div");el.className="player display-player";
-      el.style.borderWidth=isFront?"9px":"5px";
-      el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
-      el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
-      el.style.left=`${p2px(p.x,w)}px`;el.style.top=`${p2px(p.y,h)}px`;
-      halfDisplay.appendChild(el);
+      const targetLeft=`${p2px(p.x,w)}px`;
+      const targetTop=`${p2px(p.y,h)}px`;
+
+      if(existing[p.id]){
+        // Animate existing chip to new position
+        const el=existing[p.id];
+        el.style.transition="left 0.5s cubic-bezier(.4,0,.2,1), top 0.5s cubic-bezier(.4,0,.2,1)";
+        el.style.left=targetLeft;
+        el.style.top=targetTop;
+        el.style.borderWidth=isFront?"9px":"5px";
+        el.querySelector(".topLine").textContent=badgeTop(displayP);
+        el.querySelector(".bottomLine").textContent=badgeBot(displayP);
+        el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
+        delete existing[p.id];
+      } else {
+        // New chip — fade in
+        const el=document.createElement("div");el.className="player display-player";
+        el.dataset.playerId=p.id;
+        el.style.borderWidth=isFront?"9px":"5px";
+        el.style.opacity="0";
+        el.style.transition="opacity 0.4s ease 0.3s";
+        el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
+        el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
+        el.style.left=targetLeft;
+        el.style.top=targetTop;
+        halfDisplay.appendChild(el);
+        requestAnimationFrame(()=>{ el.style.opacity="1"; });
+      }
     }
+
+    // Remove chips no longer in formation
+    Object.values(existing).forEach(el=>{
+      el.style.transition="opacity 0.2s ease";
+      el.style.opacity="0";
+      setTimeout(()=>el.remove(), 250);
+    });
   }
 
   // ── Panel ──
