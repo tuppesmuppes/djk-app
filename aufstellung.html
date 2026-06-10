@@ -375,14 +375,15 @@
     lbl.style.display="none";
 
     const {w,h}=getDisplayRect();
+    // Build map: id → live player (letter+name always from current dropdowns)
+    const liveById={};
+    state.players.forEach(sp=>{ liveById[sp.id]=sp; });
     for(const p of activeFormation.players){
-      // Use saved letter/name from the formation entry directly
-      // Only override name if the live state has a name assigned and the saved one is empty
-      const live=state.players.find(sp=>sp.id===p.id);
+      const live=liveById[p.id];
       const displayP={
         ...p,
-        letter: p.letter || live?.letter || "",
-        name: p.name || live?.name || "",
+        letter: live?.letter || p.letter || "",
+        name: live?.name || "",
       };
       const isFront=[2,3,4].includes(p.pos);
       const el=document.createElement("div");el.className="player display-player";
