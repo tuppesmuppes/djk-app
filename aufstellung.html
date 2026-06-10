@@ -378,60 +378,31 @@
 
   function renderDisplayField(){
     const lbl=document.getElementById("displayLabel");
-    if(!activeFormation){
-      halfDisplay.querySelectorAll(".player,.three-meter,.three-meter-label").forEach(n=>n.remove());
-      renderZones(halfDisplay);
-      render3mLine(halfDisplay, 33.333);
-      lbl.style.display="block";
-      return;
-    }
-    lbl.style.display="none";
-
-    halfDisplay.querySelectorAll(".zones,.three-meter,.three-meter-label").forEach(n=>n.remove());
+    halfDisplay.querySelectorAll(".player,.three-meter,.three-meter-label,.zones").forEach(n=>n.remove());
     renderZones(halfDisplay);
     render3mLine(halfDisplay, 33.333);
 
-    const {w,h}=getDisplayRect();
+    if(!activeFormation){ lbl.style.display="block"; return; }
+    lbl.style.display="none";
 
-    // Build map: pos → live player
+    const {w,h}=getDisplayRect();
     const livePosMap={};
     state.players.forEach(sp=>{ livePosMap[sp.pos]=sp; });
 
-    // Save current chip positions keyed by index (0-5)
-    const oldChips=[...halfDisplay.querySelectorAll(".player")];
-    const oldPositions=oldChips.map(el=>({left:el.style.left,top:el.style.top}));
-    oldChips.forEach(el=>el.remove());
-
-    activeFormation.players.forEach((p,i)=>{
+    for(const p of activeFormation.players){
       const live=livePosMap[p.pos];
       const displayP={...p, letter:live?.letter||p.letter||"", name:live?.name||""};
       const isFront=[2,3,4].includes(p.pos);
-      const targetLeft=`${p2px(p.x,w)}px`;
-      const targetTop=`${p2px(p.y,h)}px`;
-
       const el=document.createElement("div");
       el.className="player display-player";
       el.dataset.playerId=p.id;
       el.style.borderWidth=isFront?"9px":"5px";
       el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
       el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
-
-      if(oldPositions[i]){
-        el.style.left=oldPositions[i].left;
-        el.style.top=oldPositions[i].top;
-        el.style.transition="none";
-        halfDisplay.appendChild(el);
-        requestAnimationFrame(()=>requestAnimationFrame(()=>{
-          el.style.transition="left 1.25s cubic-bezier(.4,0,.2,1), top 1.25s cubic-bezier(.4,0,.2,1)";
-          el.style.left=targetLeft;
-          el.style.top=targetTop;
-        }));
-      } else {
-        el.style.left=targetLeft;
-        el.style.top=targetTop;
-        halfDisplay.appendChild(el);
-      }
-    });
+      el.style.left=`${p2px(p.x,w)}px`;
+      el.style.top=`${p2px(p.y,h)}px`;
+      halfDisplay.appendChild(el);
+    }
   }
 
   // ── Panel ──
