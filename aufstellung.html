@@ -387,65 +387,57 @@
     }
     lbl.style.display="none";
 
-    // Rebuild zones and 3m line
     halfDisplay.querySelectorAll(".zones,.three-meter,.three-meter-label").forEach(n=>n.remove());
     renderZones(halfDisplay);
     render3mLine(halfDisplay, 33.333);
 
     const {w,h}=getDisplayRect();
 
-    // Keep existing player elements and animate them to new positions
-    const existing={};
+    // Record current positions of existing chips before removing
+    const prevPos={};
     halfDisplay.querySelectorAll(".player").forEach(el=>{
-      existing[el.dataset.playerId]=el;
+      prevPos[el.dataset.playerId]={left:el.style.left, top:el.style.top};
+      el.remove();
     });
 
     for(const p of activeFormation.players){
-      // p = saved formation player (has correct pos, x, y, letter for this Läufer)
-      // Find live player with same letter to get the assigned name
       const live = state.players.find(sp => sp.letter === p.letter && p.letter !== "")
                 || state.players.find(sp => sp.id === p.id);
-      const displayP = {
-        ...p,
-        name: live?.name || "",
-      };
+      const displayP = {...p, name: live?.name||""};
       const isFront=[2,3,4].includes(p.pos);
       const targetLeft=`${p2px(p.x,w)}px`;
       const targetTop=`${p2px(p.y,h)}px`;
 
-      if(existing[p.id]){
-        // Animate existing chip to new position
-        const el=existing[p.id];
-        el.style.transition="left 1.25s cubic-bezier(.4,0,.2,1), top 1.25s cubic-bezier(.4,0,.2,1)";
+      const el=document.createElement("div");
+      el.className="player display-player";
+      el.dataset.playerId=p.id;
+      el.style.borderWidth=isFront?"9px":"5px";
+      el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
+      el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
+
+      if(prevPos[p.id]){
+        // Start from old position, animate to new
+        el.style.left=prevPos[p.id].left;
+        el.style.top=prevPos[p.id].top;
+        el.style.transition="none";
+        halfDisplay.appendChild(el);
+        requestAnimationFrame(()=>{
+          requestAnimationFrame(()=>{
+            el.style.transition="left 1.25s cubic-bezier(.4,0,.2,1), top 1.25s cubic-bezier(.4,0,.2,1)";
+            el.style.left=targetLeft;
+            el.style.top=targetTop;
+          });
+        });
+      } else {
+        // New chip — appear at target position
         el.style.left=targetLeft;
         el.style.top=targetTop;
-        el.style.borderWidth=isFront?"9px":"5px";
-        el.querySelector(".topLine").textContent=badgeTop(displayP);
-        el.querySelector(".bottomLine").textContent=badgeBot(displayP);
-        el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
-        delete existing[p.id];
-      } else {
-        // New chip — fade in
-        const el=document.createElement("div");el.className="player display-player";
-        el.dataset.playerId=p.id;
-        el.style.borderWidth=isFront?"9px":"5px";
         el.style.opacity="0";
         el.style.transition="opacity 1s ease 0.75s";
-        el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
-        el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
-        el.style.left=targetLeft;
-        el.style.top=targetTop;
         halfDisplay.appendChild(el);
         requestAnimationFrame(()=>{ el.style.opacity="1"; });
       }
     }
-
-    // Remove chips no longer in formation
-    Object.values(existing).forEach(el=>{
-      el.style.transition="opacity 0.5s ease";
-      el.style.opacity="0";
-      setTimeout(()=>el.remove(), 600);
-    });
   }
 
   // ── Panel ──
