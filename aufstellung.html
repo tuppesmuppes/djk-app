@@ -79,7 +79,6 @@
       cursor:default;
       box-shadow:0 4px 10px rgba(0,0,0,.10);
       opacity:.92;
-      z-index:2;
     }
     @media(max-width:980px){ .player{ width:min(15vw,80px); height:min(15vw,80px); } }
     .player.dragging{ cursor:grabbing; box-shadow:0 14px 28px rgba(0,0,0,.22); z-index:10; }
@@ -122,10 +121,6 @@
     .preset-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
     .preset-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#f8f9fa; padding:6px 10px; border-radius:10px; font-weight:700; font-size:12px; cursor:pointer; }
     .preset-btn:active{ transform:translateY(1px); background:#e9ecef; }
-    .runner-save-title{ font-size:12px; font-weight:900; opacity:.68; margin:8px 0 5px; }
-    .runner-save-grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:6px; }
-    .runner-save-btn{ -webkit-appearance:none; appearance:none; border:1px solid #2196f3; background:#e3f2fd; color:#1565c0; padding:7px 6px; border-radius:10px; font-weight:900; font-size:12px; cursor:pointer; }
-    .runner-save-btn:active{ transform:translateY(1px); }
     .no-lib{ font-size:12px; opacity:.5; margin-bottom:8px; }
     .lib-save-row{ display:flex; gap:6px; }
     .lib-name-input{ flex:1; padding:8px 10px; border-radius:12px; border:1px solid var(--line); outline:none; font-size:13px; background:#fff; }
@@ -182,7 +177,8 @@
       <div id="halfDisplay"></div>
     </div>
     <div class="row" style="margin-top:10px;">
-      <div style="font-size:13px;opacity:.6;flex:1;" id="saveHint">Speichern jetzt rechts in der passenden Box: Grundaufstellung, Annahme oder Aufschlag.</div>
+      <div style="font-size:13px;opacity:.6;flex:1;" id="saveHint">Läufer wählen, dann aktuelle Aufstellung oben speichern</div>
+      <button class="btn" id="btnSaveCurrent" style="background:#e3f2fd;border-color:#2196f3;color:#1565c0;" disabled>💾 Aktuelle Aufstellung speichern</button>
     </div>
   </div>
 
@@ -275,15 +271,6 @@
   function setTitle(n){
     const el=document.getElementById("formation-title");
     if(el) el.textContent=n||"";
-  }
-
-  function updateAutoTitle(){
-    // Find player with letter "Z" and show "Läufer X" based on their position
-    const zPlayer=state.players.find(p=>p.letter==="Z");
-    const el=document.getElementById("formation-title");
-    if(!el) return;
-    if(zPlayer) el.textContent=`Läufer ${zPlayer.pos}`;
-    else el.textContent="";
   }
 
   // ── Constraints ──
@@ -380,45 +367,30 @@
   function getDisplayRect(){ const r=courtDisplay.getBoundingClientRect();return{w:r.width,h:r.height}; }
 
   function renderDisplayField(){
-    const lbl=document.getElementById("displayLabel");
-    halfDisplay.querySelectorAll(".player,.three-meter,.three-meter-label,.zones").forEach(n=>n.remove());
+    halfDisplay.querySelectorAll(".player,.three-meter,.three-meter-label").forEach(n=>n.remove());
     renderZones(halfDisplay);
     render3mLine(halfDisplay, 33.333);
 
+    const lbl=document.getElementById("displayLabel");
     if(!activeFormation){ lbl.style.display="block"; return; }
     lbl.style.display="none";
 
     const {w,h}=getDisplayRect();
-
-    // Gespeicherte Läufer sind nur Positions-Schablonen.
-    // Name, Spezialisierung und aktuelle Feldpositionsnummer kommen immer aus der aktuellen Rotation.
-    const liveById={};
-    const liveBySavedPos={};
-    state.players.forEach(sp=>{
-      liveById[sp.id]=sp;
-      liveBySavedPos[sp.pos]=sp;
-    });
-
     for(const p of activeFormation.players){
-      // Primär über die Spielerinnen-Identität auflösen. Alte Einträge ohne ID werden über die gespeicherte Position abgefangen.
-      const live=liveById[p.id] || liveBySavedPos[p.pos] || null;
-
+      // Use saved letter/name from the formation entry directly
+      // Only override name if the live state has a name assigned and the saved one is empty
+      const live=state.players.find(sp=>sp.id===p.id);
       const displayP={
         ...p,
-        pos: live?.pos ?? p.pos,
-        letter: live?.letter ?? "",
-        name: live?.name ?? "",
+        letter: p.letter || live?.letter || "",
+        name: p.name || live?.name || "",
       };
-
-      const isFront=[2,3,4].includes(displayP.pos);
-      const el=document.createElement("div");
-      el.className="player display-player";
-      el.dataset.playerId=live?.id || p.id || "";
+      const isFront=[2,3,4].includes(p.pos);
+      const el=document.createElement("div");el.className="player display-player";
       el.style.borderWidth=isFront?"9px":"5px";
       el.title=`${badgeTop(displayP)}${displayP.name?" – "+displayP.name:""}`;
       el.innerHTML=`<div class="inner"><div class="topLine">${esc(badgeTop(displayP))}</div><div class="bottomLine">${esc(badgeBot(displayP))}</div></div>`;
-      el.style.left=`${p2px(p.x,w)}px`;
-      el.style.top=`${p2px(p.y,h)}px`;
+      el.style.left=`${p2px(p.x,w)}px`;el.style.top=`${p2px(p.y,h)}px`;
       halfDisplay.appendChild(el);
     }
   }
@@ -443,7 +415,7 @@
         const chip=halfEdit.querySelector(`.player[data-player-id="${cssEsc(p.id)}"]`);
         if(chip){chip.querySelector(".topLine").textContent=badgeTop(p);chip.querySelector(".bottomLine").textContent=badgeBot(p);}
       };
-      sl.addEventListener("change",()=>{p.letter=String(sl.value||"");save();upd();updateAutoTitle();renderDisplayField();});
+      sl.addEventListener("change",()=>{p.letter=String(sl.value||"");save();upd();renderDisplayField();});
       sn.addEventListener("change",()=>{p.name=String(sn.value||"");save();upd();renderDisplayField();
         document.querySelectorAll(".pedit").forEach(ob=>{
           const osn=ob.querySelector(".name");if(!osn||ob===box)return;
@@ -465,71 +437,22 @@
     {key:"aufschlag",mountId:"libBoxAufschlag"},
   ];
 
-  function makeRunnerName(n){ return `Läufer ${n}`; }
-
-  function makeEntryFromCurrent(name){
-    // Nur die Schablone speichern: Spieler-ID + aktuelle Feldposition + Zielkoordinaten.
-    // Namen und Spezialisierungen bleiben live im aktuellen Teamzustand und werden beim Anzeigen dynamisch ergänzt.
-    return {name:name.trim(),players:state.players.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y}))};
-  }
-
-  function buildPresetButton(key, entry){
-    const wrap=document.createElement("span");
-    wrap.style.cssText="display:inline-flex;align-items:center;gap:3px;";
-    const btn=document.createElement("button");
-    btn.className="preset-btn";
-    btn.textContent=entry.name;
-    btn.addEventListener("click",()=>saveCurrentAndLoad(key,entry.name));
-    wrap.appendChild(btn);
-    const del=document.createElement("button");
-    del.style.cssText="border:none;background:none;cursor:pointer;font-size:11px;color:#e91e63;padding:0 2px;line-height:1;";
-    del.textContent="✕";
-    del.addEventListener("click",()=>{if(confirm(`„${entry.name}" löschen?`)){deleteFromLib(key,entry.name);}});
-    wrap.appendChild(del);
-    return wrap;
-  }
-
   async function renderLibBox(key, mountEl){
     const titleEl=mountEl.querySelector(".lib-box-title");
-    mountEl.innerHTML="";
-    if(titleEl)mountEl.appendChild(titleEl);
+    mountEl.innerHTML="";if(titleEl)mountEl.appendChild(titleEl);
     const lib=await loadLib(key);
-
     if(lib.length>0){
-      const row=document.createElement("div");
-      row.className="preset-row";
-      lib.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"de",{numeric:true})).forEach(e=>{
-        row.appendChild(buildPresetButton(key,e));
+      const row=document.createElement("div");row.className="preset-row";
+      lib.forEach(e=>{
+        const btn=document.createElement("button");btn.className="preset-btn";
+        btn.textContent=e.name; // direct textContent avoids encoding issues
+        btn.addEventListener("click",()=>saveCurrentAndLoad(key,e.name));
+        row.appendChild(btn);
       });
       mountEl.appendChild(row);
     } else {
-      const h=document.createElement("div");
-      h.className="no-lib";
-      h.textContent="Noch keine Aufstellungen gespeichert.";
-      mountEl.appendChild(h);
+      const h=document.createElement("div");h.className="no-lib";h.textContent="Noch keine Aufstellungen gespeichert.";mountEl.appendChild(h);
     }
-
-    const saveTitle=document.createElement("div");
-    saveTitle.className="runner-save-title";
-    saveTitle.textContent="Aktuelles oberes Feld speichern als:";
-    mountEl.appendChild(saveTitle);
-
-    const saveGrid=document.createElement("div");
-    saveGrid.className="runner-save-grid";
-    for(let i=1;i<=6;i++){
-      const btn=document.createElement("button");
-      btn.className="runner-save-btn";
-      btn.textContent=makeRunnerName(i);
-      btn.title=`Aktuelle obere Aufstellung als ${makeRunnerName(i)} speichern`;
-      btn.addEventListener("click",async ()=>{
-        await saveToLib(key, makeRunnerName(i));
-        activeTab=key;
-        document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===key));
-        await saveCurrentAndLoad(key, makeRunnerName(i));
-      });
-      saveGrid.appendChild(btn);
-    }
-    mountEl.appendChild(saveGrid);
   }
 
   async function renderLibBoxes(){
@@ -541,12 +464,29 @@
   async function saveToLib(k,name){
     if(!name.trim())return;
     const lib=await loadLib(k);
-    const entry=makeEntryFromCurrent(name);
+    const entry={name:name.trim(),players:state.players.map(p=>({id:p.id,pos:p.pos,x:p.x,y:p.y,letter:p.letter,name:p.name}))};
     const idx=lib.findIndex(e=>e.name===entry.name);
     if(idx>=0)lib[idx]=entry;else lib.push(entry);
     await saveLib(k,lib);
     const cfg=LIB_CONFIG.find(c=>c.key===k);
-    if(cfg) await renderLibBox(k,document.getElementById(cfg.mountId));
+    if(!cfg)return;
+    const mountEl=document.getElementById(cfg.mountId);
+    mountEl.querySelectorAll(".preset-row,.no-lib").forEach(n=>n.remove());
+    const row=document.createElement("div");row.className="preset-row";
+    lib.forEach(e=>{
+      const wrap=document.createElement("span");wrap.style.cssText="display:inline-flex;align-items:center;gap:3px;";
+      const btn=document.createElement("button");btn.className="preset-btn";btn.textContent=e.name;
+      btn.addEventListener("click",()=>saveCurrentAndLoad(k,e.name));
+      wrap.appendChild(btn);
+      const del=document.createElement("button");
+      del.style.cssText="border:none;background:none;cursor:pointer;font-size:11px;color:#e91e63;padding:0 2px;line-height:1;";
+      del.textContent="✕";
+      del.addEventListener("click",()=>{if(confirm(`„${e.name}" löschen?`)){deleteFromLib(k,e.name);}});
+      wrap.appendChild(del);row.appendChild(wrap);
+    });
+    const saveRow=mountEl.querySelector(".lib-save-row");
+    mountEl.insertBefore(row,saveRow);
+    const inp=mountEl.querySelector(".lib-name-input");if(inp)inp.value="";
   }
 
   // Load a lib entry into the display field — cache first for instant response
@@ -560,7 +500,7 @@
     activeTab=k;
     document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===k));
     activeFormation={name,players:entry.players};
-    updateAutoTitle();
+    setTitle(name);
     const tabLabels={grund:"Grundaufstellung",annahme:"Annahme",aufschlag:"Bei eigenem Aufschlag"};
     document.getElementById("displayTitle").textContent=`${tabLabels[k]} · ${name}`;
     document.getElementById("displayLabel").style.display="none";
@@ -576,11 +516,11 @@
   // ── Actions ──
   function rotate(){
     state.players=state.players.map(p=>{const np=ROT1[p.pos]??p.pos;const sp=spot(np);return{...p,pos:np,x:sp.x,y:sp.y};});
-    save();updateAutoTitle();renderEditField();renderPanel();renderDisplayField();
+    save();renderEditField();renderPanel();
   }
   function resetSpots(){
     state.players=state.players.map(p=>{const sp=spot(p.pos);return{...p,x:sp.x,y:sp.y};});
-    save();updateAutoTitle();renderEditField();renderDisplayField();
+    save();renderEditField();
   }
   function hardReset(){ state=defState();setTitle("");save();renderEditField();renderPanel(); }
 
@@ -654,12 +594,26 @@
 
   // ── Buttons ──
   function updateSaveBtn(){
+    const btn=document.getElementById("btnSaveCurrent");
     const hint=document.getElementById("saveHint");
-    if(hint) hint.textContent="Speichern jetzt rechts in der passenden Box: Grundaufstellung, Annahme oder Aufschlag.";
+    if(activeFormation){
+      btn.disabled=false;
+      hint.textContent=`Speichert aktuelle Aufstellung oben als „${activeFormation.name}"`;
+    } else {
+      btn.disabled=true;
+      hint.textContent="Läufer wählen, dann aktuelle Aufstellung oben speichern";
+    }
   }
+
+  document.getElementById("btnSaveCurrent").addEventListener("click", async ()=>{
+    if(!activeFormation)return;
+    await saveToLib(activeTab, activeFormation.name);
+    // Reload display with new data
+    await saveCurrentAndLoad(activeTab, activeFormation.name);
+  });
   document.getElementById("resetNames").addEventListener("click",()=>{
     state.players=state.players.map(p=>({...p,letter:"",name:""}));
-    save();updateAutoTitle();renderPanel();renderEditField();renderDisplayField();
+    save();renderPanel();renderEditField();renderDisplayField();
   });
   document.getElementById("rotA").addEventListener("click",rotate);
   document.getElementById("spotsA").addEventListener("click",resetSpots);
@@ -667,7 +621,6 @@
 
   // ── Init ──
   async function init(){
-    updateAutoTitle();
     renderEditField();
     renderPanel();
     await renderLibBoxes();
