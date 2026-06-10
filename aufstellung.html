@@ -1,340 +1,522 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Volleyball Aufstellungen – einfache Version</title>
-<style>
-:root{
-  --bg:#f5f5f7;
-  --card:#ffffff;
-  --line:#d7d7dd;
-  --text:#111;
-  --muted:#666;
-  --red:#c62828;
-  --blue:#1565c0;
-  --green:#2e7d32;
-  --shadow:0 10px 22px rgba(0,0,0,.08);
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text)}
-.app{max-width:1280px;margin:0 auto;padding:12px;display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
-@media(max-width:950px){.app{grid-template-columns:1fr}}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:12px}
-h1{font-size:22px;margin:0 0 4px;font-weight:900}.sub{font-size:13px;color:var(--muted);margin-bottom:10px}.runner{font-size:20px;font-weight:900;color:var(--red);min-height:28px;margin:4px 0 8px}
-.court{position:relative;height:min(52vh,570px);min-height:390px;border:7px solid var(--blue);border-radius:8px;background:linear-gradient(#f8fbff,#f3f3f3);overflow:hidden;touch-action:none;user-select:none}
-.court.small{height:min(42vh,470px);min-height:330px;margin-top:8px}.net{position:absolute;left:0;right:0;top:0;height:16px;border-bottom:2px solid var(--blue);background-image:repeating-linear-gradient(90deg,var(--blue) 0 4px,transparent 4px 14px),repeating-linear-gradient(0deg,var(--blue) 0 3px,transparent 3px 9px);z-index:1;pointer-events:none}.line3m{position:absolute;left:0;right:0;top:33.333%;height:5px;background:var(--blue);pointer-events:none}.zonev1,.zonev2,.zoneh{position:absolute;background:rgba(0,0,0,.07);pointer-events:none}.zonev1{left:33.333%;top:0;bottom:0;width:1px}.zonev2{left:66.666%;top:0;bottom:0;width:1px}.zoneh{left:0;right:0;top:50%;height:1px}.znum{position:absolute;width:33.333%;height:50%;display:flex;align-items:flex-end;justify-content:flex-end;padding:6px;font-weight:900;font-size:28px;color:rgba(0,0,0,.28);pointer-events:none}.player{position:absolute;transform:translate(-50%,-50%);width:92px;height:92px;border-radius:999px;background:#fff;border:6px solid var(--red);box-shadow:0 7px 16px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;cursor:grab;touch-action:none;z-index:3}.player.front{border-width:9px}.player.dragging{z-index:10;cursor:grabbing;box-shadow:0 14px 30px rgba(0,0,0,.26)}.player.solution{cursor:default;opacity:.94}.topline{font-size:23px;font-weight:950;line-height:1}.bottomline{font-size:14px;font-weight:800;color:#333;line-height:1.05;margin-top:4px;word-break:break-word}.emptyHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:900;color:rgba(0,0,0,.28);text-align:center;text-transform:uppercase;letter-spacing:.08em;pointer-events:none}.controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.btn{border:1px solid var(--line);background:#fff;border-radius:13px;padding:10px 12px;font-weight:850;cursor:pointer;box-shadow:0 5px 12px rgba(0,0,0,.06)}.btn.primary{background:#e3f2fd;border-color:#2196f3;color:#0d47a1}.btn.danger{border-color:#ef9a9a;color:#b71c1c}.btn:active{transform:translateY(1px)}.side{display:grid;gap:12px}.editgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}@media(min-width:1050px){.editgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}.slot{border:1px solid var(--line);border-radius:14px;padding:8px}.slotTitle{font-weight:900;font-size:13px;margin-bottom:6px}.slot select{width:100%;margin-top:5px;border:1px solid var(--line);border-radius:10px;padding:7px;background:#fff}.boxTitle{font-weight:950;font-size:17px;margin-bottom:8px;color:var(--red)}.runnerRows{display:grid;gap:6px}.runnerRow{display:grid;grid-template-columns:78px 1fr 1fr;gap:6px;align-items:center}.runnerLabel{font-weight:900;font-size:13px}.miniBtn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px;font-weight:800;cursor:pointer;font-size:12px}.miniBtn.save{background:#e8f5e9;border-color:#66bb6a;color:#1b5e20}.miniBtn.load{background:#fff}.miniBtn.hasData.load{border-color:#2196f3;color:#0d47a1}.status{font-size:13px;color:var(--muted);min-height:20px;margin-top:8px}.activeInfo{font-weight:900;color:var(--red)}
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>Volleyball Aufstellungen</title>
+  <style>
+    :root{ --bg:#f5f5f5; --card:#fff; --red:#CC0000; --blue:#1565c0; --line:rgba(0,0,0,.12); --muted:#888; }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{ font-family:system-ui,sans-serif; background:var(--bg); color:#111; }
+    .wrap{ max-width:1300px; margin:0 auto; padding:12px; display:grid; grid-template-columns:1.2fr .8fr; gap:14px; align-items:start; }
+    @media(max-width:900px){ .wrap{ grid-template-columns:1fr; } }
+
+    /* Cards */
+    .card{ background:var(--card); border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,.07); padding:12px; border:1px solid var(--line); }
+
+    /* Header */
+    .app-title{ font-size:22px; font-weight:900; margin-bottom:2px; }
+    .app-title span{ color:var(--red); }
+    .current-laufer{ font-size:20px; font-weight:900; color:var(--red); min-height:26px; margin-top:2px; }
+    .subtitle{ font-size:12px; color:var(--muted); margin-top:2px; }
+
+    /* Court */
+    .court{ position:relative; width:100%; border-radius:6px; border:6px solid var(--blue); overflow:hidden; background:linear-gradient(180deg,#f0f8ff,#f5f5f5); touch-action:none; user-select:none; }
+    .court.interactive{ height:min(44vh,500px); }
+    .court.display{ height:min(44vh,500px); margin-top:10px; }
+    @media(max-width:900px){ .court.interactive,.court.display{ height:40vh; } }
+    .net-grid{ position:absolute; top:0; left:0; right:0; height:16px; z-index:2; pointer-events:none;
+      background-image:repeating-linear-gradient(90deg,var(--blue) 0,var(--blue) 4px,transparent 4px,transparent 14px),
+        repeating-linear-gradient(0deg,var(--blue) 0,var(--blue) 3px,transparent 3px,transparent 9px);
+      border-bottom:2px solid var(--blue); }
+    .three-m{ position:absolute; left:0; right:0; height:5px; background:var(--blue); pointer-events:none; top:33.333%; z-index:1; }
+    .three-m-lbl{ position:absolute; right:5px; font-size:10px; font-weight:800; color:var(--blue); top:calc(33.333% + 4px); pointer-events:none; }
+    .zones{ position:absolute; inset:0; pointer-events:none; }
+    .zone-line-v{ position:absolute; top:0; bottom:0; width:1px; background:rgba(0,0,0,.07); }
+    .zone-line-h{ position:absolute; left:0; right:0; height:1px; background:rgba(0,0,0,.07); top:50%; }
+    .zone-num{ position:absolute; font-size:min(3vw,24px); font-weight:900; color:rgba(0,0,0,.18); display:flex; align-items:flex-end; justify-content:flex-end; padding:0 6px 4px 0; }
+    .display-hint{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:14px; font-weight:700; color:var(--muted); pointer-events:none; text-align:center; }
+
+    /* Player circles */
+    .chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:#fff;
+      display:flex; align-items:center; justify-content:center; text-align:center; line-height:1.1;
+      box-shadow:0 6px 14px rgba(0,0,0,.14); border:6px solid var(--red); cursor:grab; touch-action:none; z-index:3; }
+    .chip.front{ border-width:9px; }
+    .chip.display-chip{ cursor:default; }
+    .chip .spec{ font-weight:900; font-size:min(2.4vw,22px); }
+    .chip .pname{ font-size:min(1.5vw,13px); font-weight:700; opacity:.85; margin-top:2px; }
+    @media(max-width:900px){ .chip .spec{ font-size:min(4vw,17px); } .chip .pname{ font-size:min(2.8vw,11px); } }
+    .chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.2); z-index:10; }
+
+    /* Buttons row */
+    .btn-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:10px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.07); }
+    .btn:active{ transform:translateY(1px); }
+    .btn.red{ border-color:var(--red); color:var(--red); }
+
+    /* Tabs */
+    .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .tab{ -webkit-appearance:none; appearance:none; border:2px solid var(--line); background:#fff; padding:8px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
+    .tab.active{ background:var(--red); border-color:var(--red); color:#fff; }
+    .display-title{ font-size:15px; font-weight:900; color:var(--red); margin-top:8px; min-height:20px; }
+
+    /* Right panel */
+    .panel{ display:grid; gap:12px; }
+
+    /* Name grid */
+    .name-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+    @media(min-width:900px){ .name-grid{ grid-template-columns:1fr 1fr 1fr; } }
+    .name-cell{ border:1px solid var(--line); border-radius:12px; padding:8px; }
+    .name-cell .badge{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+    .name-cell .spec-badge{ min-width:44px; height:28px; border-radius:999px; border:2px solid var(--red); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; }
+    .name-cell .pos-label{ font-size:11px; font-weight:700; color:var(--muted); }
+    .name-sel{ width:100%; padding:7px 8px; border-radius:10px; border:1px solid var(--line); font-size:13px; background:#fff; outline:none; }
+
+    /* Lib boxes */
+    .lib-box{ background:var(--card); border-radius:14px; box-shadow:0 6px 14px rgba(0,0,0,.06); padding:12px; border:1px solid var(--line); }
+    .lib-title{ font-weight:900; font-size:15px; color:var(--red); margin-bottom:8px; }
+    .lib-btns{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; min-height:24px; }
+    .lib-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#f8f8f8; padding:5px 10px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; }
+    .lib-btn:active{ background:#eee; }
+    .lib-save-row{ display:flex; gap:6px; }
+    .lib-inp{ flex:1; padding:7px 10px; border-radius:10px; border:1px solid var(--line); font-size:13px; outline:none; }
+    .lib-save-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:#1565c0; padding:7px 12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .no-lib{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+
+    /* Save current button */
+    .save-current-row{ display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+    .save-current-hint{ font-size:12px; color:var(--muted); flex:1; }
+    .save-current-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:#1565c0; padding:9px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
+    .save-current-btn:disabled{ opacity:.4; cursor:not-allowed; }
+  </style>
 </head>
 <body>
-<div class="app">
-  <main class="card">
-    <h1>Volleyball Aufstellungen</h1>
-    <div class="sub">Einfache Version: Spielerinnen zuweisen · rotieren · oben verschieben · unten gespeicherte Lösung anzeigen</div>
-    <div class="runner" id="runnerTitle"></div>
-    <div class="court" id="editCourt"><div class="net"></div><div class="line3m"></div><div class="zonev1"></div><div class="zonev2"></div><div class="zoneh"></div></div>
-    <div class="controls">
-      <button class="btn primary" id="rotateBtn">Rotation +1</button>
-      <button class="btn" id="resetSpotsBtn">Spielerinnen auf Feldpositionen zurücksetzen</button>
-      <button class="btn danger" id="clearTeamBtn">Namen/Rollen löschen</button>
+<div style="background:var(--red);height:5px;"></div>
+<div class="wrap">
+
+  <!-- Left: courts -->
+  <div class="card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">
+      <div>
+        <div class="app-title">Volleyball <span>Aufstellungen</span></div>
+        <div class="current-laufer" id="currentLaufer"></div>
+        <div class="subtitle">Drag &amp; Drop · Rotation +1</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn red" id="btnReset">Reset</button>
+      </div>
     </div>
-    <div class="sub" style="margin-top:12px">Gespeicherte Lösung</div>
-    <div class="activeInfo" id="solutionTitle">— keine Lösung gewählt —</div>
-    <div class="court small" id="solutionCourt"><div class="net"></div><div class="line3m"></div><div class="zonev1"></div><div class="zonev2"></div><div class="zoneh"></div><div class="emptyHint">Lösung wählen</div></div>
-  </main>
-  <aside class="side">
-    <section class="card">
-      <div class="boxTitle">Spielerinnen</div>
-      <div class="editgrid" id="playerEditor"></div>
-    </section>
-    <section class="card category" data-cat="grund">
-      <div class="boxTitle">Grundaufstellung</div>
-      <div class="runnerRows"></div>
-    </section>
-    <section class="card category" data-cat="annahme">
-      <div class="boxTitle">Annahme</div>
-      <div class="runnerRows"></div>
-    </section>
-    <section class="card category" data-cat="aufschlag">
-      <div class="boxTitle">Bei eigenem Aufschlag</div>
-      <div class="runnerRows"></div>
-    </section>
-    <section class="card">
-      <div class="boxTitle">Daten</div>
-      <button class="btn danger" id="clearSavedBtn">Alle gespeicherten Aufstellungen löschen</button>
-      <div class="status" id="status"></div>
-    </section>
-  </aside>
+
+    <!-- Interactive field -->
+    <div class="court interactive" id="courtEdit">
+      <div class="net-grid"></div>
+      <div id="halfEdit"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="btnRot">Rotation +1</button>
+      <button class="btn" id="btnSpots">Zurücksetzen</button>
+    </div>
+
+    <!-- Display field -->
+    <div class="tabs" id="tabsRow">
+      <button class="tab active" data-tab="grund">Grundaufstellung</button>
+      <button class="tab" data-tab="annahme">Annahme</button>
+      <button class="tab" data-tab="aufschlag">Bei eigenem Aufschlag</button>
+    </div>
+    <div class="display-title" id="displayTitle"></div>
+    <div class="court display" id="courtDisplay">
+      <div class="net-grid"></div>
+      <div id="halfDisplay">
+        <div class="display-hint">Läufer wählen →</div>
+      </div>
+    </div>
+
+    <div class="save-current-row">
+      <div class="save-current-hint" id="saveHint">Läufer wählen, dann hier speichern</div>
+      <button class="save-current-btn" id="btnSaveCurrent" disabled>💾 Aktuelle Aufstellung speichern</button>
+    </div>
+  </div>
+
+  <!-- Right: name panel + libs -->
+  <div class="panel">
+    <div class="card">
+      <div class="name-grid" id="nameGrid"></div>
+    </div>
+
+    <div class="lib-box" id="libGrund"><div class="lib-title">Grundaufstellung</div></div>
+    <div class="lib-box" id="libAnnahme"><div class="lib-title">Annahme</div></div>
+    <div class="lib-box" id="libAufschlag"><div class="lib-title">Bei eigenem Aufschlag</div></div>
+  </div>
 </div>
+
 <script>
 (() => {
-  "use strict";
+'use strict';
 
-  const LS_STATE = "vb_simple_state_v1";
-  const LS_FORMATIONS = "vb_simple_formations_v1";
-  const ROLES = ["", "Z", "A", "M", "D"];
-  const NAMES = ["", "Alessa", "Alma", "Anna", "Elif", "Ella", "Emma", "Frida", "Greta", "Hannah", "Johanna", "Jule", "Malou", "Marie", "Milva", "Philippa", "Zeynep"];
-  const SPOTS = {4:{x:20,y:22},3:{x:50,y:18},2:{x:80,y:22},5:{x:20,y:72},6:{x:50,y:80},1:{x:80,y:72}};
-  const ROT_PLUS_1 = {1:6,6:5,5:4,4:3,3:2,2:1};
-  const CAT_LABEL = {grund:"Grundaufstellung", annahme:"Annahme", aufschlag:"Bei eigenem Aufschlag"};
+// ── Constants ──
+const SERVER = "https://scoreboard-rzql.onrender.com";
+const LS_KEY = "vb_neu_v1";
 
-  const $ = sel => document.querySelector(sel);
-  const $$ = sel => Array.from(document.querySelectorAll(sel));
-  const esc = s => String(s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
-  const clamp = (n,a,b) => Math.max(a, Math.min(b, n));
-  const p2px = (p, size) => p / 100 * size;
-  const px2p = (px, size) => size ? px / size * 100 : 0;
+// Fixed specializations for positions 1-6 (start positions)
+const SPECS = {1:'Z', 2:'M', 3:'A', 4:'D', 5:'M', 6:'A'};
+const ROT = {1:6, 2:1, 3:2, 4:3, 5:4, 6:5}; // rotation +1: pos→new pos
 
-  function defaultPlayers(){
-    return [1,2,3,4,5,6].map(pos => ({ id:`slot-${pos}`, pos, role:"", name:"", x:SPOTS[pos].x, y:SPOTS[pos].y }));
-  }
-  function defaultState(){ return { players: defaultPlayers() }; }
-  function loadJSON(key, fallback){
-    try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }catch{ return fallback; }
-  }
-  function saveJSON(key, value){ try{ localStorage.setItem(key, JSON.stringify(value)); }catch{} }
+// Net at top: front row = 4,3,2 (netznah), back row = 5,6,1
+const DEFAULT_XY = {
+  4:{x:20,y:22}, 3:{x:50,y:18}, 2:{x:80,y:22},
+  5:{x:20,y:72}, 6:{x:50,y:80}, 1:{x:80,y:72}
+};
 
-  let state = loadJSON(LS_STATE, defaultState());
-  if(!state.players || state.players.length !== 6) state = defaultState();
-  state.players.forEach((p,i) => {
-    p.id = p.id || `slot-${i+1}`;
-    p.pos = Number(p.pos) || i+1;
-    p.role = p.role || "";
-    p.name = p.name || "";
-    const sp = SPOTS[p.pos] || {x:50,y:50};
-    p.x = Number.isFinite(p.x) ? p.x : sp.x;
-    p.y = Number.isFinite(p.y) ? p.y : sp.y;
+const NAMES = ["","Alessa","Alma","Anna","Elif","Ella","Emma","Frida","Greta","Hannah",
+  "Johanna","Jule","Malou","Marie","Milva","Philippa","Zeynep"];
+
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const cssEsc = s => CSS.escape(String(s));
+const p2px = (p,s) => (p/100)*s;
+const px2p = (px,s) => s===0?0:(px/s)*100;
+const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
+
+// ── State ──
+// Each player: { id, spec, name, pos, x, y }
+// spec is fixed to the player (Z stays Z), pos changes with rotation
+function defPlayers(){
+  return [1,2,3,4,5,6].map(pos => ({
+    id: `S${pos}`,
+    spec: SPECS[pos],
+    name: "",
+    pos,
+    x: DEFAULT_XY[pos].x,
+    y: DEFAULT_XY[pos].y,
+  }));
+}
+function defState(){ return { v:1, players: defPlayers() }; }
+function loadState(){
+  try{
+    const r=localStorage.getItem(LS_KEY);
+    if(!r)return null;
+    const s=JSON.parse(r);
+    if(!s||s.v!==1)return null;
+    return s;
+  }catch{return null;}
+}
+let state = loadState() || defState();
+const save = () => { try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch{} };
+
+// ── Lib ──
+async function loadLib(k){
+  try{const c=localStorage.getItem(`vb_lib2_${k}`);if(c){const d=JSON.parse(c);if(d.length)return d;}}catch{}
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),5000);
+    const r=await fetch(`${SERVER}/lib/${k}?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){const d=await r.json();if(d.length){try{localStorage.setItem(`vb_lib2_${k}`,JSON.stringify(d));}catch{}return d;}}
+  }catch{}
+  return[];
+}
+async function saveLib(k,lib){
+  try{localStorage.setItem(`vb_lib2_${k}`,JSON.stringify(lib));}catch{}
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),5000);
+    await fetch(`${SERVER}/lib/${k}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib),signal:ctrl.signal});
+    clearTimeout(tid);
+  }catch{}
+}
+
+// ── Active display state ──
+let activeTab = "grund";
+let activeFormation = null; // { name, players: [{id,spec,pos,x,y}] }
+
+// ── Courts ──
+const courtEdit = document.getElementById("courtEdit");
+const halfEdit = document.getElementById("halfEdit");
+const courtDisplay = document.getElementById("courtDisplay");
+const halfDisplay = document.getElementById("halfDisplay");
+
+function getRect(el){ const r=el.getBoundingClientRect(); return {w:r.width,h:r.height}; }
+
+function renderZones(el){
+  el.querySelectorAll(".zones").forEach(n=>n.remove());
+  const z=document.createElement("div"); z.className="zones";
+  const v1=document.createElement("div"); v1.className="zone-line-v"; v1.style.left="33.333%";
+  const v2=document.createElement("div"); v2.className="zone-line-v"; v2.style.left="66.666%";
+  const h=document.createElement("div"); h.className="zone-line-h";
+  z.appendChild(v1); z.appendChild(v2); z.appendChild(h);
+  [[4,0,0],[3,1,0],[2,2,0],[5,0,1],[6,1,1],[1,2,1]].forEach(([n,c,r])=>{
+    const d=document.createElement("div"); d.className="zone-num";
+    d.style.left=`${c*100/3}%`; d.style.top=`${r*50}%`;
+    d.style.width=`${100/3}%`; d.style.height="50%";
+    d.textContent=n; z.appendChild(d);
   });
+  el.appendChild(z);
+}
 
-  let formations = loadJSON(LS_FORMATIONS, {});
-  let activeSolution = null; // {cat, runner, formation}
-  let drag = null;
+function renderEditField(){
+  halfEdit.querySelectorAll(".chip,.three-m,.three-m-lbl").forEach(n=>n.remove());
+  renderZones(halfEdit);
+  const ln=document.createElement("div"); ln.className="three-m";
+  const lb=document.createElement("div"); lb.className="three-m-lbl"; lb.textContent="3m";
+  halfEdit.appendChild(ln); halfEdit.appendChild(lb);
 
-  const editCourt = $("#editCourt");
-  const solutionCourt = $("#solutionCourt");
+  const {w,h}=getRect(courtEdit);
+  state.players.forEach(p=>{
+    const size=Math.min(w,h)*0.18;
+    const el=document.createElement("div");
+    el.className="chip"+(([2,3,4].includes(p.pos))?" front":"");
+    el.dataset.id=p.id;
+    el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(p.x,w)}px;top:${p2px(p.y,h)}px;font-size:${size*0.22}px;`;
+    el.innerHTML=`<div><div class="spec">${p.spec}${p.pos}</div><div class="pname">${esc(p.name)}</div></div>`;
+    halfEdit.appendChild(el);
+  });
+}
 
-  function persistState(){ saveJSON(LS_STATE, state); }
-  function persistFormations(){ saveJSON(LS_FORMATIONS, formations); }
-  function courtSize(el){ const r = el.getBoundingClientRect(); return {w:r.width, h:r.height}; }
-  function playerLabel(p){ return `${p.role || ""}${p.pos}`; }
-  function isFront(pos){ return [2,3,4].includes(Number(pos)); }
-  function playerAtPos(pos){ return state.players.find(p => Number(p.pos) === Number(pos)); }
+function renderDisplayField(){
+  halfDisplay.innerHTML="";
+  const hint=document.createElement("div"); hint.className="display-hint"; hint.textContent="Läufer wählen →";
 
-  function drawZoneNumbers(court){
-    court.querySelectorAll(".znum").forEach(n => n.remove());
-    const zones = [{n:4,c:0,r:0},{n:3,c:1,r:0},{n:2,c:2,r:0},{n:5,c:0,r:1},{n:6,c:1,r:1},{n:1,c:2,r:1}];
-    for(const z of zones){
-      const el = document.createElement("div");
-      el.className = "znum";
-      el.textContent = z.n;
-      el.style.left = `${z.c * 100 / 3}%`;
-      el.style.top = `${z.r * 100 / 2}%`;
-      court.appendChild(el);
-    }
+  if(!activeFormation){ halfDisplay.appendChild(hint); return; }
+
+  renderZones(halfDisplay);
+  const ln=document.createElement("div"); ln.className="three-m";
+  const lb=document.createElement("div"); lb.className="three-m-lbl"; lb.textContent="3m";
+  halfDisplay.appendChild(ln); halfDisplay.appendChild(lb);
+
+  const {w,h}=getRect(courtDisplay);
+  // Build map: saved player id → live player (for name lookup)
+  const liveById={};
+  state.players.forEach(p=>{ liveById[p.id]=p; });
+
+  activeFormation.players.forEach(p=>{
+    const live=liveById[p.id];
+    const size=Math.min(w,h)*0.18;
+    const el=document.createElement("div");
+    el.className="chip display-chip"+(([2,3,4].includes(p.pos))?" front":"");
+    el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(p.x,w)}px;top:${p2px(p.y,h)}px;font-size:${size*0.22}px;z-index:4;`;
+    el.innerHTML=`<div><div class="spec">${p.spec}${p.pos}</div><div class="pname">${esc(live?.name||"")}</div></div>`;
+    halfDisplay.appendChild(el);
+  });
+}
+
+// ── Name panel ──
+function renderNameGrid(){
+  const grid=document.getElementById("nameGrid");
+  grid.innerHTML="";
+  state.players.slice().sort((a,b)=>a.pos-b.pos).forEach(p=>{
+    const cell=document.createElement("div"); cell.className="name-cell"; cell.dataset.id=p.id;
+    const usedNames=new Set(state.players.filter(x=>x.id!==p.id&&x.name).map(x=>x.name));
+    const opts=NAMES.filter(n=>n===""||n===p.name||!usedNames.has(n))
+      .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
+    cell.innerHTML=`
+      <div class="badge">
+        <div class="spec-badge">${p.spec}${p.pos}</div>
+        <div class="pos-label">Pos ${p.pos}</div>
+      </div>
+      <select class="name-sel">${opts}</select>`;
+    const sel=cell.querySelector("select");
+    sel.value=p.name||"";
+    sel.addEventListener("change",()=>{
+      p.name=sel.value;
+      save();
+      // Update chip on field
+      const chip=halfEdit.querySelector(`.chip[data-id="${cssEsc(p.id)}"]`);
+      if(chip) chip.querySelector(".pname").textContent=p.name;
+      // Update display field if active
+      renderDisplayField();
+      // Update other selects without losing their values
+      grid.querySelectorAll(".name-cell").forEach(other=>{
+        if(other===cell)return;
+        const oid=other.dataset.id;
+        const op=state.players.find(x=>x.id===oid); if(!op)return;
+        const otherSel=other.querySelector("select");
+        const curVal=otherSel.value;
+        const usedN=new Set(state.players.filter(x=>x.id!==op.id&&x.name).map(x=>x.name));
+        otherSel.innerHTML=NAMES.filter(n=>n===""||n===op.name||!usedN.has(n))
+          .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
+        otherSel.value=curVal;
+      });
+      updateCurrentLaufer();
+    });
+    grid.appendChild(cell);
+  });
+}
+
+// ── Auto title ──
+function updateCurrentLaufer(){
+  const z=state.players.find(p=>p.spec==="Z");
+  document.getElementById("currentLaufer").textContent=z?`Läufer ${z.pos}`:"";
+}
+
+// ── Actions ──
+function rotate(){
+  state.players=state.players.map(p=>{
+    const newPos=ROT[p.pos];
+    return {...p, pos:newPos, x:DEFAULT_XY[newPos].x, y:DEFAULT_XY[newPos].y};
+  });
+  save(); renderEditField(); renderNameGrid(); updateCurrentLaufer();
+}
+
+function resetSpots(){
+  state.players=state.players.map(p=>({...p, x:DEFAULT_XY[p.pos].x, y:DEFAULT_XY[p.pos].y}));
+  save(); renderEditField();
+}
+
+function resetAll(){
+  state=defState(); save();
+  renderEditField(); renderNameGrid(); updateCurrentLaufer();
+}
+
+// ── Lib ──
+const LIB_MAP={grund:"libGrund", annahme:"libAnnahme", aufschlag:"libAufschlag"};
+
+async function renderLibBox(k){
+  const box=document.getElementById(LIB_MAP[k]);
+  const title=box.querySelector(".lib-title");
+  box.innerHTML=""; box.appendChild(title);
+
+  const lib=await loadLib(k);
+  const btns=document.createElement("div"); btns.className="lib-btns";
+  if(lib.length===0){
+    const h=document.createElement("div"); h.className="no-lib"; h.textContent="Noch keine Aufstellungen.";
+    btns.appendChild(h);
+  } else {
+    lib.forEach(e=>{
+      const b=document.createElement("button"); b.className="lib-btn"; b.textContent=e.name;
+      b.addEventListener("click",()=>loadFormation(k,e.name));
+      btns.appendChild(b);
+    });
   }
+  box.appendChild(btns);
 
-  function renderRunnerTitle(){
-    const z = state.players.find(p => p.role === "Z");
-    $("#runnerTitle").textContent = z ? `Aktuell: Läufer ${z.pos}` : "Keine Zuspielerin (Z) zugewiesen";
+  const sr=document.createElement("div"); sr.className="lib-save-row";
+  const inp=document.createElement("input"); inp.className="lib-inp"; inp.placeholder="Name…"; inp.maxLength=40;
+  const sbtn=document.createElement("button"); sbtn.className="lib-save-btn"; sbtn.textContent="💾 Speichern";
+  sbtn.addEventListener("mousedown",e=>e.preventDefault());
+  sbtn.addEventListener("click",()=>{ if(inp.value.trim()) saveFormation(k,inp.value); });
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"&&inp.value.trim()) saveFormation(k,inp.value); });
+  sr.appendChild(inp); sr.appendChild(sbtn);
+  box.appendChild(sr);
+}
+
+async function saveFormation(k,name){
+  name=name.trim(); if(!name)return;
+  const lib=await loadLib(k);
+  const entry={
+    name,
+    players: state.players.map(p=>({id:p.id,spec:p.spec,pos:p.pos,x:p.x,y:p.y}))
+  };
+  const idx=lib.findIndex(e=>e.name===name);
+  if(idx>=0)lib[idx]=entry; else lib.push(entry);
+  await saveLib(k,lib);
+  // Update buttons without rebuilding input
+  const box=document.getElementById(LIB_MAP[k]);
+  let btns=box.querySelector(".lib-btns");
+  if(btns) btns.remove();
+  btns=document.createElement("div"); btns.className="lib-btns";
+  lib.forEach(e=>{
+    const b=document.createElement("button"); b.className="lib-btn"; b.textContent=e.name;
+    b.addEventListener("click",()=>loadFormation(k,e.name));
+    btns.appendChild(b);
+  });
+  box.insertBefore(btns, box.querySelector(".lib-save-row"));
+  box.querySelector(".lib-inp").value="";
+}
+
+async function loadFormation(k,name){
+  const lib=await loadLib(k);
+  const entry=lib.find(e=>e.name===name); if(!entry)return;
+  activeTab=k; activeFormation=entry;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===k));
+  const labels={grund:"Grundaufstellung",annahme:"Annahme",aufschlag:"Bei eigenem Aufschlag"};
+  document.getElementById("displayTitle").textContent=`${labels[k]} · ${name}`;
+  renderDisplayField();
+  updateSaveBtn();
+}
+
+function updateSaveBtn(){
+  const btn=document.getElementById("btnSaveCurrent");
+  const hint=document.getElementById("saveHint");
+  if(activeFormation){
+    btn.disabled=false;
+    hint.textContent=`Speichert aktuelle Positionen als „${activeFormation.name}"`;
+  } else {
+    btn.disabled=true;
+    hint.textContent="Läufer wählen, dann hier speichern";
   }
+}
 
-  function makeChip(p, mode){
-    const el = document.createElement("div");
-    el.className = `player ${isFront(p.pos) ? "front" : ""} ${mode === "solution" ? "solution" : ""}`;
-    el.dataset.id = p.id || "";
-    el.innerHTML = `<div><div class="topline">${esc(playerLabel(p))}</div><div class="bottomline">${esc(p.name)}</div></div>`;
-    el.title = `${playerLabel(p)}${p.name ? " – " + p.name : ""}`;
-    return el;
-  }
+document.getElementById("btnSaveCurrent").addEventListener("click",async()=>{
+  if(!activeFormation)return;
+  await saveFormation(activeTab, activeFormation.name);
+  await loadFormation(activeTab, activeFormation.name);
+});
 
-  function renderEditCourt(){
-    editCourt.querySelectorAll(".player,.znum").forEach(n => n.remove());
-    drawZoneNumbers(editCourt);
-    const {w,h} = courtSize(editCourt);
-    for(const p of state.players){
-      const el = makeChip(p, "edit");
-      el.style.left = `${p2px(p.x, w)}px`;
-      el.style.top = `${p2px(p.y, h)}px`;
-      editCourt.appendChild(el);
-    }
-  }
-
-  function renderSolutionCourt(){
-    solutionCourt.querySelectorAll(".player,.znum").forEach(n => n.remove());
-    drawZoneNumbers(solutionCourt);
-    const hint = solutionCourt.querySelector(".emptyHint");
-    if(!activeSolution){
-      hint.style.display = "block";
-      $("#solutionTitle").textContent = "— keine Lösung gewählt —";
-      return;
-    }
-    hint.style.display = "none";
-    const {cat, runner, formation} = activeSolution;
-    $("#solutionTitle").textContent = `${CAT_LABEL[cat]} · Läufer ${runner}`;
-    const {w,h} = courtSize(solutionCourt);
-
-    for(const item of formation.players){
-      const live = playerAtPos(item.pos);
-      const p = {
-        id: live?.id || `pos-${item.pos}`,
-        pos: item.pos,
-        role: live?.role || "",
-        name: live?.name || "",
-        x: item.x,
-        y: item.y
-      };
-      const el = makeChip(p, "solution");
-      el.style.left = `${p2px(p.x, w)}px`;
-      el.style.top = `${p2px(p.y, h)}px`;
-      solutionCourt.appendChild(el);
-    }
-  }
-
-  function renderEditor(){
-    const box = $("#playerEditor");
-    box.innerHTML = "";
-    for(const p of [...state.players].sort((a,b)=>a.pos-b.pos)){
-      const el = document.createElement("div");
-      el.className = "slot";
-      el.innerHTML = `<div class="slotTitle">${esc(playerLabel(p))} ${p.name ? "· " + esc(p.name) : ""}</div>
-        <select class="roleSel">${ROLES.map(r => `<option value="${esc(r)}" ${p.role===r?"selected":""}>${esc(r || "Rolle —")}</option>`).join("")}</select>
-        <select class="nameSel">${NAMES.map(n => `<option value="${esc(n)}" ${p.name===n?"selected":""}>${esc(n || "Name —")}</option>`).join("")}</select>`;
-      const roleSel = el.querySelector(".roleSel");
-      const nameSel = el.querySelector(".nameSel");
-      roleSel.addEventListener("change", () => { p.role = roleSel.value; persistState(); renderAll(); });
-      nameSel.addEventListener("change", () => { p.name = nameSel.value; persistState(); renderAll(); });
-      box.appendChild(el);
-    }
-  }
-
-  function formationKey(cat, runner){ return `${cat}:${runner}`; }
-  function hasFormation(cat, runner){ return Boolean(formations[formationKey(cat, runner)]); }
-  function saveFormation(cat, runner){
-    formations[formationKey(cat, runner)] = {
-      players: state.players.map(p => ({ pos:p.pos, x:p.x, y:p.y }))
-    };
-    persistFormations();
-    activeSolution = {cat, runner, formation: formations[formationKey(cat, runner)]};
-    status(`Gespeichert: ${CAT_LABEL[cat]} · Läufer ${runner}`);
-    renderAll();
-  }
-  function loadFormation(cat, runner){
-    const formation = formations[formationKey(cat, runner)];
-    if(!formation){ status(`Noch nicht gespeichert: ${CAT_LABEL[cat]} · Läufer ${runner}`); return; }
-    activeSolution = {cat, runner, formation};
-    status(`Geladen: ${CAT_LABEL[cat]} · Läufer ${runner}`);
-    renderAll();
-  }
-
-  function renderCategoryBoxes(){
-    $$(".category").forEach(catBox => {
-      const cat = catBox.dataset.cat;
-      const rows = catBox.querySelector(".runnerRows");
-      rows.innerHTML = "";
-      for(let runner=1; runner<=6; runner++){
-        const row = document.createElement("div");
-        row.className = "runnerRow";
-        row.innerHTML = `<div class="runnerLabel">Läufer ${runner}</div>
-          <button class="miniBtn load ${hasFormation(cat, runner) ? "hasData" : ""}">Anzeigen</button>
-          <button class="miniBtn save">Speichern</button>`;
-        row.querySelector(".load").addEventListener("click", () => loadFormation(cat, runner));
-        row.querySelector(".save").addEventListener("click", () => saveFormation(cat, runner));
-        rows.appendChild(row);
+// ── Tabs ──
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",async()=>{
+    activeTab=tab.dataset.tab;
+    document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t===tab));
+    if(activeFormation){
+      const lib=await loadLib(activeTab);
+      const entry=lib.find(e=>e.name===activeFormation.name);
+      if(entry){
+        activeFormation=entry;
+        const labels={grund:"Grundaufstellung",annahme:"Annahme",aufschlag:"Bei eigenem Aufschlag"};
+        document.getElementById("displayTitle").textContent=`${labels[activeTab]} · ${activeFormation.name}`;
+      } else {
+        activeFormation=null;
+        document.getElementById("displayTitle").textContent="";
       }
-    });
-  }
-
-  function rotate(){
-    state.players = state.players.map(p => {
-      const np = ROT_PLUS_1[p.pos] || p.pos;
-      const sp = SPOTS[np];
-      return {...p, pos:np, x:sp.x, y:sp.y};
-    });
-    persistState();
-    renderAll();
-  }
-
-  function resetSpots(){
-    state.players = state.players.map(p => {
-      const sp = SPOTS[p.pos];
-      return {...p, x:sp.x, y:sp.y};
-    });
-    persistState();
-    renderAll();
-  }
-
-  function clearTeam(){
-    if(!confirm("Namen und Rollen oben löschen? Gespeicherte Aufstellungen bleiben erhalten.")) return;
-    state.players = state.players.map(p => ({...p, role:"", name:""}));
-    persistState();
-    renderAll();
-  }
-
-  function clearSaved(){
-    if(!confirm("Alle gespeicherten Aufstellungen löschen?")) return;
-    formations = {};
-    activeSolution = null;
-    persistFormations();
-    status("Alle gespeicherten Aufstellungen gelöscht.");
-    renderAll();
-  }
-
-  function status(msg){ $("#status").textContent = msg; }
-
-  editCourt.addEventListener("pointerdown", e => {
-    const chip = e.target.closest(".player");
-    if(!chip) return;
-    e.preventDefault();
-    const p = state.players.find(x => x.id === chip.dataset.id);
-    if(!p) return;
-    const r = editCourt.getBoundingClientRect();
-    const {w,h} = courtSize(editCourt);
-    drag = {
-      id:p.id,
-      pointerId:e.pointerId,
-      offsetX:p2px(p.x,w) - (e.clientX - r.left),
-      offsetY:p2px(p.y,h) - (e.clientY - r.top)
-    };
-    chip.classList.add("dragging");
-    chip.setPointerCapture(e.pointerId);
+      renderDisplayField();
+    }
   });
+});
 
-  editCourt.addEventListener("pointermove", e => {
-    if(!drag || e.pointerId !== drag.pointerId) return;
-    const p = state.players.find(x => x.id === drag.id);
-    if(!p) return;
-    const r = editCourt.getBoundingClientRect();
-    const {w,h} = courtSize(editCourt);
-    p.x = clamp(px2p(e.clientX - r.left + drag.offsetX, w), 7, 93);
-    p.y = clamp(px2p(e.clientY - r.top + drag.offsetY, h), 8, 94);
-    const chip = editCourt.querySelector(`.player[data-id="${CSS.escape(p.id)}"]`);
-    if(chip){ chip.style.left = `${p2px(p.x,w)}px`; chip.style.top = `${p2px(p.y,h)}px`; }
-  });
+// ── Drag ──
+let drag=null;
+courtEdit.addEventListener("pointerdown",e=>{
+  const t=e.target.closest(".chip"); if(!t)return; e.preventDefault();
+  const p=state.players.find(x=>x.id===t.dataset.id); if(!p)return;
+  const cr=courtEdit.getBoundingClientRect();
+  const {w,h}=getRect(courtEdit);
+  drag={id:p.id,ptr:e.pointerId,ox:p2px(p.x,w)-(e.clientX-cr.left),oy:p2px(p.y,h)-(e.clientY-cr.top)};
+  t.classList.add("dragging"); t.setPointerCapture(e.pointerId);
+});
+courtEdit.addEventListener("pointermove",e=>{
+  if(!drag||e.pointerId!==drag.ptr)return;
+  const p=state.players.find(x=>x.id===drag.id); if(!p)return;
+  const cr=courtEdit.getBoundingClientRect();
+  const {w,h}=getRect(courtEdit);
+  const pad=Math.min(w,h)*0.09;
+  p.x=clamp(px2p(e.clientX-cr.left+drag.ox,w),0,100);
+  p.y=clamp(px2p(e.clientY-cr.top+drag.oy,h),0,100);
+  const chip=halfEdit.querySelector(`.chip[data-id="${cssEsc(p.id)}"]`);
+  if(chip){chip.style.left=`${p2px(p.x,w)}px`;chip.style.top=`${p2px(p.y,h)}px`;}
+  save();
+});
+courtEdit.addEventListener("pointerup",e=>{
+  if(!drag||e.pointerId!==drag.ptr)return;
+  halfEdit.querySelector(`.chip[data-id="${cssEsc(drag.id)}"]`)?.classList.remove("dragging");
+  drag=null;
+});
+courtEdit.addEventListener("pointercancel",()=>{ drag=null; });
 
-  function finishDrag(e){
-    if(!drag || (e.pointerId && e.pointerId !== drag.pointerId)) return;
-    editCourt.querySelector(`.player[data-id="${CSS.escape(drag.id)}"]`)?.classList.remove("dragging");
-    drag = null;
-    persistState();
-  }
-  editCourt.addEventListener("pointerup", finishDrag);
-  editCourt.addEventListener("pointercancel", finishDrag);
+// ── Wire buttons ──
+document.getElementById("btnRot").addEventListener("click",rotate);
+document.getElementById("btnSpots").addEventListener("click",resetSpots);
+document.getElementById("btnReset").addEventListener("click",()=>{ if(confirm("Alles zurücksetzen?")) resetAll(); });
+window.addEventListener("resize",()=>{ renderEditField(); renderDisplayField(); });
 
-  $("#rotateBtn").addEventListener("click", rotate);
-  $("#resetSpotsBtn").addEventListener("click", resetSpots);
-  $("#clearTeamBtn").addEventListener("click", clearTeam);
-  $("#clearSavedBtn").addEventListener("click", clearSaved);
-  window.addEventListener("resize", () => { renderEditCourt(); renderSolutionCourt(); });
+// ── Init ──
+async function init(){
+  renderEditField();
+  renderNameGrid();
+  updateCurrentLaufer();
+  await Promise.all([renderLibBox("grund"),renderLibBox("annahme"),renderLibBox("aufschlag")]);
+}
+init();
 
-  function renderAll(){
-    renderRunnerTitle();
-    renderEditCourt();
-    renderSolutionCourt();
-    renderEditor();
-    renderCategoryBoxes();
-  }
-
-  renderAll();
 })();
 </script>
 </body>
