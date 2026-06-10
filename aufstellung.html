@@ -386,8 +386,18 @@
     lbl.style.display="none";
 
     const {w,h}=getDisplayRect();
+    // Build map: id → live player (letter and name stay bound to the player)
+    const liveIdMap={};
+    state.players.forEach(sp=>{ liveIdMap[sp.id]=sp; });
+
     for(const p of activeFormation.players){
-      const displayP={...p};
+      // Get the live player with same ID - they keep their specialization and name
+      const live=liveIdMap[p.id];
+      const displayP={
+        ...p,
+        letter: live?.letter||p.letter||"",
+        name: live?.name||p.name||"",
+      };
       const isFront=[2,3,4].includes(p.pos);
       const el=document.createElement("div");
       el.className="player display-player";
