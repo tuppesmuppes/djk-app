@@ -213,7 +213,7 @@ function renderField(){
   field.appendChild(t1); field.appendChild(t2); field.appendChild(l1); field.appendChild(l2);
 
   const {w,h}=getRect();
-  const size=Math.min(w,h)*0.16;
+  const size=Math.min(w,h)*0.24;
 
   [...state.playersA,...state.playersB].forEach(p=>{
     const isFront=[2,3,4].includes(p.pos);
