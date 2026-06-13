@@ -45,6 +45,25 @@
     @media(max-width:900px){ .chip .pname{ font-size:min(3.6vw,15px); } }
     .chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.2); z-index:10; }
 
+    /* Ball - Molten V5M5000 style */
+    .ball{
+      position:absolute; transform:translate(-50%,-50%); border-radius:999px;
+      cursor:grab; touch-action:none; z-index:6;
+      box-shadow:0 6px 14px rgba(0,0,0,.25);
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.5), transparent 50%),
+        conic-gradient(from 0deg,
+          #ffffff 0deg 60deg,
+          #f4c20d 60deg 120deg,
+          #ffffff 120deg 180deg,
+          #1565c0 180deg 240deg,
+          #ffffff 240deg 300deg,
+          #f4c20d 300deg 360deg
+        );
+      border:2px solid rgba(0,0,0,.15);
+    }
+    .ball.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.3); z-index:11; }
+
     .btn-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
     .btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:10px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.07); }
     .btn:active{ transform:translateY(1px); }
@@ -89,7 +108,7 @@
       </div>
     </div>
     <div class="card team-card b">
-      <div class="team-title">Team B (grün)</div>
+      <div class="team-title">Team B (gelb)</div>
       <div class="name-grid" id="gridB"></div>
       <div class="btn-row">
         <button class="btn green" id="rotB">Rotation +1</button>
@@ -140,7 +159,7 @@ function defTeam(team, xyMap){
   }));
 }
 function defState(){
-  return { v:2, playersA: defTeam('A',DEFAULT_XY_A), playersB: defTeam('B',DEFAULT_XY_B) };
+  return { v:2, playersA: defTeam('A',DEFAULT_XY_A), playersB: defTeam('B',DEFAULT_XY_B), ball:{x:50,y:50} };
 }
 function loadState(){
   try{
@@ -149,6 +168,7 @@ function loadState(){
     const s=JSON.parse(r);
     if(!s||s.v!==2)return null;
     [...s.playersA,...s.playersB].forEach(p=>{ if(p.name===undefined)p.name=""; });
+    if(!s.ball) s.ball={x:50,y:50};
     return s;
   }catch{return null;}
 }
@@ -203,7 +223,7 @@ function renderZones(){
 }
 
 function renderField(){
-  field.querySelectorAll(".chip,.three-m-top,.three-m-bot,.three-m-lbl").forEach(n=>n.remove());
+  field.querySelectorAll(".chip,.ball,.three-m-top,.three-m-bot,.three-m-lbl").forEach(n=>n.remove());
   renderZones();
 
   const t1=document.createElement("div"); t1.className="three-m-top";
@@ -224,6 +244,14 @@ function renderField(){
     el.innerHTML=`<div class="pname">${esc(p.name)}</div>`;
     field.appendChild(el);
   });
+
+  // Ball
+  const ballSize=size*0.55;
+  const ball=document.createElement("div");
+  ball.className="ball";
+  ball.id="ballEl";
+  ball.style.cssText=`width:${ballSize}px;height:${ballSize}px;left:${p2px(state.ball.x,w)}px;top:${p2px(state.ball.y,h)}px;`;
+  field.appendChild(ball);
 }
 
 function renderNameGrid(team, players, mountId, rotFn, resetFn){
@@ -277,6 +305,15 @@ function renderAllGrids(){
 // ── Drag ──
 let drag=null;
 court.addEventListener("pointerdown",e=>{
+  const ballEl=e.target.closest(".ball");
+  if(ballEl){
+    e.preventDefault();
+    const cr=court.getBoundingClientRect();
+    const {w,h}=getRect();
+    drag={isBall:true,ptr:e.pointerId,ox:p2px(state.ball.x,w)-(e.clientX-cr.left),oy:p2px(state.ball.y,h)-(e.clientY-cr.top)};
+    ballEl.classList.add("dragging"); ballEl.setPointerCapture(e.pointerId);
+    return;
+  }
   const t=e.target.closest(".chip"); if(!t)return; e.preventDefault();
   const all=[...state.playersA,...state.playersB];
   const p=all.find(x=>x.id===t.dataset.id); if(!p)return;
@@ -287,10 +324,18 @@ court.addEventListener("pointerdown",e=>{
 });
 court.addEventListener("pointermove",e=>{
   if(!drag||e.pointerId!==drag.ptr)return;
-  const all=[...state.playersA,...state.playersB];
-  const p=all.find(x=>x.id===drag.id); if(!p)return;
   const cr=court.getBoundingClientRect();
   const {w,h}=getRect();
+  if(drag.isBall){
+    state.ball.x=clamp(px2p(e.clientX-cr.left+drag.ox,w),0,100);
+    state.ball.y=clamp(px2p(e.clientY-cr.top+drag.oy,h),0,100);
+    const ballEl=document.getElementById("ballEl");
+    if(ballEl){ballEl.style.left=`${p2px(state.ball.x,w)}px`;ballEl.style.top=`${p2px(state.ball.y,h)}px`;}
+    save();
+    return;
+  }
+  const all=[...state.playersA,...state.playersB];
+  const p=all.find(x=>x.id===drag.id); if(!p)return;
   p.x=clamp(px2p(e.clientX-cr.left+drag.ox,w),0,100);
   p.y=clamp(px2p(e.clientY-cr.top+drag.oy,h),0,100);
   const chip=field.querySelector(`.chip[data-id="${cssEsc(p.id)}"]`);
@@ -299,7 +344,8 @@ court.addEventListener("pointermove",e=>{
 });
 court.addEventListener("pointerup",e=>{
   if(!drag||e.pointerId!==drag.ptr)return;
-  field.querySelector(`.chip[data-id="${cssEsc(drag.id)}"]`)?.classList.remove("dragging");
+  if(drag.isBall){ document.getElementById("ballEl")?.classList.remove("dragging"); }
+  else field.querySelector(`.chip[data-id="${cssEsc(drag.id)}"]`)?.classList.remove("dragging");
   drag=null;
 });
 court.addEventListener("pointercancel",()=>{ drag=null; });
