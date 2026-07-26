@@ -61,8 +61,8 @@
     .pos-card.pos-D{ border-color:#f57c00; background:#fff3e0; }
     .pos-card.pos-L{ border-color:#6a1b9a; background:#f3e5f5; }
 
-    .rotation-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
-    @media(min-width:700px){ .rotation-grid{ grid-template-columns:repeat(3,1fr); } }
+    .rotation-grid{ display:grid; grid-template-columns:1fr; gap:16px; }
+    @media(min-width:700px){ .rotation-grid{ grid-template-columns:1fr; } }
     .rot-card{ border-radius:10px; padding:8px; border:1px solid var(--line); background:#f8f8f8; }
     .rot-num{ font-weight:900; color:var(--red); font-size:13px; margin-bottom:4px; }
     .rot-name{ font-size:12px; font-weight:700; }
@@ -78,12 +78,12 @@
     .mini-vline{ position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.25); }
     .mini-chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:#fff;
       display:flex; align-items:center; justify-content:center; text-align:center;
-      border:2px solid var(--red); font-size:min(1.5vw,9px); font-weight:800; line-height:1.1;
+      border:2px solid var(--red); font-weight:800; line-height:1.1;
       width:18%; padding-bottom:18%; }
     .mini-chip-inner{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; padding:1px; }
     .mini-chip.front{ border-width:3px; }
-    .mini-chip .mc-spec{ font-size:min(1.3vw,8px); font-weight:900; }
-    .mini-chip .mc-name{ font-size:min(1vw,7px); opacity:.8; }
+    .mini-chip .mc-spec{ font-size:min(1.8vw,11px); font-weight:900; }
+    .mini-chip .mc-name{ font-size:min(1.5vw,10px); opacity:.85; }
 
     .score-badge{ display:inline-block; padding:3px 10px; border-radius:20px; font-weight:800; font-size:13px; }
     .score-good{ background:#d4edda; color:#155724; }
@@ -313,7 +313,7 @@ function calcBestLineup(){
       if(!player) return;
       const p = xy[pos];
       const front = [2,3,4].includes(pos);
-      const n = (player.name||"").substring(0,5);
+      const n = (player.name||"").substring(0,3);
       const spec = (player.pos||"") + pos;
       chips += '<div class="mini-chip' + (front?" front":"") + '" style="left:' + p.x + '%;top:' + p.y + '%">'
              + '<div class="mini-chip-inner">'
@@ -472,8 +472,9 @@ function _calcBestLineup(){
     });
   }
 
-  // Sort by Läufer number for display
-  rotScores.sort((a,b) => a.laufer - b.laufer);
+  // Sort by Läufer order: 1,6,5,4,3,2
+  const lauferOrder = [1,6,5,4,3,2];
+  rotScores.sort((a,b) => lauferOrder.indexOf(a.laufer) - lauferOrder.indexOf(b.laufer));
   const maxRot = Math.max(...rotScores.map(r=>r.score));
 
   // Alternatives (next best per position)
