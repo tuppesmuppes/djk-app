@@ -71,19 +71,18 @@
     .rot-bar{ height:5px; background:var(--red); border-radius:99px; }
 
     /* Mini court */
-    .mini-court{ position:relative; width:100%; padding-bottom:70%; background:#5b9bd5; border-radius:6px; border:3px solid #1a3a5c; margin:6px 0; overflow:hidden; }
+    .mini-court{ position:relative; width:100%; padding-bottom:100%; background:#5b9bd5; border-radius:6px; border:3px solid #1a3a5c; margin:6px 0; overflow:hidden; }
     .mini-court-inner{ position:absolute; inset:0; }
     .mini-net{ position:absolute; left:0; right:0; top:33.333%; height:3px; background:#fff; }
     .mini-3m{ position:absolute; left:0; right:0; height:2px; background:rgba(255,255,255,.5); top:13%; }
     .mini-vline{ position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.25); }
     .mini-chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:#fff;
       display:flex; align-items:center; justify-content:center; text-align:center;
-      border:2px solid var(--red); font-weight:800; line-height:1.1;
-      width:18%; padding-bottom:18%; }
-    .mini-chip-inner{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; padding:1px; }
-    .mini-chip.front{ border-width:3px; }
-    .mini-chip .mc-spec{ font-size:min(1.8vw,11px); font-weight:900; }
-    .mini-chip .mc-name{ font-size:min(1.5vw,10px); opacity:.85; }
+      border:2px solid var(--red); font-weight:900; line-height:1;
+      width:22%; padding-bottom:22%; }
+    .mini-chip-inner{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:2px; }
+    .mini-chip.front{ border-width:4px; }
+    .mini-chip .mc-name{ font-size:min(3.5vw,16px); font-weight:900; }
 
     .score-badge{ display:inline-block; padding:3px 10px; border-radius:20px; font-weight:800; font-size:13px; }
     .score-good{ background:#d4edda; color:#155724; }
@@ -317,7 +316,6 @@ function calcBestLineup(){
       const spec = (player.pos||"") + pos;
       chips += '<div class="mini-chip' + (front?" front":"") + '" style="left:' + p.x + '%;top:' + p.y + '%">'
              + '<div class="mini-chip-inner">'
-             + '<div class="mc-spec">' + spec + '</div>'
              + '<div class="mc-name">' + n + '</div>'
              + '</div></div>';
     });
