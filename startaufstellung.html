@@ -297,6 +297,15 @@ function scoreLabel(s){
 
 // ── Optimization ──
 function calcBestLineup(){
+  try{
+    _calcBestLineup();
+  } catch(e) {
+    document.getElementById("resultCard").innerHTML = '<div class="warn">⚠ Fehler: ' + e.message + '</div>';
+    console.error(e);
+  }
+}
+
+function _calcBestLineup(){
   const useLibero = document.getElementById("liberoOpt").checked;
   const available = players.filter(p => p.pos !== "–");
 
