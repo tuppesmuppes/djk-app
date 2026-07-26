@@ -123,9 +123,10 @@
           <input type="checkbox" id="liberoOpt" checked> Libero einsetzen
         </label>
         <button class="btn btn-primary" id="btnCalc">🏐 Beste Aufstellung berechnen</button>
-        <div style="margin-top:8px;display:flex;gap:8px;">
-          <button class="btn btn-sm" id="btnSave">💾 Speichern</button>
-          <button class="btn btn-sm" id="btnLoad">📂 Laden</button>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm" id="btnExport">💾 Als JSON exportieren</button>
+          <button class="btn btn-sm" id="btnImport">📂 JSON importieren</button>
+          <input type="file" id="importFile" accept=".json" style="display:none;">
           <button class="btn btn-sm" id="btnReset">↺ Zurücksetzen</button>
         </div>
       </div>
@@ -318,7 +319,7 @@ function calcBestLineup(){
       .sort((a,b) => b.roleScore - a.roleScore);
     const picks = group.slice(0, count);
     picks.forEach(p => { usedNames.add(p.name); lineup.push({...p, role:pos}); });
-    return picks;
+    return picks.map(p => ({...p, role:pos}));
   };
 
   const Z = pickBest("Z",1);
@@ -499,8 +500,35 @@ renderTable();
 renderWeights();
 
 document.getElementById("btnCalc").addEventListener("click", calcBestLineup);
-document.getElementById("btnSave").addEventListener("click", () => { saveState(); alert("Gespeichert!"); });
-document.getElementById("btnLoad").addEventListener("click", () => { loadState(); renderTable(); renderWeights(); alert("Geladen!"); });
+document.getElementById("btnExport").addEventListener("click", () => {
+  const filename = prompt("Dateiname für den Export:", "startaufstellung") || "startaufstellung";
+  const json = JSON.stringify({players, weights, exported: new Date().toISOString()}, null, 2);
+  const blob = new Blob([json], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${filename}.json`;
+  a.click();
+});
+
+document.getElementById("btnImport").addEventListener("click", () => {
+  document.getElementById("importFile").click();
+});
+
+document.getElementById("importFile").addEventListener("change", (e) => {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try{
+      const s = JSON.parse(ev.target.result);
+      if(s.players) players = s.players;
+      if(s.weights) weights = s.weights;
+      renderTable(); renderWeights();
+      alert(`„${file.name}" erfolgreich geladen!`);
+    }catch{ alert("Fehler beim Lesen der Datei."); }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
 document.getElementById("btnReset").addEventListener("click", () => {
   if(confirm("Alle Bewertungen zurücksetzen?")){ 
     players = PLAYERS.map(name => ({name, pos:"–", scores:{annahme:3,abwehr:3,angriff:3,block:3,aufschlag:3,komm:3}}));
