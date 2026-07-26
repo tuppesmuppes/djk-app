@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Startaufstellung Optimierung</title>
+  <style>
+    :root{ --bg:#f5f5f5; --card:#fff; --red:#CC0000; --blue:#1565c0; --line:rgba(0,0,0,.12); --muted:#777; --radius:14px; }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{ font-family:system-ui,sans-serif; background:var(--bg); color:#111; }
+    .top-bar{ background:var(--red); height:5px; }
+    .wrap{ max-width:1200px; margin:0 auto; padding:16px; }
+    h1{ font-size:22px; font-weight:900; margin-bottom:4px; }
+    h1 span{ color:var(--red); }
+    .subtitle{ font-size:13px; color:var(--muted); margin-bottom:16px; }
+    h2{ font-size:16px; font-weight:900; margin-bottom:10px; }
+    h3{ font-size:14px; font-weight:800; margin-bottom:8px; color:var(--red); }
+
+    .card{ background:var(--card); border-radius:var(--radius); box-shadow:0 6px 18px rgba(0,0,0,.07); border:1px solid var(--line); padding:16px; margin-bottom:16px; }
+    .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media(max-width:700px){ .grid2{ grid-template-columns:1fr; } }
+
+    /* Player table */
+    .player-table{ width:100%; border-collapse:collapse; font-size:13px; }
+    .player-table th{ background:#f8f8f8; padding:8px 6px; text-align:left; font-weight:800; border-bottom:2px solid var(--line); position:sticky; top:0; }
+    .player-table td{ padding:6px; border-bottom:1px solid var(--line); vertical-align:middle; }
+    .player-table tr:last-child td{ border-bottom:none; }
+    .player-name{ font-weight:700; }
+    .pos-sel, .val-sel{ padding:5px 6px; border-radius:8px; border:1px solid var(--line); font-size:12px; background:#fff; width:100%; }
+    .val-sel{ text-align:center; }
+    select.val-1{ background:#d4edda; color:#155724; }
+    select.val-2{ background:#d1ecf1; color:#0c5460; }
+    select.val-3{ background:#fff3cd; color:#856404; }
+    select.val-4{ background:#ffe5cc; color:#7d3c00; }
+    select.val-5{ background:#f8d7da; color:#721c24; }
+
+    /* Weights */
+    .weight-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    @media(max-width:600px){ .weight-grid{ grid-template-columns:1fr 1fr; } }
+    .weight-item label{ font-size:12px; font-weight:700; display:block; margin-bottom:4px; }
+    .weight-item input[type=range]{ width:100%; }
+    .weight-val{ font-size:12px; color:var(--muted); }
+
+    /* Buttons */
+    .btn{ -webkit-appearance:none; appearance:none; border:none; padding:12px 20px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; }
+    .btn-primary{ background:var(--red); color:#fff; width:100%; margin-top:8px; }
+    .btn-primary:hover{ opacity:.88; }
+    .btn-sm{ background:#f0f0f0; color:#333; padding:6px 12px; font-size:12px; border-radius:8px; border:1px solid var(--line); cursor:pointer; }
+
+    /* Results */
+    .result-section{ margin-bottom:20px; }
+    .aufstellung-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px; }
+    .pos-card{ border-radius:12px; padding:10px; text-align:center; border:2px solid var(--line); }
+    .pos-card .pos-label{ font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; margin-bottom:4px; }
+    .pos-card .pos-name{ font-size:15px; font-weight:900; }
+    .pos-card .pos-score{ font-size:11px; color:var(--muted); margin-top:2px; }
+    .pos-card.pos-Z{ border-color:#CC0000; background:#fff0f0; }
+    .pos-card.pos-A{ border-color:#1565c0; background:#e8f0fe; }
+    .pos-card.pos-M{ border-color:#2e7d32; background:#e8f5e9; }
+    .pos-card.pos-D{ border-color:#f57c00; background:#fff3e0; }
+    .pos-card.pos-L{ border-color:#6a1b9a; background:#f3e5f5; }
+
+    .rotation-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .rot-card{ border-radius:10px; padding:8px; border:1px solid var(--line); background:#f8f8f8; }
+    .rot-num{ font-weight:900; color:var(--red); font-size:13px; margin-bottom:4px; }
+    .rot-name{ font-size:12px; font-weight:700; }
+    .rot-score{ font-size:11px; color:var(--muted); }
+    .rot-bar-wrap{ height:5px; background:#e0e0e0; border-radius:99px; margin-top:4px; }
+    .rot-bar{ height:5px; background:var(--red); border-radius:99px; }
+
+    .score-badge{ display:inline-block; padding:3px 10px; border-radius:20px; font-weight:800; font-size:13px; }
+    .score-good{ background:#d4edda; color:#155724; }
+    .score-mid{ background:#fff3cd; color:#856404; }
+    .score-bad{ background:#f8d7da; color:#721c24; }
+
+    .alt-list{ list-style:none; }
+    .alt-list li{ padding:6px 0; border-bottom:1px solid var(--line); font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+    .alt-list li:last-child{ border-bottom:none; }
+
+    .no-result{ color:var(--muted); font-size:14px; text-align:center; padding:30px; }
+    .table-wrap{ overflow-x:auto; }
+    .warn{ background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:8px 12px; font-size:12px; color:#856404; margin-bottom:10px; }
+  </style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+  <h1>Startaufstellung <span>Optimierung</span></h1>
+  <p class="subtitle">5-1 System · Bewertung 1 (sehr gut) bis 5 (mangelhaft)</p>
+
+  <div class="grid2">
+    <!-- Left: players -->
+    <div>
+      <div class="card">
+        <h2>Spielerinnen & Bewertungen</h2>
+        <div class="table-wrap">
+          <table class="player-table" id="playerTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Position</th>
+                <th>Annahme</th>
+                <th>Abwehr</th>
+                <th>Angriff</th>
+                <th>Block</th>
+                <th>Aufschlag</th>
+                <th>Komm.</th>
+              </tr>
+            </thead>
+            <tbody id="playerBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Gewichtung der Techniken</h2>
+        <div class="weight-grid" id="weightGrid"></div>
+      </div>
+
+      <div class="card">
+        <h2>Optionen</h2>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:10px;">
+          <input type="checkbox" id="liberoOpt" checked> Libero einsetzen
+        </label>
+        <button class="btn btn-primary" id="btnCalc">🏐 Beste Aufstellung berechnen</button>
+        <div style="margin-top:8px;display:flex;gap:8px;">
+          <button class="btn btn-sm" id="btnSave">💾 Speichern</button>
+          <button class="btn btn-sm" id="btnLoad">📂 Laden</button>
+          <button class="btn btn-sm" id="btnReset">↺ Zurücksetzen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: results -->
+    <div>
+      <div class="card" id="resultCard">
+        <div class="no-result">← Bewertungen eingeben und berechnen</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const PLAYERS = ["Alessa","Alma","Anna","Elif","Ella","Frida","Greta","Hannah","Johanna","Jule","Malou","Marie","Milva","Philippa","Zeynep"];
+const POSITIONS = ["Z","A","M","D","L","–"];
+const TECHS = ["Annahme","Abwehr","Angriff","Block","Aufschlag","Komm."];
+const TECH_KEYS = ["annahme","abwehr","angriff","block","aufschlag","komm"];
+const POS_LABELS = {Z:"Zuspielerin",A:"Außen",M:"Mitte",D:"Diagonal",L:"Libero"};
+
+// Position requirements for 5-1: Z=1, A=2, M=2, D=1, L=optional
+// Relevant skills per position
+const POS_SKILLS = {
+  Z: ["komm","annahme","abwehr"],
+  A: ["annahme","angriff","aufschlag","block"],
+  M: ["block","angriff","aufschlag"],
+  D: ["angriff","aufschlag","block","annahme"],
+  L: ["annahme","abwehr","komm"],
+};
+
+// Field positions 1-6 and their roles in 5-1
+// Starting: Z on pos 1 (setter), front: A(2), M(3), back: D(4), M(5), A(6) — one common variant
+const ROTATIONS = [
+  {pos:1, role:"Z", label:"Position 1", desc:"Z aufschlag"},
+  {pos:2, role:"A", label:"Position 2", desc:"A vorne"},
+  {pos:3, role:"M", label:"Position 3", desc:"M vorne Mitte"},
+  {pos:4, role:"D", label:"Position 4", desc:"D vorne"},
+  {pos:5, role:"M", label:"Position 5", desc:"M hinten"},
+  {pos:6, role:"A", label:"Position 6", desc:"A hinten"},
+];
+
+// State
+let players = PLAYERS.map(name => ({
+  name,
+  pos: "–",
+  scores: {annahme:3, abwehr:3, angriff:3, block:3, aufschlag:3, komm:3}
+}));
+
+let weights = {annahme:3, abwehr:2, angriff:3, block:2, aufschlag:2, komm:2};
+
+const LS_KEY = "vb_startaufstellung_v1";
+
+function saveState(){
+  localStorage.setItem(LS_KEY, JSON.stringify({players,weights}));
+}
+function loadState(){
+  try{
+    const r = localStorage.getItem(LS_KEY);
+    if(!r) return;
+    const s = JSON.parse(r);
+    if(s.players) players = s.players;
+    if(s.weights) weights = s.weights;
+  }catch{}
+}
+
+// ── Render player table ──
+function renderTable(){
+  const tbody = document.getElementById("playerBody");
+  tbody.innerHTML = "";
+  players.forEach((p, i) => {
+    const tr = document.createElement("tr");
+    // Position select
+    const posSel = `<select class="pos-sel" data-i="${i}" data-field="pos">
+      ${POSITIONS.map(pos => `<option value="${pos}" ${p.pos===pos?"selected":""}>${pos}</option>`).join("")}
+    </select>`;
+    // Score selects
+    const scoreSels = TECH_KEYS.map((k,ki) => {
+      const v = p.scores[k];
+      return `<select class="val-sel val-${v}" data-i="${i}" data-field="${k}">
+        ${[1,2,3,4,5].map(n=>`<option value="${n}" ${v===n?"selected":""}>${n}</option>`).join("")}
+      </select>`;
+    }).join("");
+    tr.innerHTML = `<td class="player-name">${p.name}</td><td>${posSel}</td>${TECH_KEYS.map(k=>`<td>${
+      `<select class="val-sel val-${p.scores[k]}" data-i="${i}" data-field="${k}">
+        ${[1,2,3,4,5].map(n=>`<option value="${n}" ${p.scores[k]===n?"selected":""}>${n}</option>`).join("")}
+      </select>`
+    }</td>`).join("")}`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("select").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const i = +sel.dataset.i;
+      const field = sel.dataset.field;
+      if(field === "pos"){
+        players[i].pos = sel.value;
+      } else {
+        players[i].scores[field] = +sel.value;
+        sel.className = `val-sel val-${sel.value}`;
+      }
+    });
+  });
+}
+
+// ── Render weights ──
+function renderWeights(){
+  const grid = document.getElementById("weightGrid");
+  grid.innerHTML = "";
+  TECH_KEYS.forEach((k, ki) => {
+    const div = document.createElement("div");
+    div.className = "weight-item";
+    div.innerHTML = `<label>${TECHS[ki]}</label>
+      <input type="range" min="1" max="5" step="1" value="${weights[k]}" data-key="${k}">
+      <div class="weight-val" id="wval_${k}">Gewicht: ${weights[k]}</div>`;
+    grid.appendChild(div);
+  });
+  grid.querySelectorAll("input[type=range]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      weights[inp.dataset.key] = +inp.value;
+      document.getElementById(`wval_${inp.dataset.key}`).textContent = `Gewicht: ${inp.value}`;
+    });
+  });
+}
+
+// ── Score calculation ──
+// Lower score = better (1=sehr gut, 5=mangelhaft)
+// We invert: score = (6 - rating) so higher = better
+function playerScore(player, posRole){
+  const skills = POS_SKILLS[posRole] || TECH_KEYS;
+  let total = 0, wSum = 0;
+  skills.forEach(k => {
+    const w = weights[k] || 1;
+    const invVal = 6 - (player.scores[k] || 3); // invert: 1→5, 5→1
+    total += invVal * w;
+    wSum += w;
+  });
+  return wSum > 0 ? total / wSum : 3;
+}
+
+function scoreLabel(s){
+  // s is 1-5 scale (inverted back)
+  const inv = 6 - s; // back to original rating
+  if(inv <= 2) return "score-good";
+  if(inv <= 3.5) return "score-mid";
+  return "score-bad";
+}
+
+// ── Optimization ──
+function calcBestLineup(){
+  const useLibero = document.getElementById("liberoOpt").checked;
+  const available = players.filter(p => p.pos !== "–");
+
+  // Check we have enough designated players
+  const byPos = {};
+  POSITIONS.filter(p=>p!=="–").forEach(p => byPos[p] = available.filter(pl=>pl.pos===p));
+
+  const result = document.getElementById("resultCard");
+
+  // Need: 1 Z, 2 A, 2 M, 1 D, optionally 1 L
+  const required = {Z:1, A:2, M:2, D:1};
+  if(useLibero) required.L = 1;
+
+  const missing = [];
+  Object.entries(required).forEach(([pos,n]) => {
+    if((byPos[pos]||[]).length < n) missing.push(`${n}x ${POS_LABELS[pos]||pos}`);
+  });
+
+  if(missing.length > 0){
+    result.innerHTML = `<div class="warn">⚠ Nicht genug Spielerinnen für folgende Positionen: <b>${missing.join(", ")}</b><br>Bitte Positionen zuweisen.</div>`;
+    return;
+  }
+
+  // Score each player for their designated role
+  const scored = available.map(p => ({
+    ...p,
+    roleScore: playerScore(p, p.pos)
+  }));
+
+  // Pick best per position (greedy, then show alternatives)
+  const lineup = [];
+  const usedNames = new Set();
+
+  // Sort each position group by score descending
+  const pickBest = (pos, count) => {
+    const group = scored.filter(p => p.pos === pos && !usedNames.has(p.name))
+      .sort((a,b) => b.roleScore - a.roleScore);
+    const picks = group.slice(0, count);
+    picks.forEach(p => { usedNames.add(p.name); lineup.push({...p, role:pos}); });
+    return picks;
+  };
+
+  const Z = pickBest("Z",1);
+  const A = pickBest("A",2);
+  const M = pickBest("M",2);
+  const D = pickBest("D",1);
+  const L = useLibero ? pickBest("L",1) : [];
+  const starters = [...Z,...A,...M,...D,...L];
+
+  // Total lineup score
+  const totalScore = starters.reduce((s,p) => s + p.roleScore, 0) / starters.length;
+  const totalInv = 6 - totalScore; // back to 1-5 scale
+
+  // Rotation analysis: assign field positions
+  // 5-1 typical start: Z-pos1(aufschlag), A-pos6, M-pos5, D-pos4, M-pos3, A-pos2
+  // Each rotation shifts everyone +1
+  const fieldOrder = [
+    {fieldPos:1, role:"Z"}, {fieldPos:6, role:"A"}, {fieldPos:5, role:"M"},
+    {fieldPos:4, role:"D"}, {fieldPos:3, role:"M"}, {fieldPos:2, role:"A"}
+  ];
+
+  // Assign players to field positions (Z=1, two A, two M, one D)
+  const zPlayer = Z[0], a1 = A[0], a2 = A[1], m1 = M[0], m2 = M[1], dPlayer = D[0];
+  const roleMap = {Z:zPlayer, A:[a1,a2], M:[m1,m2], D:dPlayer};
+
+  // Rotation scores: for each of 6 rotations, what's the "front row" strength?
+  // Rotation k: players shift so the one who was on pos k is now serving (pos 1)
+  // Front row = positions 2,3,4 → roles depend on rotation
+  // We simplify: each rotation = one player moves to front/back
+  // Score by front row attack capability vs back row defense
+  const rotScores = [];
+  for(let rot=0; rot<6; rot++){
+    // After rot rotations from start: pos assignments shift
+    // fieldOrder rotated by `rot` positions
+    const rotated = fieldOrder.map((_, i) => fieldOrder[(i + rot) % 6]);
+    let rotScore = 0;
+    rotated.forEach((slot, i) => {
+      const fieldPos = i + 1;
+      const isFront = fieldPos >= 2 && fieldPos <= 4;
+      let player = null;
+      if(slot.role === "Z") player = zPlayer;
+      else if(slot.role === "D") player = dPlayer;
+      else if(slot.role === "A") player = (i % 2 === 0) ? a1 : a2;
+      else if(slot.role === "M") player = (i % 2 === 0) ? m1 : m2;
+      if(!player) return;
+      const skills = isFront ? ["angriff","block"] : ["annahme","abwehr"];
+      let s = 0, w = 0;
+      skills.forEach(k => { s += (6-player.scores[k]) * (weights[k]||1); w += weights[k]||1; });
+      rotScore += w > 0 ? s/w : 3;
+    });
+    rotScores.push({rot:rot+1, score: rotScore/6, label:`Rotation ${rot+1}`,
+      serving: [zPlayer,a1,m1,dPlayer,m2,a2][rot]?.name || "?"
+    });
+  }
+  const maxRot = Math.max(...rotScores.map(r=>r.score));
+
+  // Alternatives (next best per position)
+  const alts = [];
+  POSITIONS.filter(p=>p!=="–"&&p!=="L").forEach(pos => {
+    const group = scored.filter(p=>p.pos===pos).sort((a,b)=>b.roleScore-a.roleScore);
+    if(group.length > (pos==="Z"||pos==="D"?1:2)){
+      const bench = group.slice(pos==="Z"||pos==="D"?1:2);
+      bench.forEach(p => alts.push({...p, role:pos}));
+    }
+  });
+
+  // Render results
+  result.innerHTML = `
+    <div class="result-section">
+      <h2>🏆 Beste Startaufstellung</h2>
+      <div style="margin-bottom:10px;">Gesamtbewertung: <span class="score-badge ${scoreLabel(totalScore)}">${totalInv.toFixed(1)}</span></div>
+      <div class="aufstellung-grid">
+        ${starters.map(p => `
+          <div class="pos-card pos-${p.role}">
+            <div class="pos-label">${POS_LABELS[p.role]||p.role}</div>
+            <div class="pos-name">${p.name}</div>
+            <div class="pos-score">Ø ${(6-p.roleScore).toFixed(1)}</div>
+          </div>`).join("")}
+      </div>
+    </div>
+
+    <div class="result-section">
+      <h3>Rotationsanalyse</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Stärke jeder Rotation (höher = besser)</p>
+      <div class="rotation-grid">
+        ${rotScores.map(r => `
+          <div class="rot-card">
+            <div class="rot-num">${r.label}</div>
+            <div class="rot-name">Aufschlag: ${r.serving}</div>
+            <div class="rot-score">${(6-r.score).toFixed(1)} ⌀</div>
+            <div class="rot-bar-wrap"><div class="rot-bar" style="width:${(r.score/maxRot)*100}%"></div></div>
+          </div>`).join("")}
+      </div>
+    </div>
+
+    ${alts.length > 0 ? `
+    <div class="result-section">
+      <h3>Kader (Bank)</h3>
+      <ul class="alt-list">
+        ${alts.map(p => `<li>
+          <span><b>${p.name}</b> <span style="color:var(--muted);font-size:11px;">${POS_LABELS[p.role]||p.role}</span></span>
+          <span class="score-badge ${scoreLabel(p.roleScore)}">Ø ${(6-p.roleScore).toFixed(1)}</span>
+        </li>`).join("")}
+      </ul>
+    </div>` : ""}
+
+    <div class="result-section">
+      <h3>Einzelbewertungen</h3>
+      <table class="player-table">
+        <thead><tr><th>Name</th><th>Pos</th>${TECHS.map(t=>`<th>${t}</th>`).join("")}<th>Ø</th></tr></thead>
+        <tbody>
+          ${starters.map(p=>`<tr>
+            <td class="player-name">${p.name}</td>
+            <td>${p.role}</td>
+            ${TECH_KEYS.map(k=>`<td style="text-align:center"><span class="score-badge ${p.scores[k]<=2?'score-good':p.scores[k]<=3?'score-mid':'score-bad'}">${p.scores[k]}</span></td>`).join("")}
+            <td><b>${(Object.values(p.scores).reduce((a,b)=>a+b,0)/6).toFixed(1)}</b></td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ── Init ──
+loadState();
+renderTable();
+renderWeights();
+
+document.getElementById("btnCalc").addEventListener("click", calcBestLineup);
+document.getElementById("btnSave").addEventListener("click", () => { saveState(); alert("Gespeichert!"); });
+document.getElementById("btnLoad").addEventListener("click", () => { loadState(); renderTable(); renderWeights(); alert("Geladen!"); });
+document.getElementById("btnReset").addEventListener("click", () => {
+  if(confirm("Alle Bewertungen zurücksetzen?")){ 
+    players = PLAYERS.map(name => ({name, pos:"–", scores:{annahme:3,abwehr:3,angriff:3,block:3,aufschlag:3,komm:3}}));
+    weights = {annahme:3,abwehr:2,angriff:3,block:2,aufschlag:2,komm:2};
+    renderTable(); renderWeights();
+  }
+});
+
+})();
+</script>
+</body>
+</html>
