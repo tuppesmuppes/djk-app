@@ -327,52 +327,101 @@ function calcBestLineup(){
   const D = pickBest("D",1);
   const L = useLibero ? pickBest("L",1) : [];
   const starters = [...Z,...A,...M,...D,...L];
+  const zPlayer = Z[0], dPlayer = D[0];
 
   // Total lineup score
   const totalScore = starters.reduce((s,p) => s + p.roleScore, 0) / starters.length;
   const totalInv = 6 - totalScore; // back to 1-5 scale
 
-  // Rotation analysis: assign field positions
-  // 5-1 typical start: Z-pos1(aufschlag), A-pos6, M-pos5, D-pos4, M-pos3, A-pos2
-  // Each rotation shifts everyone +1
-  const fieldOrder = [
-    {fieldPos:1, role:"Z"}, {fieldPos:6, role:"A"}, {fieldPos:5, role:"M"},
-    {fieldPos:4, role:"D"}, {fieldPos:3, role:"M"}, {fieldPos:2, role:"A"}
-  ];
+  // ── Rotation analysis ──
+  // Startpositionen: Z=1, A=2, M=3, D=4, A=5, M=6
+  // ROT +1: {1→6, 2→1, 3→2, 4→3, 5→4, 6→5}
+  // Läufer X = Z steht auf Position X
+  // For each of 6 rotations (Läufer 1-6), assign players to field positions
 
-  // Assign players to field positions (Z=1, two A, two M, one D)
-  const zPlayer = Z[0], a1 = A[0], a2 = A[1], m1 = M[0], m2 = M[1], dPlayer = D[0];
-  const roleMap = {Z:zPlayer, A:[a1,a2], M:[m1,m2], D:dPlayer};
+  // Start: Z on pos 1, A on pos 2, M on pos 3, D on pos 4, A on pos 5, M on pos 6
+  const startAssign = {1:"Z", 2:"A", 3:"M", 4:"D", 5:"A", 6:"M"};
+  // Players assigned by role (A1=first A, A2=second A, M1=first M, M2=second M)
+  const roleAssign = {"Z":Z[0], "D":dPlayer, "A1":A[0], "A2":A[1], "M1":M[0], "M2":M[1]};
 
-  // Rotation scores: for each of 6 rotations, what's the "front row" strength?
-  // Rotation k: players shift so the one who was on pos k is now serving (pos 1)
-  // Front row = positions 2,3,4 → roles depend on rotation
-  // We simplify: each rotation = one player moves to front/back
-  // Score by front row attack capability vs back row defense
+  // Track which A and M goes where at start
+  // Pos2=A1, Pos3=M1, Pos5=A2, Pos6=M2
+  const startPlayers = {
+    1: roleAssign["Z"],
+    2: roleAssign["A1"],
+    3: roleAssign["M1"],
+    4: roleAssign["D"],
+    5: roleAssign["A2"],
+    6: roleAssign["M2"],
+  };
+
+  // Rotation function: after rot steps from start, who is on which pos?
+  // ROT+1 means player on pos X moves to pos ROT[X]
+  // After k rotations: player who started on pos p is now on pos after k applications of ROT
+  function applyRot(startPos, steps){
+    const ROT = {1:6, 2:1, 3:2, 4:3, 5:4, 6:5};
+    let pos = startPos;
+    for(let i=0; i<steps; i++) pos = ROT[pos];
+    return pos;
+  }
+
   const rotScores = [];
   for(let rot=0; rot<6; rot++){
-    // After rot rotations from start: pos assignments shift
-    // fieldOrder rotated by `rot` positions
-    const rotated = fieldOrder.map((_, i) => fieldOrder[(i + rot) % 6]);
-    let rotScore = 0;
-    rotated.forEach((slot, i) => {
-      const fieldPos = i + 1;
-      const isFront = fieldPos >= 2 && fieldPos <= 4;
-      let player = null;
-      if(slot.role === "Z") player = zPlayer;
-      else if(slot.role === "D") player = dPlayer;
-      else if(slot.role === "A") player = (i % 2 === 0) ? a1 : a2;
-      else if(slot.role === "M") player = (i % 2 === 0) ? m1 : m2;
-      if(!player) return;
-      const skills = isFront ? ["angriff","block"] : ["annahme","abwehr"];
-      let s = 0, w = 0;
-      skills.forEach(k => { s += (6-player.scores[k]) * (weights[k]||1); w += weights[k]||1; });
-      rotScore += w > 0 ? s/w : 3;
-    });
-    rotScores.push({rot:rot+1, score: rotScore/6, label:`Rotation ${rot+1}`,
-      serving: [zPlayer,a1,m1,dPlayer,m2,a2][rot]?.name || "?"
+    // After rot rotations: player who started on pos p is now on applyRot(p, rot)
+    const currentPos = {};
+    for(let startPos=1; startPos<=6; startPos++){
+      const nowPos = applyRot(startPos, rot);
+      currentPos[nowPos] = startPlayers[startPos];
+    }
+
+    // Läufer number = position of Z player
+    const zPos = Object.entries(currentPos).find(([p,pl]) => pl === roleAssign["Z"])?.[0];
+
+    // Score front row (positions 2,3,4) for attack/block
+    // Score back row (positions 1,5,6) for reception/defense
+    let totalScore = 0;
+    for(let pos=1; pos<=6; pos++){
+      const player = currentPos[pos];
+      if(!player) continue;
+      const isFront = [2,3,4].includes(pos);
+      const skills = isFront ? ["angriff","block","aufschlag"] : ["annahme","abwehr","komm"];
+      let s=0, w=0;
+      skills.forEach(k => {
+        const wt = weights[k]||1;
+        s += (6 - player.scores[k]) * wt;
+        w += wt;
+      });
+      totalScore += w>0 ? s/w : 3;
+    }
+
+    // Also score the libero effect (replaces back-row M in defense)
+    let liberoBonus = 0;
+    if(useLibero && L[0]){
+      const libero = L[0];
+      // Libero replaces the M player in back row
+      const backMs = [1,5,6].map(p => ({pos:p, player:currentPos[p]}))
+        .filter(({player}) => player === roleAssign["M1"] || player === roleAssign["M2"]);
+      if(backMs.length > 0){
+        const mPlayer = backMs[0].player;
+        ["annahme","abwehr"].forEach(k => {
+          const wt = weights[k]||1;
+          liberoBonus += ((6-libero.scores[k]) - (6-mPlayer.scores[k])) * wt / 2;
+        });
+      }
+    }
+
+    rotScores.push({
+      rot: rot+1,
+      laufer: +zPos,
+      score: (totalScore + liberoBonus) / 6,
+      serving: currentPos[1]?.name || "?",
+      frontRow: [2,3,4].map(p => currentPos[p]?.name).filter(Boolean).join(", "),
+      backRow: [1,5,6].map(p => currentPos[p]?.name).filter(Boolean).join(", "),
     });
   }
+
+  // Sort by Läufer number for display
+  rotScores.sort((a,b) => a.laufer - b.laufer);
   const maxRot = Math.max(...rotScores.map(r=>r.score));
 
   // Alternatives (next best per position)
@@ -406,8 +455,10 @@ function calcBestLineup(){
       <div class="rotation-grid">
         ${rotScores.map(r => `
           <div class="rot-card">
-            <div class="rot-num">${r.label}</div>
-            <div class="rot-name">Aufschlag: ${r.serving}</div>
+            <div class="rot-num">Läufer ${r.laufer}</div>
+            <div class="rot-name" style="font-size:11px;">Aufschlag: ${r.serving}</div>
+            <div class="rot-name" style="color:#1565c0;">↑ ${r.frontRow}</div>
+            <div class="rot-name" style="color:#888;">↓ ${r.backRow}</div>
             <div class="rot-score">${(6-r.score).toFixed(1)} ⌀</div>
             <div class="rot-bar-wrap"><div class="rot-bar" style="width:${(r.score/maxRot)*100}%"></div></div>
           </div>`).join("")}
