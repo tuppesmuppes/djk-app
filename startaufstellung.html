@@ -68,6 +68,21 @@
     .rot-bar-wrap{ height:5px; background:#e0e0e0; border-radius:99px; margin-top:4px; }
     .rot-bar{ height:5px; background:var(--red); border-radius:99px; }
 
+    /* Mini court */
+    .mini-court{ position:relative; width:100%; padding-bottom:70%; background:#5b9bd5; border-radius:6px; border:3px solid #1a3a5c; margin:6px 0; overflow:hidden; }
+    .mini-court-inner{ position:absolute; inset:0; }
+    .mini-net{ position:absolute; left:0; right:0; top:33.333%; height:3px; background:#fff; }
+    .mini-3m{ position:absolute; left:0; right:0; height:2px; background:rgba(255,255,255,.5); top:13%; }
+    .mini-vline{ position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.25); }
+    .mini-chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:#fff;
+      display:flex; align-items:center; justify-content:center; text-align:center;
+      border:2px solid var(--red); font-size:min(1.5vw,9px); font-weight:800; line-height:1.1;
+      width:18%; padding-bottom:18%; }
+    .mini-chip-inner{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; padding:1px; }
+    .mini-chip.front{ border-width:3px; }
+    .mini-chip .mc-spec{ font-size:min(1.3vw,8px); font-weight:900; }
+    .mini-chip .mc-name{ font-size:min(1vw,7px); opacity:.8; }
+
     .score-badge{ display:inline-block; padding:3px 10px; border-radius:20px; font-weight:800; font-size:13px; }
     .score-good{ background:#d4edda; color:#155724; }
     .score-mid{ background:#fff3cd; color:#856404; }
@@ -418,6 +433,7 @@ function calcBestLineup(){
       serving: currentPos[1]?.name || "?",
       frontRow: [2,3,4].map(p => currentPos[p]?.name).filter(Boolean).join(", "),
       backRow: [1,5,6].map(p => currentPos[p]?.name).filter(Boolean).join(", "),
+      positions: {...currentPos},
     });
   }
 
@@ -452,14 +468,37 @@ function calcBestLineup(){
 
     <div class="result-section">
       <h3>Rotationsanalyse</h3>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Stärke jeder Rotation (höher = besser)</p>
+  function miniCourt(positions){
+    const xy = {4:{x:17,y:22},3:{x:50,y:18},2:{x:83,y:22},5:{x:17,y:72},6:{x:50,y:80},1:{x:83,y:72}};
+    let chips = "";
+    [1,2,3,4,5,6].forEach(function(pos){
+      const player = positions[pos];
+      if(!player) return;
+      const p = xy[pos];
+      const front = [2,3,4].includes(pos);
+      const n = (player.name||"").substring(0,5);
+      const spec = (player.pos||"") + pos;
+      chips += '<div class="mini-chip' + (front?" front":"") + '" style="left:' + p.x + '%;top:' + p.y + '%">'
+             + '<div class="mini-chip-inner">'
+             + '<div class="mc-spec">' + spec + '</div>'
+             + '<div class="mc-name">' + n + '</div>'
+             + '</div></div>';
+    });
+    return '<div class="mini-court"><div class="mini-court-inner">'
+         + '<div class="mini-net"></div>'
+         + '<div class="mini-3m"></div>'
+         + '<div class="mini-vline" style="left:33.333%"></div>'
+         + '<div class="mini-vline" style="left:66.666%"></div>'
+         + chips + '</div></div>';
+  }
+
+      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Stärke jeder Rotation — Netz oben</p>
       <div class="rotation-grid">
         ${rotScores.map(r => `
           <div class="rot-card">
             <div class="rot-num">Läufer ${r.laufer}</div>
-            <div class="rot-name" style="font-size:11px;">Aufschlag: ${r.serving}</div>
-            <div class="rot-name" style="color:#1565c0;">↑ ${r.frontRow}</div>
-            <div class="rot-name" style="color:#888;">↓ ${r.backRow}</div>
+            ${miniCourt(r.positions)}
+            <div class="rot-name" style="font-size:11px;color:#888;">Aufschlag: ${r.serving}</div>
             <div class="rot-score">${(6-r.score).toFixed(1)} ⌀</div>
             <div class="rot-bar-wrap"><div class="rot-bar" style="width:${(r.score/maxRot)*100}%"></div></div>
           </div>`).join("")}
