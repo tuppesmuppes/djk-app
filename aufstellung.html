@@ -374,25 +374,42 @@ function resetAll(){
 // ── Lib ──
 const LIB_MAP={grund:"libGrund", annahme:"libAnnahme", aufschlag:"libAufschlag"};
 
-async function renderLibBox(k){
-  const box=document.getElementById(LIB_MAP[k]);
-  const title=box.querySelector(".lib-title");
-  box.innerHTML=""; box.appendChild(title);
-
+async function deleteFormation(k, name){
+  if(!confirm(`„${name}" wirklich löschen?`)) return;
   const lib=await loadLib(k);
+  const newLib=lib.filter(e=>e.name!==name);
+  await saveLib(k,newLib);
+  await renderLibBox(k);
+  if(activeFormation?.name===name){ activeFormation=null; document.getElementById("displayTitle").textContent=""; renderDisplayField(); updateSaveBtn(); }
+}
+
+function makeBtns(k, lib){
   const btns=document.createElement("div"); btns.className="lib-btns";
   if(lib.length===0){
     const h=document.createElement("div"); h.className="no-lib"; h.textContent="Noch keine Aufstellungen.";
     btns.appendChild(h);
   } else {
     lib.forEach(e=>{
+      const wrap=document.createElement("span"); wrap.style.cssText="display:inline-flex;align-items:center;gap:2px;";
       const b=document.createElement("button"); b.className="lib-btn"; b.textContent=e.name;
       b.addEventListener("click",()=>loadFormation(k,e.name));
-      btns.appendChild(b);
+      const del=document.createElement("button");
+      del.style.cssText="border:none;background:none;cursor:pointer;color:#e91e63;font-size:12px;padding:0 2px;line-height:1;font-weight:900;";
+      del.textContent="✕"; del.title="Löschen";
+      del.addEventListener("click",(ev)=>{ ev.stopPropagation(); deleteFormation(k,e.name); });
+      wrap.appendChild(b); wrap.appendChild(del);
+      btns.appendChild(wrap);
     });
   }
-  box.appendChild(btns);
+  return btns;
+}
 
+async function renderLibBox(k){
+  const box=document.getElementById(LIB_MAP[k]);
+  const title=box.querySelector(".lib-title");
+  box.innerHTML=""; box.appendChild(title);
+  const lib=await loadLib(k);
+  box.appendChild(makeBtns(k,lib));
   const sr=document.createElement("div"); sr.className="lib-save-row";
   const inp=document.createElement("input"); inp.className="lib-inp"; inp.placeholder="Name…"; inp.maxLength=40;
   const sbtn=document.createElement("button"); sbtn.className="lib-save-btn"; sbtn.textContent="💾 Speichern";
@@ -406,24 +423,13 @@ async function renderLibBox(k){
 async function saveFormation(k,name){
   name=name.trim(); if(!name)return;
   const lib=await loadLib(k);
-  const entry={
-    name,
-    players: state.players.map(p=>({id:p.id,spec:p.spec,pos:p.pos,x:p.x,y:p.y,name:p.name}))
-  };
+  const entry={name, players:state.players.map(p=>({id:p.id,spec:p.spec,pos:p.pos,x:p.x,y:p.y,name:p.name}))};
   const idx=lib.findIndex(e=>e.name===name);
   if(idx>=0)lib[idx]=entry; else lib.push(entry);
   await saveLib(k,lib);
-  // Update buttons without rebuilding input
   const box=document.getElementById(LIB_MAP[k]);
-  let btns=box.querySelector(".lib-btns");
-  if(btns) btns.remove();
-  btns=document.createElement("div"); btns.className="lib-btns";
-  lib.forEach(e=>{
-    const b=document.createElement("button"); b.className="lib-btn"; b.textContent=e.name;
-    b.addEventListener("click",()=>loadFormation(k,e.name));
-    btns.appendChild(b);
-  });
-  box.insertBefore(btns, box.querySelector(".lib-save-row"));
+  const old=box.querySelector(".lib-btns"); if(old) old.remove();
+  box.insertBefore(makeBtns(k,lib), box.querySelector(".lib-save-row"));
   box.querySelector(".lib-inp").value="";
 }
 
