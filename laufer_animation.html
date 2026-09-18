@@ -52,7 +52,7 @@
     .chip .pname{ font-size:min(1.4vw,13px); font-weight:700; opacity:.85; margin-top:2px; }
     @media(max-width:800px){ .chip .spec{ font-size:min(3.8vw,16px); } .chip .pname{ font-size:min(2.8vw,11px); } }
     .chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.25); z-index:10; }
-    .chip.animating{ transition: left 0.6s cubic-bezier(.4,0,.2,1), top 0.6s cubic-bezier(.4,0,.2,1); cursor:default; pointer-events:none; }
+    .chip.animating{ transition: left 2s cubic-bezier(.4,0,.2,1), top 2s cubic-bezier(.4,0,.2,1); cursor:default; pointer-events:none; }
 
     /* Right panel */
     .panel{ display:grid; gap:12px; }
@@ -112,6 +112,7 @@
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
       <button class="btn" id="btnPrev">← Vorheriger</button>
       <button class="btn" id="btnNext">Nächster →</button>
+      <button class="btn" id="btnRepeat">↺ Animation wiederholen</button>
     </div>
   </div>
 
@@ -279,7 +280,7 @@ function renderField(players, animate){
       el.style.cssText="width:"+size+"px;height:"+size+"px;left:"+tl+";top:"+tt+";opacity:"+(animate?"0":"1")+";";
       el.innerHTML="<div><div class=\"spec\">"+esc(spec)+p.pos+"</div><div class=\"pname\">"+esc(name)+"</div></div>";
       field.appendChild(el);
-      if(animate){ requestAnimationFrame(function(){ el.style.transition="opacity 0.4s"; el.style.opacity="1"; }); }
+      if(animate){ requestAnimationFrame(function(){ el.style.transition="opacity 1.33s"; el.style.opacity="1"; }); }
     }
   });
   Object.values(existing).forEach(function(el){ el.remove(); });
@@ -303,14 +304,14 @@ async function navigateToLaufer(newLaufer){
   document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · Grundaufstellung…";
   var grundLib=await loadLib("grund");
   var grundEntry=grundLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
-  if(grundEntry){ renderField(grundEntry.players,true); await new Promise(function(r){ setTimeout(r,750); }); }
+  if(grundEntry){ renderField(grundEntry.players,true); await new Promise(function(r){ setTimeout(r,2500); }); }
   document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · "+CAT_LABELS[currentCat];
   var targetLib=await loadLib(CAT_KEYS[currentCat]);
   var targetEntry=targetLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
   formation=targetEntry||null;
-  await new Promise(function(r){ setTimeout(r,200); });
+  await new Promise(function(r){ setTimeout(r,667); });
   renderField(formation?formation.players:null,true);
-  await new Promise(function(r){ setTimeout(r,750); });
+  await new Promise(function(r){ setTimeout(r,2500); });
   field.querySelectorAll(".chip").forEach(function(el){ el.classList.remove("animating"); });
   renderNameGrid();
   isAnimating=false;
@@ -320,7 +321,9 @@ document.getElementById("navRow").addEventListener("click",function(e){
   var b=e.target.closest(".nav-btn"); if(!b) return;
   navigateToLaufer(+b.dataset.l);
 });
-var navOrder=LAUFER_ORDER;
+document.getElementById("btnRepeat").addEventListener("click",function(){
+  navigateToLaufer(currentLaufer);
+});
 document.getElementById("btnNext").addEventListener("click",function(){
   var idx=navOrder.indexOf(currentLaufer);
   navigateToLaufer(navOrder[(idx+1)%navOrder.length]);
