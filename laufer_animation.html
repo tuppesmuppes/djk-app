@@ -220,6 +220,31 @@ function renderZones(){
   });
 }
 
+// ── Name panel ──
+function renderNameGrid(){
+  const grid=document.getElementById("nameGrid"); grid.innerHTML="";
+  [1,2,3,4,5,6].forEach(pos=>{
+    const slot=getSlotForPos(pos,currentLaufer);
+    const spec=getSpecForPos(pos,currentLaufer);
+    const cell=document.createElement("div"); cell.className="name-cell";
+    const usedSlots=Object.entries(assignedNames).filter(([s,n])=>s!==slot&&n).map(([,n])=>n);
+    const usedSet=new Set(usedSlots);
+    const curName=assignedNames[slot]||"";
+    const opts=NAMES.filter(n=>n===""||n===curName||!usedSet.has(n))
+      .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
+    cell.innerHTML=`<div class="badge"><div class="spec-badge">${esc(spec)}${pos}</div><div class="pos-lbl">Pos ${pos}</div></div>
+      <select class="name-sel" data-slot="${slot}">${opts}</select>`;
+    const sel=cell.querySelector("select"); sel.value=curName;
+    sel.addEventListener("change",()=>{
+      assignedNames[slot]=sel.value; saveNames();
+      const chip=field.querySelector(`.chip[data-pos="${pos}"]`);
+      if(chip) chip.querySelector(".pname").textContent=sel.value;
+      renderNameGrid();
+    });
+    grid.appendChild(cell);
+  });
+}
+
 let isAnimating=false;
 
 function renderField(players, animate){
