@@ -248,7 +248,9 @@ function renderNameGrid(){
 
 let isAnimating=false;
 
-function renderField(players, animate){
+function renderField(players, animate, updateText){
+  // updateText=true → update spec/name in chips; false → keep existing text
+  if(updateText===undefined) updateText=true;
   const {w,h}=getRect();
   const size=Math.min(w,h)*0.20;
   if(!players){
@@ -259,31 +261,55 @@ function renderField(players, animate){
   }
   field.querySelectorAll(".empty-hint").forEach(function(n){n.remove();});
   renderZones();
-  var existing={};
-  field.querySelectorAll(".chip").forEach(function(el){ existing[el.dataset.pos]=el; });
+  // Map existing chips by slot
+  var existingBySlot={};
+  field.querySelectorAll(".chip").forEach(function(el){ existingBySlot[el.dataset.slot]=el; });
+
   players.forEach(function(p){
+    var slot=getSlotForPos(p.pos,currentLaufer);
     var isFront=[2,3,4].includes(p.pos);
     var spec=getSpecForPos(p.pos,currentLaufer);
     var name=getNameForPos(p.pos,currentLaufer);
     var tl=p2px(p.x,w)+"px", tt=p2px(p.y,h)+"px";
-    if(existing[p.pos]){
-      var el=existing[p.pos];
-      el.querySelector(".spec").textContent=spec+p.pos;
-      el.querySelector(".pname").textContent=name;
+    if(existingBySlot[slot]){
+      var el=existingBySlot[slot];
+      if(updateText){
+        el.querySelector(".spec").textContent=spec+p.pos;
+        el.querySelector(".pname").textContent=name;
+      }
+      el.dataset.pos=p.pos;
       el.className="chip"+(isFront?" front":"")+(animate?" animating":"");
       el.style.left=tl; el.style.top=tt;
-      delete existing[p.pos];
+      delete existingBySlot[slot];
     } else {
       var el=document.createElement("div");
       el.className="chip"+(isFront?" front":"");
       el.dataset.pos=p.pos;
+      el.dataset.slot=slot;
       el.style.cssText="width:"+size+"px;height:"+size+"px;left:"+tl+";top:"+tt+";opacity:"+(animate?"0":"1")+";";
       el.innerHTML="<div><div class=\"spec\">"+esc(spec)+p.pos+"</div><div class=\"pname\">"+esc(name)+"</div></div>";
       field.appendChild(el);
       if(animate){ requestAnimationFrame(function(){ el.style.transition="opacity 1.6s"; el.style.opacity="1"; }); }
     }
   });
-  Object.values(existing).forEach(function(el){ el.remove(); });
+  Object.values(existingBySlot).forEach(function(el){ el.remove(); });
+}
+
+// Update text in chips after animation
+function updateChipTexts(players){
+  const {w,h}=getRect();
+  players.forEach(function(p){
+    var slot=getSlotForPos(p.pos,currentLaufer);
+    var el=field.querySelector(".chip[data-slot=\""+CSS.escape(slot)+"\"]");
+    if(!el) return;
+    var isFront=[2,3,4].includes(p.pos);
+    var spec=getSpecForPos(p.pos,currentLaufer);
+    var name=getNameForPos(p.pos,currentLaufer);
+    el.dataset.pos=p.pos;
+    el.classList.toggle("front", isFront);
+    el.querySelector(".spec").textContent=spec+p.pos;
+    el.querySelector(".pname").textContent=name;
+  });
 }
 
 async function loadAndRender(animate){
@@ -291,12 +317,13 @@ async function loadAndRender(animate){
   var lib=await loadLib(CAT_KEYS[currentCat]);
   var entry=lib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
   formation=entry||null;
-  renderField(formation?formation.players:null, animate);
+  renderField(formation?formation.players:null, animate, true);
   renderNameGrid();
 }
 
 async function navigateToLaufer(newLaufer){
   if(isAnimating) return;
+  var prevLaufer=currentLaufer;
   currentLaufer=newLaufer;
   document.querySelectorAll(".nav-btn").forEach(function(b){ b.classList.toggle("active",+b.dataset.l===newLaufer); });
   if(currentCat==="grund"){ await loadAndRender(false); return; }
@@ -304,13 +331,22 @@ async function navigateToLaufer(newLaufer){
   document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · Grundaufstellung…";
   var grundLib=await loadLib("grund");
   var grundEntry=grundLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
-  if(grundEntry){ renderField(grundEntry.players,true); await new Promise(function(r){ setTimeout(r,3000); }); }
+  if(grundEntry){
+    // Phase 1: move to Grundaufstellung positions WITHOUT updating text
+    currentLaufer=prevLaufer; // keep old laufer for slot calculation
+    renderField(grundEntry.players,true,false);
+    currentLaufer=newLaufer;
+    await new Promise(function(r){ setTimeout(r,3000); });
+    // Now update text to show new positions
+    updateChipTexts(grundEntry.players);
+  }
   document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · "+CAT_LABELS[currentCat];
   var targetLib=await loadLib(CAT_KEYS[currentCat]);
   var targetEntry=targetLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
   formation=targetEntry||null;
   await new Promise(function(r){ setTimeout(r,800); });
-  renderField(formation?formation.players:null,true);
+  // Phase 2: move to target positions, update text
+  renderField(formation?formation.players:null,true,true);
   await new Promise(function(r){ setTimeout(r,3000); });
   field.querySelectorAll(".chip").forEach(function(el){ el.classList.remove("animating"); });
   renderNameGrid();
@@ -372,10 +408,10 @@ court.addEventListener("pointercancel",()=>{ drag=null; });
 document.getElementById("btnReset").addEventListener("click",()=>{
   if(!formation) return;
   formation.players.forEach(p=>{ p.x=DEFAULT_XY[p.pos].x; p.y=DEFAULT_XY[p.pos].y; });
-  renderField(formation?formation.players:null,false);
+  renderField(formation?formation.players:null,false,false);
 });
 
-window.addEventListener("resize",()=>{ renderField(formation?formation.players:null,false); });
+window.addEventListener("resize",()=>{ renderField(formation?formation.players:null,false,true); });
 
 // ── Init ──
 renderZones();
