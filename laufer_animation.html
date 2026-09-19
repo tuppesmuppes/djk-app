@@ -332,10 +332,10 @@ async function navigateToLaufer(newLaufer){
   var grundLib=await loadLib("grund");
   var grundEntry=grundLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
   if(grundEntry){
-    // Phase 1: move to Grundaufstellung positions WITHOUT updating text
-    currentLaufer=prevLaufer; // keep old laufer for slot calculation
-    renderField(grundEntry.players,true,false);
+    // Phase 1: move chips to Grundaufstellung positions of new Läufer
+    // Keep old text (numbers), use new laufer's slot mapping for positioning
     currentLaufer=newLaufer;
+    renderField(grundEntry.players,true,false);
     await new Promise(function(r){ setTimeout(r,3000); });
     // Now update text to show new positions
     updateChipTexts(grundEntry.players);
