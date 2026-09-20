@@ -21,6 +21,9 @@
 
     /* Full court (top) */
     .full-court{ position:relative; width:100%; height:min(38vh,320px); border-radius:6px; border:5px solid var(--blue); background:#5b9bd5; overflow:hidden; touch-action:none; user-select:none; margin-bottom:10px; }
+    .full-court::after{ content:"NET"; position:absolute; bottom:0; left:0; right:0; height:8px; background:#fff; z-index:2; pointer-events:none; }
+    .full-court-3m{ position:absolute; left:0; right:0; height:3px; background:rgba(255,255,255,.5); bottom:33.333%; pointer-events:none; z-index:1; }
+    .full-court-3m-lbl{ position:absolute; right:5px; font-size:10px; font-weight:800; color:#fff; bottom:calc(33.333% + 4px); pointer-events:none; }
     @media(max-width:800px){ .full-court{ height:30vh; } }
 
     /* Net */
@@ -106,10 +109,10 @@
       <button class="btn" id="btnReset">Zurücksetzen</button>
     </div>
 
-    <!-- Full court: attack side top, defense side bottom -->
+    <!-- Full court: attack side only (no net shown) -->
     <div class="full-court" id="fullCourt">
-      <div class="net"></div>
-      <div class="net-mesh"></div>
+      <div class="full-court-3m"></div>
+      <div class="full-court-3m-lbl">3m</div>
       <div id="fullField"></div>
     </div>
 
@@ -180,9 +183,9 @@ let defPos = loadDefPos() || JSON.parse(JSON.stringify(DEF_DEFAULT));
 // Attack chips on full court (top half = opponent side)
 // 3 chips on top half (y: 0-50%)
 const ATTACK_DEFAULT = [
-  {id:'atk1', x:17, y:30},
-  {id:'atk2', x:50, y:20},
-  {id:'atk3', x:83, y:30},
+  {id:'atk1', x:17, y:60},
+  {id:'atk2', x:50, y:40},
+  {id:'atk3', x:83, y:60},
 ];
 let attackChips = JSON.parse(JSON.stringify(ATTACK_DEFAULT));
 
@@ -403,14 +406,14 @@ fullCourt.addEventListener("pointermove",e=>{
   const cr=fullCourt.getBoundingClientRect(); const {w,h}=getFullRect();
   if(dragFull.isBall){
     ball.x=clamp(px2p(e.clientX-cr.left+dragFull.ox,w),2,98);
-    ball.y=clamp(px2p(e.clientY-cr.top+dragFull.oy,h),2,48);
+    ball.y=clamp(px2p(e.clientY-cr.top+dragFull.oy,h),2,96);
     const bel=fullField.querySelector(".ball");
     if(bel){ bel.style.left=p2px(ball.x,w)+"px"; bel.style.top=p2px(ball.y,h)+"px"; }
     return;
   }
   const a=attackChips.find(x=>x.id===dragFull.id); if(!a) return;
   a.x=clamp(px2p(e.clientX-cr.left+dragFull.ox,w),2,98);
-  a.y=clamp(px2p(e.clientY-cr.top+dragFull.oy,h),2,48);
+  a.y=clamp(px2p(e.clientY-cr.top+dragFull.oy,h),2,96);
   const el=fullField.querySelector(`.attack-chip[data-id="${cssEsc(dragFull.id)}"]`);
   if(el){ el.style.left=p2px(a.x,w)+"px"; el.style.top=p2px(a.y,h)+"px"; }
 });
