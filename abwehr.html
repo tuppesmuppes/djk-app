@@ -30,10 +30,12 @@
     .net{ position:absolute; left:0; right:0; top:50%; height:5px; background:#fff; z-index:2; pointer-events:none; transform:translateY(-2px); }
     .net-mesh{ position:absolute; left:0; right:0; top:calc(50% - 8px); height:6px; z-index:2; pointer-events:none;
       background-image:repeating-linear-gradient(90deg,#fff 0,#fff 3px,transparent 3px,transparent 12px); }
-    .attack-chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:rgba(255,255,255,.15);
-      border:3px dashed rgba(255,255,255,.8); cursor:grab; touch-action:none; z-index:3;
-      display:flex; align-items:center; justify-content:center;
+    .attack-chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:#fff;
+      border:6px solid #B8860B; cursor:grab; touch-action:none; z-index:3;
+      box-shadow:0 6px 14px rgba(0,0,0,.2);
       pointer-events:all; }
+    .attack-chip.front{ border-width:9px; }
+    .attack-chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.25); }
     .attack-chip.dragging{ cursor:grabbing; }
 
     /* Ball */
@@ -224,15 +226,13 @@ function getFullRect(){ const r=fullCourt.getBoundingClientRect(); return {w:r.w
 function renderFullCourt(){
   fullField.querySelectorAll(".attack-chip,.ball").forEach(n=>n.remove());
   const {w,h}=getFullRect();
-  const size=Math.min(w,h)*0.18;
+  const size=Math.min(w,h)*0.21;
 
-  // Attack chips (top half: y 0-50%)
   attackChips.forEach(a=>{
     const el=document.createElement("div");
     el.className="attack-chip";
     el.dataset.id=a.id;
     el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(a.x,w)}px;top:${p2px(a.y,h)}px;`;
-    el.innerHTML=`<span style="display:block;width:100%;height:100%;border-radius:999px;"></span>`;
     fullField.appendChild(el);
   });
 
