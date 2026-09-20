@@ -27,9 +27,10 @@
     .net{ position:absolute; left:0; right:0; top:50%; height:5px; background:#fff; z-index:2; pointer-events:none; transform:translateY(-2px); }
     .net-mesh{ position:absolute; left:0; right:0; top:calc(50% - 8px); height:6px; z-index:2; pointer-events:none;
       background-image:repeating-linear-gradient(90deg,#fff 0,#fff 3px,transparent 3px,transparent 12px); }
-    .attack-chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:rgba(255,255,255,.25);
-      border:3px dashed rgba(255,255,255,.7); cursor:grab; touch-action:none; z-index:3;
-      display:flex; align-items:center; justify-content:center; }
+    .attack-chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:rgba(255,255,255,.15);
+      border:3px dashed rgba(255,255,255,.8); cursor:grab; touch-action:none; z-index:3;
+      display:flex; align-items:center; justify-content:center;
+      pointer-events:all; }
     .attack-chip.dragging{ cursor:grabbing; }
 
     /* Ball */
@@ -179,9 +180,9 @@ let defPos = loadDefPos() || JSON.parse(JSON.stringify(DEF_DEFAULT));
 // Attack chips on full court (top half = opponent side)
 // 3 chips on top half (y: 0-50%)
 const ATTACK_DEFAULT = [
-  {id:'atk1', x:17, y:35},
-  {id:'atk2', x:50, y:25},
-  {id:'atk3', x:83, y:35},
+  {id:'atk1', x:17, y:30},
+  {id:'atk2', x:50, y:20},
+  {id:'atk3', x:83, y:30},
 ];
 let attackChips = JSON.parse(JSON.stringify(ATTACK_DEFAULT));
 
@@ -228,6 +229,7 @@ function renderFullCourt(){
     el.className="attack-chip";
     el.dataset.id=a.id;
     el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(a.x,w)}px;top:${p2px(a.y,h)}px;`;
+    el.innerHTML=`<span style="display:block;width:100%;height:100%;border-radius:999px;"></span>`;
     fullField.appendChild(el);
   });
 
@@ -400,15 +402,15 @@ fullCourt.addEventListener("pointermove",e=>{
   if(!dragFull||e.pointerId!==dragFull.ptr) return;
   const cr=fullCourt.getBoundingClientRect(); const {w,h}=getFullRect();
   if(dragFull.isBall){
-    ball.x=clamp(px2p(e.clientX-cr.left+dragFull.ox,w),0,100);
-    ball.y=clamp(px2p(e.clientY-cr.top+dragFull.oy,h),2,47); // top half only
+    ball.x=clamp(px2p(e.clientX-cr.left+dragFull.ox,w),2,98);
+    ball.y=clamp(px2p(e.clientY-cr.top+dragFull.oy,h),2,48);
     const bel=fullField.querySelector(".ball");
     if(bel){ bel.style.left=p2px(ball.x,w)+"px"; bel.style.top=p2px(ball.y,h)+"px"; }
     return;
   }
   const a=attackChips.find(x=>x.id===dragFull.id); if(!a) return;
-  a.x=clamp(px2p(e.clientX-cr.left+dragFull.ox,w),0,100);
-  a.y=clamp(px2p(e.clientY-cr.top+dragFull.oy,h),2,47); // top half only
+  a.x=clamp(px2p(e.clientX-cr.left+dragFull.ox,w),2,98);
+  a.y=clamp(px2p(e.clientY-cr.top+dragFull.oy,h),2,48);
   const el=fullField.querySelector(`.attack-chip[data-id="${cssEsc(dragFull.id)}"]`);
   if(el){ el.style.left=p2px(a.x,w)+"px"; el.style.top=p2px(a.y,h)+"px"; }
 });
