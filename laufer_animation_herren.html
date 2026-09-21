@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>Läufer Rotation Animation</title>
+  <style>
+    :root{ --bg:#f5f5f5; --card:#fff; --red:#CC0000; --blue:#1565c0; --line:rgba(0,0,0,.12); --muted:#888; --radius:14px; }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{ font-family:system-ui,sans-serif; background:var(--bg); color:#111; }
+    .top-bar{ background:var(--red); height:5px; }
+    .wrap{ max-width:1100px; margin:0 auto; padding:12px; display:grid; grid-template-columns:1.3fr .7fr; gap:14px; align-items:start; }
+    @media(max-width:800px){ .wrap{ grid-template-columns:1fr; } }
+
+    .card{ background:var(--card); border-radius:var(--radius); box-shadow:0 6px 18px rgba(0,0,0,.07); border:1px solid var(--line); padding:12px; }
+
+    /* Header */
+    .app-title{ font-size:20px; font-weight:900; }
+    .app-title span{ color:var(--red); }
+    .laufer-label{ font-size:26px; font-weight:900; color:var(--red); min-height:32px; margin-top:4px; }
+
+    /* Category tabs */
+    .tabs{ display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; }
+    .tab{ -webkit-appearance:none; appearance:none; border:2px solid var(--line); background:#fff; padding:7px 12px; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer; }
+    .tab.active{ background:var(--red); border-color:var(--red); color:#fff; }
+
+    /* Läufer nav buttons */
+    .nav-row{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .nav-btn{ -webkit-appearance:none; appearance:none; border:2px solid var(--line); background:#fff; width:44px; height:44px; border-radius:10px; font-weight:900; font-size:16px; cursor:pointer; }
+    .nav-btn.active{ background:var(--red); border-color:var(--red); color:#fff; }
+    .nav-btn:hover:not(.active){ border-color:var(--red); color:var(--red); }
+
+    /* Court */
+    .court{ position:relative; width:100%; height:min(52vh,540px); border-radius:6px; border:6px solid var(--blue); background:#5b9bd5; overflow:hidden; touch-action:none; user-select:none; }
+    @media(max-width:800px){ .court{ height:46vh; } }
+    .net-grid{ position:absolute; top:0; left:0; right:0; height:14px; z-index:2; pointer-events:none;
+      background-image:repeating-linear-gradient(90deg,#fff 0,#fff 4px,transparent 4px,transparent 14px),
+        repeating-linear-gradient(0deg,#fff 0,#fff 3px,transparent 3px,transparent 9px);
+      border-bottom:3px solid #fff; }
+    .three-m{ position:absolute; left:0; right:0; height:4px; background:rgba(255,255,255,.6); top:33.333%; pointer-events:none; z-index:1; }
+    .three-m-lbl{ position:absolute; right:5px; font-size:10px; font-weight:800; color:#fff; top:calc(33.333% + 4px); pointer-events:none; }
+    .zone-line-v{ position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.2); }
+    .zone-num{ position:absolute; font-size:min(3vw,22px); font-weight:900; color:rgba(255,255,255,.3); display:flex; align-items:flex-end; justify-content:flex-end; padding:0 5px 3px 0; }
+    .empty-hint{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:rgba(255,255,255,.6); font-size:15px; font-weight:700; text-align:center; pointer-events:none; }
+
+    /* Chips */
+    .chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:#fff;
+      display:flex; align-items:center; justify-content:center; text-align:center; line-height:1.1;
+      box-shadow:0 6px 14px rgba(0,0,0,.2); border:6px solid var(--red); cursor:grab; touch-action:none; z-index:3; }
+    .chip.front{ border-width:9px; }
+    .chip .spec{ font-weight:900; font-size:min(2.2vw,20px); }
+    .chip .pname{ font-size:min(1.4vw,13px); font-weight:700; opacity:.85; margin-top:2px; }
+    @media(max-width:800px){ .chip .spec{ font-size:min(3.8vw,16px); } .chip .pname{ font-size:min(2.8vw,11px); } }
+    .chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.25); z-index:10; }
+    .chip.animating{ transition: left 2.4s cubic-bezier(.4,0,.2,1), top 2.4s cubic-bezier(.4,0,.2,1); cursor:default; pointer-events:none; }
+
+    /* Right panel */
+    .panel{ display:grid; gap:12px; }
+    .name-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .name-cell{ border:1px solid var(--line); border-radius:12px; padding:8px; }
+    .name-cell .badge{ display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+    .spec-badge{ min-width:44px; height:28px; border-radius:999px; border:2px solid var(--red); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; }
+    .pos-lbl{ font-size:11px; font-weight:700; color:var(--muted); }
+    .name-sel{ width:100%; padding:6px 8px; border-radius:10px; border:1px solid var(--line); font-size:12px; background:#fff; outline:none; }
+
+    .btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:9px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
+    .btn:active{ transform:translateY(1px); }
+  </style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+
+  <!-- Left: field -->
+  <div class="card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">
+      <div>
+        <div class="app-title">Volleyball <span>Läufer</span></div>
+        <div class="laufer-label" id="lauferLabel">—</div>
+      </div>
+      <button class="btn" id="btnReset">Zurücksetzen</button>
+    </div>
+
+    <!-- Category tabs -->
+    <div class="tabs" id="catTabs">
+      <button class="tab active" data-cat="grund">Grundaufstellung</button>
+      <button class="tab" data-cat="annahme">Annahme</button>
+      <button class="tab" data-cat="aufschlag">Bei eigenem Aufschlag</button>
+    </div>
+
+    <!-- Läufer nav -->
+    <div class="nav-row" id="navRow">
+      <button class="nav-btn active" data-l="1">1</button>
+      <button class="nav-btn" data-l="6">6</button>
+      <button class="nav-btn" data-l="5">5</button>
+      <button class="nav-btn" data-l="4">4</button>
+      <button class="nav-btn" data-l="3">3</button>
+      <button class="nav-btn" data-l="2">2</button>
+    </div>
+
+    <!-- Half court -->
+    <div class="court" id="court">
+      <div class="net-grid"></div>
+      <div id="field">
+        <div class="three-m"></div>
+        <div class="three-m-lbl">3m</div>
+        <div class="zone-line-v" style="left:33.333%"></div>
+        <div class="zone-line-v" style="left:66.666%"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+      <button class="btn" id="btnPrev">← Vorheriger</button>
+      <button class="btn" id="btnNext">Nächster →</button>
+      <button class="btn" id="btnRepeat">↺ Animation wiederholen</button>
+    </div>
+  </div>
+
+  <!-- Right: name panel -->
+  <div class="panel">
+    <div class="card">
+      <div style="font-size:15px;font-weight:900;margin-bottom:10px;">Spielerinnen</div>
+      <div class="name-grid" id="nameGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const SERVER  = "https://scoreboard-rzql.onrender.com";
+const LS_KEY  = "vb_laufer_herren_v1";
+const LAUFER_ORDER = [1,6,5,4,3,2];
+const SPECS   = {1:'Z', 2:'A', 3:'M', 4:'D', 5:'A', 6:'M'};
+const DEFAULT_XY = {
+  4:{x:17,y:22}, 3:{x:50,y:18}, 2:{x:83,y:22},
+  5:{x:17,y:72}, 6:{x:50,y:80}, 1:{x:83,y:72}
+};
+const NAMES = ["","Felix","Viveko","Laurin","Jannik","Stefan","Philipp","Aure","Vincent","David","Jaspal","Finn","Hendrik","Niko","Simon Mi","Simon Mo"];
+const CAT_KEYS = {grund:"grund", annahme:"annahme", aufschlag:"aufschlag"};
+const CAT_LABELS = {grund:"Grundaufstellung", annahme:"Annahme", aufschlag:"Bei eigenem Aufschlag"};
+
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const cssEsc = s => CSS.escape(String(s));
+const p2px = (p,s) => (p/100)*s;
+const px2p = (px,s) => s===0?0:(px/s)*100;
+const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
+
+// ── State ──
+// Names assigned by spec (Z, A1, M1, D, A2, M2) — persisted locally
+function defNames(){ return {Z:"",A1:"",A2:"",M1:"",M2:"",D:""}; }
+function loadNames(){
+  try{ const r=localStorage.getItem(LS_KEY); return r?JSON.parse(r):defNames(); }catch{ return defNames(); }
+}
+function saveNames(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(assignedNames)); }catch{} }
+let assignedNames = loadNames();
+
+// Spec slot ordering per position
+const POS_SPEC_SLOT = {
+  1:'Z', 2:'A1', 3:'M1', 4:'D', 5:'A2', 6:'M2'
+};
+// After k rotations from start (Z on pos 1), who is on each position?
+// ROT+1: {1→6,6→5,5→4,4→3,3→2,2→1}
+function getSlotForPos(pos, laufer){
+  // laufer = which position Z is on (1-6)
+  // Calculate starting position of each slot
+  // slot Z starts on pos laufer, then offset others
+  const starts = {Z:laufer, A1:((laufer)%6)+1, M1:((laufer+1)%6)+1,
+                  D:((laufer+2)%6)+1, A2:((laufer+3)%6)+1, M2:((laufer+4)%6)+1};
+  // Wait — simpler: who occupies `pos` when Z is on `laufer`?
+  // Offset = (pos - laufer + 6) % 6
+  const offset = (pos - laufer + 6) % 6;
+  const slotOrder = ['Z','A1','M1','D','A2','M2'];
+  return slotOrder[offset];
+}
+
+function getSpecForPos(pos, laufer){
+  const slot = getSlotForPos(pos, laufer);
+  const baseSpec = {Z:'Z',A1:'A',A2:'A',M1:'M',M2:'M',D:'D'};
+  return baseSpec[slot] || '?';
+}
+function getNameForPos(pos, laufer){
+  const slot = getSlotForPos(pos, laufer);
+  return assignedNames[slot] || "";
+}
+
+// ── Lib ──
+const libCache = {};
+async function loadLib(k){
+  try{
+    const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch(`${SERVER}/lib/${k}?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){ const d=await r.json(); if(d.length){ libCache[k]=d; return d; } }
+  }catch{}
+  if(libCache[k]) return libCache[k];
+  return[];
+}
+
+// ── UI state ──
+let currentLaufer = 1;
+let currentCat = "grund";
+let formation = null; // saved formation positions for current laufer+cat
+
+// ── Court ──
+const court = document.getElementById("court");
+const field = document.getElementById("field");
+
+function getRect(){ const r=court.getBoundingClientRect(); return {w:r.width,h:r.height}; }
+
+// Zone numbers
+function renderZones(){
+  field.querySelectorAll(".zone-num").forEach(n=>n.remove());
+  [[4,0,0],[3,1,0],[2,2,0],[5,0,1],[6,1,1],[1,2,1]].forEach(([n,c,row])=>{
+    const d=document.createElement("div"); d.className="zone-num";
+    d.style.left=`${c*100/3}%`; d.style.top=`${row*50}%`;
+    d.style.width=`${100/3}%`; d.style.height="50%";
+    d.textContent=n; field.appendChild(d);
+  });
+}
+
+// ── Name panel ──
+function renderNameGrid(){
+  const grid=document.getElementById("nameGrid"); grid.innerHTML="";
+  [1,2,3,4,5,6].forEach(pos=>{
+    const slot=getSlotForPos(pos,currentLaufer);
+    const spec=getSpecForPos(pos,currentLaufer);
+    const cell=document.createElement("div"); cell.className="name-cell";
+    const usedSlots=Object.entries(assignedNames).filter(([s,n])=>s!==slot&&n).map(([,n])=>n);
+    const usedSet=new Set(usedSlots);
+    const curName=assignedNames[slot]||"";
+    const opts=NAMES.filter(n=>n===""||n===curName||!usedSet.has(n))
+      .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
+    cell.innerHTML=`<div class="badge"><div class="spec-badge">${esc(spec)}${pos}</div><div class="pos-lbl">Pos ${pos}</div></div>
+      <select class="name-sel" data-slot="${slot}">${opts}</select>`;
+    const sel=cell.querySelector("select"); sel.value=curName;
+    sel.addEventListener("change",()=>{
+      assignedNames[slot]=sel.value; saveNames();
+      const chip=field.querySelector(`.chip[data-pos="${pos}"]`);
+      if(chip) chip.querySelector(".pname").textContent=sel.value;
+      renderNameGrid();
+    });
+    grid.appendChild(cell);
+  });
+}
+
+let isAnimating=false;
+
+function renderField(players, animate, updateText){
+  // updateText=true → update spec/name in chips; false → keep existing text
+  if(updateText===undefined) updateText=true;
+  const {w,h}=getRect();
+  const size=Math.min(w,h)*0.20;
+  if(!players){
+    field.querySelectorAll(".chip,.empty-hint").forEach(function(n){n.remove();});
+    renderZones();
+    var hint=document.createElement("div"); hint.className="empty-hint";
+    hint.textContent="Kein Eintrag für diesen Läufer"; field.appendChild(hint); return;
+  }
+  field.querySelectorAll(".empty-hint").forEach(function(n){n.remove();});
+  renderZones();
+  // Map existing chips by slot
+  var existingBySlot={};
+  field.querySelectorAll(".chip").forEach(function(el){ existingBySlot[el.dataset.slot]=el; });
+
+  players.forEach(function(p){
+    var slot=getSlotForPos(p.pos,currentLaufer);
+    var isFront=[2,3,4].includes(p.pos);
+    var spec=getSpecForPos(p.pos,currentLaufer);
+    var name=getNameForPos(p.pos,currentLaufer);
+    var tl=p2px(p.x,w)+"px", tt=p2px(p.y,h)+"px";
+    if(existingBySlot[slot]){
+      var el=existingBySlot[slot];
+      if(updateText){
+        el.querySelector(".spec").textContent=spec+p.pos;
+        el.querySelector(".pname").textContent=name;
+      }
+      el.dataset.pos=p.pos;
+      el.className="chip"+(isFront?" front":"")+(animate?" animating":"");
+      el.style.left=tl; el.style.top=tt;
+      delete existingBySlot[slot];
+    } else {
+      var el=document.createElement("div");
+      el.className="chip"+(isFront?" front":"");
+      el.dataset.pos=p.pos;
+      el.dataset.slot=slot;
+      el.style.cssText="width:"+size+"px;height:"+size+"px;left:"+tl+";top:"+tt+";opacity:"+(animate?"0":"1")+";";
+      el.innerHTML="<div><div class=\"spec\">"+esc(spec)+p.pos+"</div><div class=\"pname\">"+esc(name)+"</div></div>";
+      field.appendChild(el);
+      if(animate){ requestAnimationFrame(function(){ el.style.transition="opacity 1.6s"; el.style.opacity="1"; }); }
+    }
+  });
+  Object.values(existingBySlot).forEach(function(el){ el.remove(); });
+}
+
+// Update text in chips after animation
+function updateChipTexts(players){
+  const {w,h}=getRect();
+  players.forEach(function(p){
+    var slot=getSlotForPos(p.pos,currentLaufer);
+    var el=field.querySelector(".chip[data-slot=\""+CSS.escape(slot)+"\"]");
+    if(!el) return;
+    var isFront=[2,3,4].includes(p.pos);
+    var spec=getSpecForPos(p.pos,currentLaufer);
+    var name=getNameForPos(p.pos,currentLaufer);
+    el.dataset.pos=p.pos;
+    el.classList.toggle("front", isFront);
+    el.querySelector(".spec").textContent=spec+p.pos;
+    el.querySelector(".pname").textContent=name;
+  });
+}
+
+async function loadAndRender(animate){
+  document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · "+CAT_LABELS[currentCat];
+  var lib=await loadLib(CAT_KEYS[currentCat]);
+  var entry=lib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
+  formation=entry||null;
+  renderField(formation?formation.players:null, animate, true);
+  renderNameGrid();
+}
+
+async function navigateToLaufer(newLaufer){
+  if(isAnimating) return;
+  var prevLaufer=currentLaufer;
+  currentLaufer=newLaufer;
+  document.querySelectorAll(".nav-btn").forEach(function(b){ b.classList.toggle("active",+b.dataset.l===newLaufer); });
+  if(currentCat==="grund"){ await loadAndRender(false); return; }
+  isAnimating=true;
+  document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · Grundaufstellung…";
+  var grundLib=await loadLib("grund");
+  var grundEntry=grundLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
+  if(grundEntry){
+    // Phase 1: move chips to Grundaufstellung positions of new Läufer
+    // Keep old text (numbers), use new laufer's slot mapping for positioning
+    currentLaufer=newLaufer;
+    renderField(grundEntry.players,true,false);
+    await new Promise(function(r){ setTimeout(r,3000); });
+    // Now update text to show new positions
+    updateChipTexts(grundEntry.players);
+  }
+  document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · "+CAT_LABELS[currentCat];
+  var targetLib=await loadLib(CAT_KEYS[currentCat]);
+  var targetEntry=targetLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
+  formation=targetEntry||null;
+  await new Promise(function(r){ setTimeout(r,800); });
+  // Phase 2: move to target positions, update text
+  renderField(formation?formation.players:null,true,true);
+  await new Promise(function(r){ setTimeout(r,3000); });
+  field.querySelectorAll(".chip").forEach(function(el){ el.classList.remove("animating"); });
+  renderNameGrid();
+  isAnimating=false;
+}
+
+document.getElementById("navRow").addEventListener("click",function(e){
+  var b=e.target.closest(".nav-btn"); if(!b) return;
+  navigateToLaufer(+b.dataset.l);
+});
+document.getElementById("btnRepeat").addEventListener("click",function(){
+  navigateToLaufer(currentLaufer);
+});
+var navOrder=LAUFER_ORDER;
+document.getElementById("btnNext").addEventListener("click",function(){
+  var idx=navOrder.indexOf(currentLaufer);
+  navigateToLaufer(navOrder[(idx+1)%navOrder.length]);
+});
+document.getElementById("btnPrev").addEventListener("click",function(){
+  var idx=navOrder.indexOf(currentLaufer);
+  navigateToLaufer(navOrder[(idx-1+navOrder.length)%navOrder.length]);
+});
+
+// ── Category tabs ──
+document.getElementById("catTabs").addEventListener("click",e=>{
+  const t=e.target.closest(".tab"); if(!t) return;
+  currentCat=t.dataset.cat;
+  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===t));
+  loadAndRender(false);
+});
+
+// ── Drag ──
+let drag=null;
+court.addEventListener("pointerdown",e=>{
+  const t=e.target.closest(".chip"); if(!t||!formation) return; e.preventDefault();
+  const pos=+t.dataset.pos;
+  const p=formation.players.find(x=>x.pos===pos); if(!p) return;
+  const cr=court.getBoundingClientRect(); const {w,h}=getRect();
+  drag={pos,ptr:e.pointerId,ox:p2px(p.x,w)-(e.clientX-cr.left),oy:p2px(p.y,h)-(e.clientY-cr.top)};
+  t.classList.add("dragging"); t.setPointerCapture(e.pointerId);
+});
+court.addEventListener("pointermove",e=>{
+  if(!drag||e.pointerId!==drag.ptr||!formation) return;
+  const p=formation.players.find(x=>x.pos===drag.pos); if(!p) return;
+  const cr=court.getBoundingClientRect(); const {w,h}=getRect();
+  p.x=clamp(px2p(e.clientX-cr.left+drag.ox,w),0,100);
+  p.y=clamp(px2p(e.clientY-cr.top+drag.oy,h),0,100);
+  const chip=field.querySelector(`.chip[data-pos="${drag.pos}"]`);
+  if(chip){ chip.style.left=`${p2px(p.x,w)}px`; chip.style.top=`${p2px(p.y,h)}px`; }
+});
+court.addEventListener("pointerup",e=>{
+  if(!drag||e.pointerId!==drag.ptr) return;
+  field.querySelector(`.chip[data-pos="${drag.pos}"]`)?.classList.remove("dragging");
+  drag=null;
+});
+court.addEventListener("pointercancel",()=>{ drag=null; });
+
+// ── Reset ──
+document.getElementById("btnReset").addEventListener("click",()=>{
+  if(!formation) return;
+  formation.players.forEach(p=>{ p.x=DEFAULT_XY[p.pos].x; p.y=DEFAULT_XY[p.pos].y; });
+  renderField(formation?formation.players:null,false,false);
+});
+
+window.addEventListener("resize",()=>{ renderField(formation?formation.players:null,false,true); });
+
+// ── Init ──
+renderZones();
+loadAndRender(false);
+
+})();
+</script>
+</body>
+</html>
