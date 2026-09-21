@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>Abwehrstellungen</title>
+  <style>
+    :root{ --bg:#f5f5f5; --card:#fff; --red:#CC0000; --blue:#1565c0; --line:rgba(0,0,0,.12); --muted:#888; --radius:14px; }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body{ font-family:system-ui,sans-serif; background:var(--bg); color:#111; }
+    .top-bar{ background:var(--red); height:5px; }
+    .wrap{ max-width:1100px; margin:0 auto; padding:12px; display:grid; grid-template-columns:1.3fr .7fr; gap:14px; align-items:start; }
+    @media(max-width:800px){ .wrap{ grid-template-columns:1fr; } }
+
+    .card{ background:var(--card); border-radius:var(--radius); box-shadow:0 6px 18px rgba(0,0,0,.07); border:1px solid var(--line); padding:12px; }
+
+    /* Header */
+    .app-title{ font-size:20px; font-weight:900; }
+    .app-title span{ color:var(--red); }
+    .stellung-label{ font-size:18px; font-weight:900; color:var(--red); min-height:24px; margin-top:4px; }
+
+    /* Full court (top) */
+    .full-court{ position:relative; width:100%; height:min(38vh,320px); border-radius:6px; border:5px solid var(--blue); background:#5b9bd5; overflow:hidden; touch-action:none; user-select:none; margin-bottom:10px; }
+    .full-court::after{ content:"NET"; position:absolute; bottom:0; left:0; right:0; height:8px; background:#fff; z-index:2; pointer-events:none; }
+    .full-court-3m{ position:absolute; left:0; right:0; height:3px; background:rgba(255,255,255,.5); bottom:33.333%; pointer-events:none; z-index:1; }
+    .full-court-3m-lbl{ position:absolute; right:5px; font-size:10px; font-weight:800; color:#fff; bottom:calc(33.333% + 4px); pointer-events:none; }
+    @media(max-width:800px){ .full-court{ height:30vh; } }
+
+    /* Net */
+    .net{ position:absolute; left:0; right:0; top:50%; height:5px; background:#fff; z-index:2; pointer-events:none; transform:translateY(-2px); }
+    .net-mesh{ position:absolute; left:0; right:0; top:calc(50% - 8px); height:6px; z-index:2; pointer-events:none;
+      background-image:repeating-linear-gradient(90deg,#fff 0,#fff 3px,transparent 3px,transparent 12px); }
+    .attack-chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:#fff;
+      border:6px solid #B8860B; cursor:grab; touch-action:none; z-index:3;
+      box-shadow:0 6px 14px rgba(0,0,0,.2);
+      pointer-events:all; }
+    .attack-chip.front{ border-width:9px; }
+    .attack-chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.25); }
+    .attack-chip.dragging{ cursor:grabbing; }
+
+    /* Ball */
+    .ball{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; cursor:grab; touch-action:none; z-index:4;
+      box-shadow:0 4px 10px rgba(0,0,0,.3);
+      background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.5),transparent 50%),
+        conic-gradient(from 0deg,#ffffff 0deg 60deg,#f4c20d 60deg 120deg,#ffffff 120deg 180deg,
+          #1565c0 180deg 240deg,#ffffff 240deg 300deg,#f4c20d 300deg 360deg);
+      border:2px solid rgba(0,0,0,.15); }
+    .ball.dragging{ cursor:grabbing; }
+
+    /* Half court (bottom) */
+    .half-court{ position:relative; width:100%; height:min(42vh,400px); border-radius:6px; border:5px solid var(--blue); background:#5b9bd5; overflow:hidden; touch-action:none; user-select:none; }
+    @media(max-width:800px){ .half-court{ height:38vh; } }
+    .net-grid{ position:absolute; top:0; left:0; right:0; height:14px; z-index:2; pointer-events:none;
+      background-image:repeating-linear-gradient(90deg,#fff 0,#fff 3px,transparent 3px,transparent 12px),
+        repeating-linear-gradient(0deg,#fff 0,#fff 2px,transparent 2px,transparent 8px);
+      border-bottom:3px solid #fff; }
+    .three-m{ position:absolute; left:0; right:0; height:3px; background:rgba(255,255,255,.6); top:33.333%; pointer-events:none; z-index:1; }
+    .three-m-lbl{ position:absolute; right:5px; font-size:10px; font-weight:800; color:#fff; top:calc(33.333%+4px); pointer-events:none; }
+    .zone-vline{ position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.2); }
+    .zone-num{ position:absolute; font-size:min(3vw,22px); font-weight:900; color:rgba(255,255,255,.3); display:flex; align-items:flex-end; justify-content:flex-end; padding:0 5px 3px 0; }
+
+    /* Defense chips */
+    .chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:#fff;
+      display:flex; align-items:center; justify-content:center; text-align:center; line-height:1.1;
+      box-shadow:0 6px 14px rgba(0,0,0,.2); border:6px solid var(--red); cursor:grab; touch-action:none; z-index:3; }
+    .chip.front{ border-width:9px; }
+    .chip .cname{ font-size:min(2vw,16px); font-weight:900; }
+    @media(max-width:800px){ .chip .cname{ font-size:min(3.5vw,14px); } }
+    .chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.25); z-index:10; }
+    .empty-hint{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:rgba(255,255,255,.6); font-size:14px; font-weight:700; text-align:center; pointer-events:none; }
+
+    /* Buttons */
+    .btn-row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:9px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
+    .btn:active{ transform:translateY(1px); }
+
+    /* Right panel */
+    .panel{ display:grid; gap:12px; }
+    .name-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+    .name-cell{ border:1px solid var(--line); border-radius:12px; padding:8px; }
+    .name-cell .pos-lbl{ font-size:11px; font-weight:700; color:var(--muted); margin-bottom:4px; }
+    .name-sel{ width:100%; padding:6px 8px; border-radius:10px; border:1px solid var(--line); font-size:12px; background:#fff; outline:none; }
+
+    /* Lib */
+    .lib-title{ font-weight:900; font-size:15px; color:var(--red); margin-bottom:8px; }
+    .lib-btns{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; min-height:20px; }
+    .lib-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#f8f8f8; padding:5px 10px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; }
+    .lib-save-row{ display:flex; gap:6px; }
+    .lib-inp{ flex:1; padding:7px 10px; border-radius:10px; border:1px solid var(--line); font-size:13px; outline:none; }
+    .lib-save-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:var(--blue); padding:7px 12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .no-lib{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+
+    /* Save current */
+    .save-row{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap; }
+    .save-hint{ font-size:12px; color:var(--muted); flex:1; }
+    .save-cur-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:var(--blue); padding:8px 12px; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer; }
+    .save-cur-btn:disabled{ opacity:.4; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="wrap">
+
+  <!-- Left: courts -->
+  <div class="card">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">
+      <div>
+        <div class="app-title">Volleyball <span>Abwehr</span></div>
+        <div class="stellung-label" id="stellungLabel">— Stellung wählen —</div>
+      </div>
+      <button class="btn" id="btnReset">Zurücksetzen</button>
+    </div>
+
+    <!-- Full court: attack side only (no net shown) -->
+    <div class="full-court" id="fullCourt">
+      <div class="full-court-3m"></div>
+      <div class="full-court-3m-lbl">3m</div>
+      <div id="fullField"></div>
+    </div>
+
+    <!-- Half court: defense positions -->
+    <div class="half-court" id="halfCourt">
+      <div class="net-grid"></div>
+      <div id="halfField">
+        <div class="three-m"></div>
+        <div class="three-m-lbl">3m</div>
+        <div class="zone-vline" style="left:33.333%"></div>
+        <div class="zone-vline" style="left:66.666%"></div>
+      </div>
+    </div>
+
+    <div class="save-row">
+      <div class="save-hint" id="saveHint">Stellung wählen, dann aktuelle Positionen speichern</div>
+      <button class="save-cur-btn" id="btnSaveCurrent" disabled>💾 Aktuelle Positionen speichern</button>
+    </div>
+  </div>
+
+  <!-- Right: names + lib -->
+  <div class="panel">
+    <div class="card">
+      <div style="font-size:15px;font-weight:900;margin-bottom:8px;">Spielerinnen</div>
+      <div class="name-grid" id="nameGrid"></div>
+    </div>
+
+    <div class="card" id="libBox">
+      <div class="lib-title">Abwehrstellungen</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const SERVER   = "https://scoreboard-rzql.onrender.com";
+const LIB_KEY  = "abwehr_herren";
+const LS_NAMES = "vb_abwehr_herren_names_v1";
+const LS_STATE = "vb_abwehr_herren_state_v1";
+
+const NAMES = ["","Felix","Viveko","Laurin","Jannik","Stefan","Philipp","Aure","Vincent","David","Jaspal","Finn","Hendrik","Niko","Simon Mi","Simon Mo"];
+
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const cssEsc = s => CSS.escape(String(s));
+const p2px = (p,s) => (p/100)*s;
+const px2p = (px,s) => s===0?0:(px/s)*100;
+const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
+
+// ── Names (slots 1-6 for defense positions) ──
+function loadNames(){ try{ const r=localStorage.getItem(LS_NAMES); return r?JSON.parse(r):{}; }catch{ return {}; } }
+function saveNames(){ try{ localStorage.setItem(LS_NAMES,JSON.stringify(assignedNames)); }catch{} }
+let assignedNames = loadNames(); // {1:"Greta", 2:"Jule", ...}
+
+// ── Defense positions state ──
+const DEF_DEFAULT = {
+  1:{x:83,y:72}, 2:{x:83,y:22}, 3:{x:50,y:18},
+  4:{x:17,y:22}, 5:{x:17,y:72}, 6:{x:50,y:80}
+};
+function loadDefPos(){
+  try{ const r=localStorage.getItem(LS_STATE); return r?JSON.parse(r):null; }catch{ return null; }
+}
+function saveDefPos(){ try{ localStorage.setItem(LS_STATE,JSON.stringify(defPos)); }catch{} }
+let defPos = loadDefPos() || JSON.parse(JSON.stringify(DEF_DEFAULT));
+
+// Attack chips on full court (top half = opponent side)
+// 3 chips on top half (y: 0-50%)
+const ATTACK_DEFAULT = [
+  {id:'atk1', x:17, y:60},
+  {id:'atk2', x:50, y:40},
+  {id:'atk3', x:83, y:60},
+];
+let attackChips = JSON.parse(JSON.stringify(ATTACK_DEFAULT));
+
+// Ball
+let ball = {x:50, y:15};
+
+// ── Lib ──
+let libCache = null;
+async function loadLib(){
+  try{
+    const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch(`${SERVER}/lib/${LIB_KEY}?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){ const d=await r.json(); if(d.length){ libCache=d; return d; } }
+  }catch{}
+  return libCache||[];
+}
+async function saveLib(lib){
+  libCache=lib;
+  try{
+    const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),6000);
+    await fetch(`${SERVER}/lib/${LIB_KEY}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib),signal:ctrl.signal});
+    clearTimeout(tid);
+  }catch{}
+}
+
+// ── Active formation ──
+let activeFormation = null;
+
+// ── Full court (attack + ball) ──
+const fullCourt = document.getElementById("fullCourt");
+const fullField = document.getElementById("fullField");
+
+function getFullRect(){ const r=fullCourt.getBoundingClientRect(); return {w:r.width,h:r.height}; }
+
+function renderFullCourt(){
+  fullField.querySelectorAll(".attack-chip,.ball").forEach(n=>n.remove());
+  const {w,h}=getFullRect();
+  const size=Math.min(w,h)*0.21;
+
+  attackChips.forEach(a=>{
+    const el=document.createElement("div");
+    el.className="attack-chip";
+    el.dataset.id=a.id;
+    el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(a.x,w)}px;top:${p2px(a.y,h)}px;`;
+    fullField.appendChild(el);
+  });
+
+  // Ball
+  const ballSize=size*0.55;
+  const bel=document.createElement("div");
+  bel.className="ball";
+  bel.style.cssText=`width:${ballSize}px;height:${ballSize}px;left:${p2px(ball.x,w)}px;top:${p2px(ball.y,h)}px;`;
+  fullField.appendChild(bel);
+}
+
+// ── Half court (defense) ──
+const halfCourt = document.getElementById("halfCourt");
+const halfField = document.getElementById("halfField");
+
+function getHalfRect(){ const r=halfCourt.getBoundingClientRect(); return {w:r.width,h:r.height}; }
+
+function renderZones(){
+  halfField.querySelectorAll(".zone-num").forEach(n=>n.remove());
+  [[4,0,0],[3,1,0],[2,2,0],[5,0,1],[6,1,1],[1,2,1]].forEach(function(arr){
+    const n=arr[0],c=arr[1],row=arr[2];
+    const d=document.createElement("div"); d.className="zone-num";
+    d.style.left=(c*100/3)+"%"; d.style.top=(row*50)+"%";
+    d.style.width=(100/3)+"%"; d.style.height="50%";
+    d.textContent=n; halfField.appendChild(d);
+  });
+}
+
+function renderHalfCourt(positions, isDisplay){
+  halfField.querySelectorAll(".chip,.empty-hint").forEach(n=>n.remove());
+  renderZones();
+  const {w,h}=getHalfRect();
+  const size=Math.min(w,h)*0.21;
+  const pts = positions || defPos;
+  const isFrontPos = [2,3,4];
+
+  Object.entries(pts).forEach(function(entry){
+    const pos=+entry[0], xy=entry[1];
+    const isFront=isFrontPos.includes(pos);
+    const name=assignedNames[pos]||"";
+    const el=document.createElement("div");
+    el.className="chip"+(isFront?" front":"");
+    el.dataset.pos=pos;
+    el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(xy.x,w)}px;top:${p2px(xy.y,h)}px;`;
+    el.innerHTML=`<div class="cname">${esc(name||pos)}</div>`;
+    halfField.appendChild(el);
+  });
+}
+
+// ── Name panel ──
+function renderNameGrid(){
+  const grid=document.getElementById("nameGrid"); grid.innerHTML="";
+  [1,2,3,4,5,6].forEach(pos=>{
+    const cell=document.createElement("div"); cell.className="name-cell";
+    const usedNames=new Set(Object.entries(assignedNames).filter(([p])=>+p!==pos).map(([,n])=>n).filter(Boolean));
+    const curName=assignedNames[pos]||"";
+    const opts=NAMES.filter(n=>n===""||n===curName||!usedNames.has(n))
+      .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
+    cell.innerHTML=`<div class="pos-lbl">Pos ${pos}</div><select class="name-sel" data-pos="${pos}">${opts}</select>`;
+    const sel=cell.querySelector("select"); sel.value=curName;
+    sel.addEventListener("change",()=>{
+      assignedNames[pos]=sel.value; saveNames();
+      // Update chip on half court
+      const chip=halfField.querySelector(`.chip[data-pos="${pos}"]`);
+      if(chip) chip.querySelector(".cname").textContent=sel.value||pos;
+      renderNameGrid();
+    });
+    grid.appendChild(cell);
+  });
+}
+
+// ── Lib box ──
+async function renderLibBox(){
+  const box=document.getElementById("libBox");
+  box.innerHTML=`<div class="lib-title">Abwehrstellungen</div>`;
+  const lib=await loadLib();
+  const btns=document.createElement("div"); btns.className="lib-btns";
+  if(!lib.length){
+    const h=document.createElement("div"); h.className="no-lib"; h.textContent="Noch keine Stellungen gespeichert.";
+    btns.appendChild(h);
+  } else {
+    lib.forEach(e=>{
+      const wrap=document.createElement("span"); wrap.style.cssText="display:inline-flex;align-items:center;gap:2px;";
+      const b=document.createElement("button"); b.className="lib-btn"; b.textContent=e.name;
+      b.addEventListener("click",()=>loadFormation(e.name));
+      const del=document.createElement("button");
+      del.style.cssText="border:none;background:none;cursor:pointer;color:#e91e63;font-size:12px;padding:0 2px;font-weight:900;";
+      del.textContent="✕";
+      del.addEventListener("click",ev=>{ ev.stopPropagation(); deleteFormation(e.name); });
+      wrap.appendChild(b); wrap.appendChild(del); btns.appendChild(wrap);
+    });
+  }
+  box.appendChild(btns);
+  const sr=document.createElement("div"); sr.className="lib-save-row";
+  const inp=document.createElement("input"); inp.className="lib-inp"; inp.placeholder="Name der Stellung…"; inp.maxLength=40;
+  const sbtn=document.createElement("button"); sbtn.className="lib-save-btn"; sbtn.textContent="💾 Speichern";
+  sbtn.addEventListener("mousedown",e=>e.preventDefault());
+  sbtn.addEventListener("click",()=>{ if(inp.value.trim()) saveFormation(inp.value); });
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"&&inp.value.trim()) saveFormation(inp.value); });
+  sr.appendChild(inp); sr.appendChild(sbtn); box.appendChild(sr);
+}
+
+async function loadFormation(name){
+  const lib=await loadLib();
+  const entry=lib.find(e=>e.name===name); if(!entry) return;
+  activeFormation=entry;
+  document.getElementById("stellungLabel").textContent=name;
+  renderHalfCourt(entry.positions, true);
+  updateSaveBtn();
+}
+
+async function saveFormation(name){
+  name=name.trim(); if(!name) return;
+  const lib=await loadLib();
+  if(lib.length>=20 && !lib.find(e=>e.name===name)){ alert("Maximum 20 Stellungen erreicht."); return; }
+  const entry={name, positions: JSON.parse(JSON.stringify(defPos))};
+  const idx=lib.findIndex(e=>e.name===name);
+  if(idx>=0) lib[idx]=entry; else lib.push(entry);
+  await saveLib(lib);
+  await renderLibBox();
+}
+
+async function deleteFormation(name){
+  if(!confirm(`„${name}" wirklich löschen?`)) return;
+  const lib=await loadLib();
+  await saveLib(lib.filter(e=>e.name!==name));
+  if(activeFormation?.name===name){
+    activeFormation=null;
+    document.getElementById("stellungLabel").textContent="— Stellung wählen —";
+    renderHalfCourt(null, false);
+    updateSaveBtn();
+  }
+  await renderLibBox();
+}
+
+function updateSaveBtn(){
+  const btn=document.getElementById("btnSaveCurrent");
+  const hint=document.getElementById("saveHint");
+  if(activeFormation){
+    btn.disabled=false;
+    hint.textContent=`Speichert aktuelle Positionen als „${activeFormation.name}"`;
+  } else {
+    btn.disabled=true;
+    hint.textContent="Stellung wählen, dann aktuelle Positionen speichern";
+  }
+}
+
+document.getElementById("btnSaveCurrent").addEventListener("click",async()=>{
+  if(!activeFormation) return;
+  await saveFormation(activeFormation.name);
+});
+
+// ── Drag: full court (attack chips + ball) ──
+let dragFull=null;
+fullCourt.addEventListener("pointerdown",e=>{
+  const ball_el=e.target.closest(".ball");
+  if(ball_el){
+    e.preventDefault();
+    const cr=fullCourt.getBoundingClientRect(); const {w,h}=getFullRect();
+    dragFull={isBall:true,ptr:e.pointerId,ox:p2px(ball.x,w)-(e.clientX-cr.left),oy:p2px(ball.y,h)-(e.clientY-cr.top)};
+    ball_el.classList.add("dragging"); ball_el.setPointerCapture(e.pointerId); return;
+  }
+  const t=e.target.closest(".attack-chip"); if(!t) return; e.preventDefault();
+  const a=attackChips.find(x=>x.id===t.dataset.id); if(!a) return;
+  const cr=fullCourt.getBoundingClientRect(); const {w,h}=getFullRect();
+  dragFull={id:a.id,ptr:e.pointerId,ox:p2px(a.x,w)-(e.clientX-cr.left),oy:p2px(a.y,h)-(e.clientY-cr.top)};
+  t.classList.add("dragging"); t.setPointerCapture(e.pointerId);
+});
+fullCourt.addEventListener("pointermove",e=>{
+  if(!dragFull||e.pointerId!==dragFull.ptr) return;
+  const cr=fullCourt.getBoundingClientRect(); const {w,h}=getFullRect();
+  if(dragFull.isBall){
+    ball.x=clamp(px2p(e.clientX-cr.left+dragFull.ox,w),2,98);
+    ball.y=clamp(px2p(e.clientY-cr.top+dragFull.oy,h),2,96);
+    const bel=fullField.querySelector(".ball");
+    if(bel){ bel.style.left=p2px(ball.x,w)+"px"; bel.style.top=p2px(ball.y,h)+"px"; }
+    return;
+  }
+  const a=attackChips.find(x=>x.id===dragFull.id); if(!a) return;
+  a.x=clamp(px2p(e.clientX-cr.left+dragFull.ox,w),2,98);
+  a.y=clamp(px2p(e.clientY-cr.top+dragFull.oy,h),2,96);
+  const el=fullField.querySelector(`.attack-chip[data-id="${cssEsc(dragFull.id)}"]`);
+  if(el){ el.style.left=p2px(a.x,w)+"px"; el.style.top=p2px(a.y,h)+"px"; }
+});
+fullCourt.addEventListener("pointerup",e=>{
+  if(!dragFull||e.pointerId!==dragFull.ptr) return;
+  if(dragFull.isBall) fullField.querySelector(".ball")?.classList.remove("dragging");
+  else fullField.querySelector(`.attack-chip[data-id="${cssEsc(dragFull.id)}"]`)?.classList.remove("dragging");
+  dragFull=null;
+});
+fullCourt.addEventListener("pointercancel",()=>{ dragFull=null; });
+
+// ── Drag: half court (defense positions) ──
+let dragHalf=null;
+halfCourt.addEventListener("pointerdown",e=>{
+  const t=e.target.closest(".chip"); if(!t) return; e.preventDefault();
+  const pos=+t.dataset.pos; if(!defPos[pos]) return;
+  const cr=halfCourt.getBoundingClientRect(); const {w,h}=getHalfRect();
+  dragHalf={pos,ptr:e.pointerId,ox:p2px(defPos[pos].x,w)-(e.clientX-cr.left),oy:p2px(defPos[pos].y,h)-(e.clientY-cr.top)};
+  t.classList.add("dragging"); t.setPointerCapture(e.pointerId);
+});
+halfCourt.addEventListener("pointermove",e=>{
+  if(!dragHalf||e.pointerId!==dragHalf.ptr) return;
+  const cr=halfCourt.getBoundingClientRect(); const {w,h}=getHalfRect();
+  defPos[dragHalf.pos].x=clamp(px2p(e.clientX-cr.left+dragHalf.ox,w),0,100);
+  defPos[dragHalf.pos].y=clamp(px2p(e.clientY-cr.top+dragHalf.oy,h),0,100);
+  const chip=halfField.querySelector(`.chip[data-pos="${dragHalf.pos}"]`);
+  if(chip){ chip.style.left=p2px(defPos[dragHalf.pos].x,w)+"px"; chip.style.top=p2px(defPos[dragHalf.pos].y,h)+"px"; }
+  saveDefPos();
+});
+halfCourt.addEventListener("pointerup",e=>{
+  if(!dragHalf||e.pointerId!==dragHalf.ptr) return;
+  halfField.querySelector(`.chip[data-pos="${dragHalf.pos}"]`)?.classList.remove("dragging");
+  dragHalf=null;
+});
+halfCourt.addEventListener("pointercancel",()=>{ dragHalf=null; });
+
+// ── Reset ──
+document.getElementById("btnReset").addEventListener("click",()=>{
+  defPos=JSON.parse(JSON.stringify(DEF_DEFAULT));
+  saveDefPos(); renderHalfCourt(null, false);
+});
+
+window.addEventListener("resize",()=>{ renderFullCourt(); renderHalfCourt(null,false); });
+
+// ── Init ──
+renderZones();
+renderFullCourt();
+renderHalfCourt(null, false);
+renderNameGrid();
+renderLibBox();
+
+})();
+</script>
+</body>
+</html>
