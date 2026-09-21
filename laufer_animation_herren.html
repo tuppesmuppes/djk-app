@@ -65,6 +65,13 @@
 
     .btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:9px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
     .btn:active{ transform:translateY(1px); }
+    .lib-section .lib-cat-title{ font-weight:900; font-size:13px; color:var(--red); margin-bottom:6px; }
+    .lib-btns{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; min-height:18px; }
+    .lib-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#f8f8f8; padding:4px 9px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; }
+    .lib-save-row{ display:flex; gap:6px; }
+    .lib-inp{ flex:1; padding:6px 10px; border-radius:10px; border:1px solid var(--line); font-size:12px; outline:none; }
+    .lib-save-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:var(--blue); padding:6px 10px; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer; white-space:nowrap; }
+    .no-lib{ font-size:11px; color:var(--muted); margin-bottom:4px; }
   </style>
 </head>
 <body>
@@ -119,10 +126,17 @@
   <!-- Right: name panel -->
   <div class="panel">
     <div class="card">
-      <div style="font-size:15px;font-weight:900;margin-bottom:10px;">Spielerinnen</div>
+      <div style="font-size:15px;font-weight:900;margin-bottom:10px;">Spieler</div>
       <div class="name-grid" id="nameGrid"></div>
     </div>
   </div>
+
+    <div class="card" id="libCard">
+      <div style="font-size:15px;font-weight:900;margin-bottom:10px;color:var(--red)">Aufstellungen speichern</div>
+      <div id="libBoxGrund" class="lib-section"></div>
+      <div id="libBoxAnnahme" class="lib-section" style="margin-top:12px;"></div>
+      <div id="libBoxAufschlag" class="lib-section" style="margin-top:12px;"></div>
+    </div>
 </div>
 
 <script>
@@ -130,6 +144,7 @@
 'use strict';
 
 const SERVER  = "https://scoreboard-rzql.onrender.com";
+const LIB_SUFFIX = "_herren";
 const LS_KEY  = "vb_laufer_herren_v1";
 const LAUFER_ORDER = [1,6,5,4,3,2];
 const SPECS   = {1:'Z', 2:'A', 3:'M', 4:'D', 5:'A', 6:'M'};
@@ -412,9 +427,93 @@ document.getElementById("btnReset").addEventListener("click",()=>{
 
 window.addEventListener("resize",()=>{ renderField(formation?formation.players:null,false,true); });
 
+
+// ── Lib (save/load/delete formations) ──
+const LIB_CONFIG=[
+  {key:"grund_herren",    mountId:"libBoxGrund",    label:"Grundaufstellung"},
+  {key:"annahme_herren",  mountId:"libBoxAnnahme",  label:"Annahme"},
+  {key:"aufschlag_herren",mountId:"libBoxAufschlag",label:"Bei eigenem Aufschlag"},
+];
+const libCaches={};
+async function loadLib(k){
+  try{const c=localStorage.getItem("vb_lib_h_"+k);if(c){const d=JSON.parse(c);if(d.length){libCaches[k]=d;return d;}}}catch{}
+  try{
+    const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch(SERVER+"/lib/"+k+"?t="+Date.now(),{cache:"no-store",signal:ctrl.signal});
+    clearTimeout(tid);
+    if(r.ok){const d=await r.json();if(d.length){try{localStorage.setItem("vb_lib_h_"+k,JSON.stringify(d));}catch{}libCaches[k]=d;return d;}}
+  }catch{}
+  return libCaches[k]||[];
+}
+async function saveLib(k,lib){
+  try{localStorage.setItem("vb_lib_h_"+k,JSON.stringify(lib));}catch{}
+  try{const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),6000);
+    await fetch(SERVER+"/lib/"+k,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib),signal:ctrl.signal});
+    clearTimeout(tid);}catch{}
+  libCaches[k]=lib;
+}
+function makeBtns(k,lib){
+  const div=document.createElement("div");div.className="lib-btns";
+  if(!lib.length){const h=document.createElement("div");h.className="no-lib";h.textContent="Noch keine Einträge.";div.appendChild(h);}
+  else lib.forEach(e=>{
+    const wrap=document.createElement("span");wrap.style.cssText="display:inline-flex;align-items:center;gap:2px;";
+    const b=document.createElement("button");b.className="lib-btn";b.textContent=e.name;
+    b.addEventListener("click",()=>loadFormationFromLib(k,e.name));
+    const del=document.createElement("button");
+    del.style.cssText="border:none;background:none;cursor:pointer;color:#e91e63;font-size:11px;padding:0 2px;font-weight:900;";
+    del.textContent="✕";
+    del.addEventListener("click",ev=>{ev.stopPropagation();deleteFromLib(k,e.name);});
+    wrap.appendChild(b);wrap.appendChild(del);div.appendChild(wrap);
+  });
+  return div;
+}
+async function renderLibSection(cfg){
+  const box=document.getElementById(cfg.mountId);box.innerHTML="";
+  const title=document.createElement("div");title.className="lib-cat-title";title.textContent=cfg.label;box.appendChild(title);
+  const lib=await loadLib(cfg.key);
+  const btns=makeBtns(cfg.key,lib);box.appendChild(btns);
+  const sr=document.createElement("div");sr.className="lib-save-row";
+  const inp=document.createElement("input");inp.className="lib-inp";inp.placeholder="Name…";inp.maxLength=40;
+  const sbtn=document.createElement("button");sbtn.className="lib-save-btn";sbtn.textContent="💾";
+  sbtn.addEventListener("mousedown",e=>e.preventDefault());
+  sbtn.addEventListener("click",()=>{if(inp.value.trim())saveToLib(cfg.key,inp.value,cfg.mountId);});
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter"&&inp.value.trim())saveToLib(cfg.key,inp.value,cfg.mountId);});
+  sr.appendChild(inp);sr.appendChild(sbtn);box.appendChild(sr);
+}
+async function saveToLib(k,name,mountId){
+  name=name.trim();if(!name)return;
+  const lib=await loadLib(k);
+  const entry={name,players:state.players.map(p=>({id:p.id,spec:p.spec,pos:p.pos,x:p.x,y:p.y,name:p.name}))};
+  const idx=lib.findIndex(e=>e.name===name);
+  if(idx>=0)lib[idx]=entry;else lib.push(entry);
+  await saveLib(k,lib);
+  const cfg=LIB_CONFIG.find(c=>c.key===k);if(cfg)await renderLibSection(cfg);
+}
+async function loadFormationFromLib(k,name){
+  const lib=await loadLib(k);
+  const entry=lib.find(e=>e.name===name);if(!entry)return;
+  // Switch category tab
+  const catMap={"grund_herren":"grund","annahme_herren":"annahme","aufschlag_herren":"aufschlag"};
+  const cat=catMap[k];if(cat){
+    currentCat=cat;
+    document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.cat===cat));
+  }
+  await navigateToLaufer(+entry.name.replace(/[^0-9]/g,'')||currentLaufer);
+}
+async function deleteFromLib(k,name){
+  if(!confirm("\""+name+"\" wirklich löschen?"))return;
+  const lib=await loadLib(k);
+  await saveLib(k,lib.filter(e=>e.name!==name));
+  const cfg=LIB_CONFIG.find(c=>c.key===k);if(cfg)await renderLibSection(cfg);
+}
+async function renderAllLibs(){
+  for(const cfg of LIB_CONFIG)await renderLibSection(cfg);
+}
+
 // ── Init ──
 renderZones();
 loadAndRender(false);
+renderAllLibs();
 
 })();
 </script>
