@@ -316,7 +316,7 @@ function renderNameGrid(){
       .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
     cell.innerHTML=`
       <div class="badge">
-        <div class="spec-badge">${dispSpec(p.spec,p.pos)}${p.pos}</div>
+        <div class="spec-badge">${p.spec}${p.pos}</div>
         <div class="pos-label">Pos ${p.pos}</div>
       </div>
       <select class="name-sel">${opts}</select>`;
