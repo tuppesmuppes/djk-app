@@ -435,7 +435,7 @@ const LIB_CONFIG=[
   {key:"aufschlag_herren",mountId:"libBoxAufschlag",label:"Bei eigenem Aufschlag"},
 ];
 const libCaches={};
-async function loadLib(k){
+async function loadLibBox(k){
   try{const c=localStorage.getItem("vb_lib_h_"+k);if(c){const d=JSON.parse(c);if(d.length){libCaches[k]=d;return d;}}}catch{}
   try{
     const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),6000);
@@ -445,7 +445,7 @@ async function loadLib(k){
   }catch{}
   return libCaches[k]||[];
 }
-async function saveLib(k,lib){
+async function saveLibBox(k,lib){
   try{localStorage.setItem("vb_lib_h_"+k,JSON.stringify(lib));}catch{}
   try{const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),6000);
     await fetch(SERVER+"/lib/"+k,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib),signal:ctrl.signal});
@@ -470,7 +470,7 @@ function makeBtns(k,lib){
 async function renderLibSection(cfg){
   const box=document.getElementById(cfg.mountId);box.innerHTML="";
   const title=document.createElement("div");title.className="lib-cat-title";title.textContent=cfg.label;box.appendChild(title);
-  const lib=await loadLib(cfg.key);
+  const lib=await loadLibBox(cfg.key);
   const btns=makeBtns(cfg.key,lib);box.appendChild(btns);
   const sr=document.createElement("div");sr.className="lib-save-row";
   const inp=document.createElement("input");inp.className="lib-inp";inp.placeholder="Name…";inp.maxLength=40;
@@ -482,15 +482,15 @@ async function renderLibSection(cfg){
 }
 async function saveToLib(k,name,mountId){
   name=name.trim();if(!name)return;
-  const lib=await loadLib(k);
+  const lib=await loadLibBox(k);
   const entry={name,players:state.players.map(p=>({id:p.id,spec:p.spec,pos:p.pos,x:p.x,y:p.y,name:p.name}))};
   const idx=lib.findIndex(e=>e.name===name);
   if(idx>=0)lib[idx]=entry;else lib.push(entry);
-  await saveLib(k,lib);
+  await saveLibBox(k,lib);
   const cfg=LIB_CONFIG.find(c=>c.key===k);if(cfg)await renderLibSection(cfg);
 }
 async function loadFormationFromLib(k,name){
-  const lib=await loadLib(k);
+  const lib=await loadLibBox(k);
   const entry=lib.find(e=>e.name===name);if(!entry)return;
   // Switch category tab
   const catMap={"grund_herren":"grund","annahme_herren":"annahme","aufschlag_herren":"aufschlag"};
@@ -502,8 +502,8 @@ async function loadFormationFromLib(k,name){
 }
 async function deleteFromLib(k,name){
   if(!confirm("\""+name+"\" wirklich löschen?"))return;
-  const lib=await loadLib(k);
-  await saveLib(k,lib.filter(e=>e.name!==name));
+  const lib=await loadLibBox(k);
+  await saveLibBox(k,lib.filter(e=>e.name!==name));
   const cfg=LIB_CONFIG.find(c=>c.key===k);if(cfg)await renderLibSection(cfg);
 }
 async function renderAllLibs(){
