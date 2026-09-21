@@ -3,158 +3,172 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-  <title>Läufer Rotation Animation</title>
+  <title>Volleyball Aufstellungen Herren</title>
   <style>
-    :root{ --bg:#f5f5f5; --card:#fff; --red:#CC0000; --blue:#1565c0; --line:rgba(0,0,0,.12); --muted:#888; --radius:14px; }
+    :root{ --bg:#f5f5f5; --card:#fff; --red:#CC0000; --blue:#1565c0; --line:rgba(0,0,0,.12); --muted:#888; }
     *{ box-sizing:border-box; margin:0; padding:0; }
     body{ font-family:system-ui,sans-serif; background:var(--bg); color:#111; }
-    .top-bar{ background:var(--red); height:5px; }
-    .wrap{ max-width:1100px; margin:0 auto; padding:12px; display:grid; grid-template-columns:1.3fr .7fr; gap:14px; align-items:start; }
-    @media(max-width:800px){ .wrap{ grid-template-columns:1fr; } }
+    .wrap{ max-width:1300px; margin:0 auto; padding:12px; display:grid; grid-template-columns:1.2fr .8fr; gap:14px; align-items:start; }
+    @media(max-width:900px){ .wrap{ grid-template-columns:1fr; } }
 
-    .card{ background:var(--card); border-radius:var(--radius); box-shadow:0 6px 18px rgba(0,0,0,.07); border:1px solid var(--line); padding:12px; }
+    /* Cards */
+    .card{ background:var(--card); border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,.07); padding:12px; border:1px solid var(--line); }
 
     /* Header */
-    .app-title{ font-size:20px; font-weight:900; }
+    .app-title{ font-size:22px; font-weight:900; margin-bottom:2px; }
     .app-title span{ color:var(--red); }
-    .laufer-label{ font-size:26px; font-weight:900; color:var(--red); min-height:32px; margin-top:4px; }
-
-    /* Category tabs */
-    .tabs{ display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; }
-    .tab{ -webkit-appearance:none; appearance:none; border:2px solid var(--line); background:#fff; padding:7px 12px; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer; }
-    .tab.active{ background:var(--red); border-color:var(--red); color:#fff; }
-
-    /* Läufer nav buttons */
-    .nav-row{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
-    .nav-btn{ -webkit-appearance:none; appearance:none; border:2px solid var(--line); background:#fff; width:44px; height:44px; border-radius:10px; font-weight:900; font-size:16px; cursor:pointer; }
-    .nav-btn.active{ background:var(--red); border-color:var(--red); color:#fff; }
-    .nav-btn:hover:not(.active){ border-color:var(--red); color:var(--red); }
+    .current-laufer{ font-size:20px; font-weight:900; color:var(--red); min-height:26px; margin-top:2px; }
+    .subtitle{ font-size:12px; color:var(--muted); margin-top:2px; }
 
     /* Court */
-    .court{ position:relative; width:100%; height:min(52vh,540px); border-radius:6px; border:6px solid var(--blue); background:#5b9bd5; overflow:hidden; touch-action:none; user-select:none; }
-    @media(max-width:800px){ .court{ height:46vh; } }
-    .net-grid{ position:absolute; top:0; left:0; right:0; height:14px; z-index:2; pointer-events:none;
-      background-image:repeating-linear-gradient(90deg,#fff 0,#fff 4px,transparent 4px,transparent 14px),
-        repeating-linear-gradient(0deg,#fff 0,#fff 3px,transparent 3px,transparent 9px);
-      border-bottom:3px solid #fff; }
-    .three-m{ position:absolute; left:0; right:0; height:4px; background:rgba(255,255,255,.6); top:33.333%; pointer-events:none; z-index:1; }
-    .three-m-lbl{ position:absolute; right:5px; font-size:10px; font-weight:800; color:#fff; top:calc(33.333% + 4px); pointer-events:none; }
-    .zone-line-v{ position:absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,.2); }
-    .zone-num{ position:absolute; font-size:min(3vw,22px); font-weight:900; color:rgba(255,255,255,.3); display:flex; align-items:flex-end; justify-content:flex-end; padding:0 5px 3px 0; }
-    .empty-hint{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:rgba(255,255,255,.6); font-size:15px; font-weight:700; text-align:center; pointer-events:none; }
+    .court{ position:relative; width:100%; border-radius:6px; border:6px solid var(--blue); overflow:hidden; background:linear-gradient(180deg,#f0f8ff,#f5f5f5); touch-action:none; user-select:none; }
+    .court.interactive{ height:min(44vh,500px); }
+    .court.display{ height:min(44vh,500px); margin-top:10px; }
+    @media(max-width:900px){ .court.interactive,.court.display{ height:40vh; } }
+    .net-grid{ position:absolute; top:0; left:0; right:0; height:16px; z-index:2; pointer-events:none;
+      background-image:repeating-linear-gradient(90deg,var(--blue) 0,var(--blue) 4px,transparent 4px,transparent 14px),
+        repeating-linear-gradient(0deg,var(--blue) 0,var(--blue) 3px,transparent 3px,transparent 9px);
+      border-bottom:2px solid var(--blue); }
+    .three-m{ position:absolute; left:0; right:0; height:5px; background:var(--blue); pointer-events:none; top:33.333%; z-index:1; }
+    .three-m-lbl{ position:absolute; right:5px; font-size:10px; font-weight:800; color:var(--blue); top:calc(33.333% + 4px); pointer-events:none; }
+    .zones{ position:absolute; inset:0; pointer-events:none; }
+    .zone-line-v{ position:absolute; top:0; bottom:0; width:1px; background:rgba(0,0,0,.07); }
+    .zone-line-h{ position:absolute; left:0; right:0; height:1px; background:rgba(0,0,0,.07); top:50%; }
+    .zone-num{ position:absolute; font-size:min(3vw,24px); font-weight:900; color:rgba(0,0,0,.18); display:flex; align-items:flex-end; justify-content:flex-end; padding:0 6px 4px 0; }
+    .display-hint{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:14px; font-weight:700; color:var(--muted); pointer-events:none; text-align:center; }
 
-    /* Chips */
+    /* Player circles */
     .chip{ position:absolute; transform:translate(-50%,-50%); border-radius:999px; background:#fff;
       display:flex; align-items:center; justify-content:center; text-align:center; line-height:1.1;
-      box-shadow:0 6px 14px rgba(0,0,0,.2); border:6px solid var(--red); cursor:grab; touch-action:none; z-index:3; }
+      box-shadow:0 6px 14px rgba(0,0,0,.14); border:6px solid var(--red); cursor:grab; touch-action:none; z-index:3; }
     .chip.front{ border-width:9px; }
-    .chip .spec{ font-weight:900; font-size:min(2.2vw,20px); }
-    .chip .pname{ font-size:min(1.4vw,13px); font-weight:700; opacity:.85; margin-top:2px; }
-    @media(max-width:800px){ .chip .spec{ font-size:min(3.8vw,16px); } .chip .pname{ font-size:min(2.8vw,11px); } }
-    .chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.25); z-index:10; }
-    .chip.animating{ transition: left 2.4s cubic-bezier(.4,0,.2,1), top 2.4s cubic-bezier(.4,0,.2,1); cursor:default; pointer-events:none; }
+    .chip.display-chip{ cursor:default; }
+    .chip .spec{ font-weight:900; font-size:min(2.4vw,22px); }
+    .chip .pname{ font-size:min(1.5vw,13px); font-weight:700; opacity:.85; margin-top:2px; }
+    @media(max-width:900px){ .chip .spec{ font-size:min(4vw,17px); } .chip .pname{ font-size:min(2.8vw,11px); } }
+    .chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.2); z-index:10; }
+
+    /* Buttons row */
+    .btn-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:10px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.07); }
+    .btn:active{ transform:translateY(1px); }
+    .btn.red{ border-color:var(--red); color:var(--red); }
+
+    /* Tabs */
+    .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .tab{ -webkit-appearance:none; appearance:none; border:2px solid var(--line); background:#fff; padding:8px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
+    .tab.active{ background:var(--red); border-color:var(--red); color:#fff; }
+    .display-title{ font-size:15px; font-weight:900; color:var(--red); margin-top:8px; min-height:20px; }
 
     /* Right panel */
     .panel{ display:grid; gap:12px; }
-    .name-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-    .name-cell{ border:1px solid var(--line); border-radius:12px; padding:8px; }
-    .name-cell .badge{ display:flex; align-items:center; gap:6px; margin-bottom:5px; }
-    .spec-badge{ min-width:44px; height:28px; border-radius:999px; border:2px solid var(--red); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; }
-    .pos-lbl{ font-size:11px; font-weight:700; color:var(--muted); }
-    .name-sel{ width:100%; padding:6px 8px; border-radius:10px; border:1px solid var(--line); font-size:12px; background:#fff; outline:none; }
 
-    .btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#fff; padding:9px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
-    .btn:active{ transform:translateY(1px); }
-    .lib-section .lib-cat-title{ font-weight:900; font-size:13px; color:var(--red); margin-bottom:6px; }
-    .lib-btns{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; min-height:18px; }
-    .lib-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#f8f8f8; padding:4px 9px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; }
+    /* Name grid */
+    .name-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+    @media(min-width:900px){ .name-grid{ grid-template-columns:1fr 1fr 1fr; } }
+    .name-cell{ border:1px solid var(--line); border-radius:12px; padding:8px; }
+    .name-cell .badge{ display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+    .name-cell .spec-badge{ min-width:44px; height:28px; border-radius:999px; border:2px solid var(--red); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px; }
+    .name-cell .pos-label{ font-size:11px; font-weight:700; color:var(--muted); }
+    .name-sel{ width:100%; padding:7px 8px; border-radius:10px; border:1px solid var(--line); font-size:13px; background:#fff; outline:none; }
+
+    /* Lib boxes */
+    .lib-box{ background:var(--card); border-radius:14px; box-shadow:0 6px 14px rgba(0,0,0,.06); padding:12px; border:1px solid var(--line); }
+    .lib-title{ font-weight:900; font-size:15px; color:var(--red); margin-bottom:8px; }
+    .lib-btns{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; min-height:24px; }
+    .lib-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#f8f8f8; padding:5px 10px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; }
+    .lib-btn:active{ background:#eee; }
     .lib-save-row{ display:flex; gap:6px; }
-    .lib-inp{ flex:1; padding:6px 10px; border-radius:10px; border:1px solid var(--line); font-size:12px; outline:none; }
-    .lib-save-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:var(--blue); padding:6px 10px; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer; white-space:nowrap; }
-    .no-lib{ font-size:11px; color:var(--muted); margin-bottom:4px; }
+    .lib-inp{ flex:1; padding:7px 10px; border-radius:10px; border:1px solid var(--line); font-size:13px; outline:none; }
+    .lib-save-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:#1565c0; padding:7px 12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .no-lib{ font-size:12px; color:var(--muted); margin-bottom:6px; }
+
+    /* Save current button */
+    .save-current-row{ display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+    .save-current-hint{ font-size:12px; color:var(--muted); flex:1; }
+    .save-current-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:#1565c0; padding:9px 14px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
+    .save-current-btn:disabled{ opacity:.4; cursor:not-allowed; }
   </style>
 </head>
 <body>
-<div class="top-bar"></div>
+<div style="background:var(--red);height:5px;"></div>
 <div class="wrap">
 
-  <!-- Left: field -->
+  <!-- Left: courts -->
   <div class="card">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">
       <div>
-        <div class="app-title">Volleyball <span>Läufer</span></div>
-        <div class="laufer-label" id="lauferLabel">—</div>
+        <div class="app-title">Volleyball <span>Aufstellungen</span></div>
+        <div class="current-laufer" id="currentLaufer"></div>
+        <div class="subtitle">Drag &amp; Drop · Rotation +1</div>
       </div>
-      <button class="btn" id="btnReset">Zurücksetzen</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn red" id="btnReset">Reset</button>
+      </div>
     </div>
 
-    <!-- Category tabs -->
-    <div class="tabs" id="catTabs">
-      <button class="tab active" data-cat="grund">Grundaufstellung</button>
-      <button class="tab" data-cat="annahme">Annahme</button>
-      <button class="tab" data-cat="aufschlag">Bei eigenem Aufschlag</button>
-    </div>
-
-    <!-- Läufer nav -->
-    <div class="nav-row" id="navRow">
-      <button class="nav-btn active" data-l="1">1</button>
-      <button class="nav-btn" data-l="6">6</button>
-      <button class="nav-btn" data-l="5">5</button>
-      <button class="nav-btn" data-l="4">4</button>
-      <button class="nav-btn" data-l="3">3</button>
-      <button class="nav-btn" data-l="2">2</button>
-    </div>
-
-    <!-- Half court -->
-    <div class="court" id="court">
+    <!-- Interactive field -->
+    <div class="court interactive" id="courtEdit">
       <div class="net-grid"></div>
-      <div id="field">
-        <div class="three-m"></div>
-        <div class="three-m-lbl">3m</div>
-        <div class="zone-line-v" style="left:33.333%"></div>
-        <div class="zone-line-v" style="left:66.666%"></div>
+      <div id="halfEdit"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="btnRot">Rotation +1</button>
+      <button class="btn" id="btnSpots">Zurücksetzen</button>
+    </div>
+
+    <!-- Display field -->
+    <div class="tabs" id="tabsRow">
+      <button class="tab active" data-tab="grund">Grundaufstellung</button>
+      <button class="tab" data-tab="annahme">Annahme</button>
+      <button class="tab" data-tab="aufschlag">Bei eigenem Aufschlag</button>
+    </div>
+    <div class="display-title" id="displayTitle"></div>
+    <div class="court display" id="courtDisplay">
+      <div class="net-grid"></div>
+      <div id="halfDisplay">
+        <div class="display-hint">Läufer wählen →</div>
       </div>
     </div>
 
-    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-      <button class="btn" id="btnPrev">← Vorheriger</button>
-      <button class="btn" id="btnNext">Nächster →</button>
-      <button class="btn" id="btnRepeat">↺ Animation wiederholen</button>
+    <div class="save-current-row">
+      <div class="save-current-hint" id="saveHint">Läufer wählen, dann hier speichern</div>
+      <button class="save-current-btn" id="btnSaveCurrent" disabled>💾 Aktuelle Aufstellung speichern</button>
     </div>
   </div>
 
-  <!-- Right: name panel -->
+  <!-- Right: name panel + libs -->
   <div class="panel">
     <div class="card">
-      <div style="font-size:15px;font-weight:900;margin-bottom:10px;">Spieler</div>
       <div class="name-grid" id="nameGrid"></div>
     </div>
-  </div>
 
-    <div class="card" id="libCard">
-      <div style="font-size:15px;font-weight:900;margin-bottom:10px;color:var(--red)">Aufstellungen speichern</div>
-      <div id="libBoxGrund" class="lib-section"></div>
-      <div id="libBoxAnnahme" class="lib-section" style="margin-top:12px;"></div>
-      <div id="libBoxAufschlag" class="lib-section" style="margin-top:12px;"></div>
-    </div>
+    <div class="lib-box" id="libGrund"><div class="lib-title">Grundaufstellung</div></div>
+    <div class="lib-box" id="libAnnahme"><div class="lib-title">Annahme</div></div>
+    <div class="lib-box" id="libAufschlag"><div class="lib-title">Bei eigenem Aufschlag</div></div>
+  </div>
 </div>
 
 <script>
 (() => {
 'use strict';
 
-const SERVER  = "https://scoreboard-rzql.onrender.com";
-const LIB_SUFFIX = "_herren";
-const LS_KEY  = "vb_laufer_herren_v1";
-const LAUFER_ORDER = [1,6,5,4,3,2];
-const SPECS   = {1:'Z', 2:'A', 3:'M', 4:'D', 5:'A', 6:'M'};
+// ── Constants ──
+const SERVER = "https://scoreboard-rzql.onrender.com";
+const LS_KEY = "vb_herren_v1";
+
+// Fixed specializations for positions 1-6 (start positions)
+const SPECS = {1:'Z', 2:'A', 3:'M', 4:'D', 5:'A', 6:'M'};
+const ROT = {1:6, 2:1, 3:2, 4:3, 5:4, 6:5}; // rotation +1: pos→new pos
+
+// Net at top: front row = 4,3,2 (netznah), back row = 5,6,1
 const DEFAULT_XY = {
-  4:{x:17,y:22}, 3:{x:50,y:18}, 2:{x:83,y:22},
-  5:{x:17,y:72}, 6:{x:50,y:80}, 1:{x:83,y:72}
+  4:{x:20,y:22}, 3:{x:50,y:18}, 2:{x:80,y:22},
+  5:{x:20,y:72}, 6:{x:50,y:80}, 1:{x:80,y:72}
 };
+
 const NAMES = ["","Felix","Viveko","Laurin","Jannik","Stefan","Philipp","Aure","Vincent","David","Jaspal","Finn","Hendrik","Niko","Simon Mi","Simon Mo"];
-const CAT_KEYS = {grund:"grund", annahme:"annahme", aufschlag:"aufschlag"};
-const CAT_LABELS = {grund:"Grundaufstellung", annahme:"Annahme", aufschlag:"Bei eigenem Aufschlag"};
 
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const cssEsc = s => CSS.escape(String(s));
@@ -163,357 +177,354 @@ const px2p = (px,s) => s===0?0:(px/s)*100;
 const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
 
 // ── State ──
-// Names assigned by spec (Z, A1, M1, D, A2, M2) — persisted locally
-function defNames(){ return {Z:"",A1:"",A2:"",M1:"",M2:"",D:""}; }
-function loadNames(){
-  try{ const r=localStorage.getItem(LS_KEY); return r?JSON.parse(r):defNames(); }catch{ return defNames(); }
+// Each player: { id, spec, name, pos, x, y }
+// spec is fixed to the player (Z stays Z), pos changes with rotation
+function defPlayers(){
+  return [1,2,3,4,5,6].map(pos => ({
+    id: `S${pos}`,
+    spec: SPECS[pos],
+    name: "",
+    pos,
+    x: DEFAULT_XY[pos].x,
+    y: DEFAULT_XY[pos].y,
+  }));
 }
-function saveNames(){ try{ localStorage.setItem(LS_KEY,JSON.stringify(assignedNames)); }catch{} }
-let assignedNames = loadNames();
-
-// Spec slot ordering per position
-const POS_SPEC_SLOT = {
-  1:'Z', 2:'A1', 3:'M1', 4:'D', 5:'A2', 6:'M2'
-};
-// After k rotations from start (Z on pos 1), who is on each position?
-// ROT+1: {1→6,6→5,5→4,4→3,3→2,2→1}
-function getSlotForPos(pos, laufer){
-  // laufer = which position Z is on (1-6)
-  // Calculate starting position of each slot
-  // slot Z starts on pos laufer, then offset others
-  const starts = {Z:laufer, A1:((laufer)%6)+1, M1:((laufer+1)%6)+1,
-                  D:((laufer+2)%6)+1, A2:((laufer+3)%6)+1, M2:((laufer+4)%6)+1};
-  // Wait — simpler: who occupies `pos` when Z is on `laufer`?
-  // Offset = (pos - laufer + 6) % 6
-  const offset = (pos - laufer + 6) % 6;
-  const slotOrder = ['Z','A1','M1','D','A2','M2'];
-  return slotOrder[offset];
+function defState(){ return { v:2, players: defPlayers() }; }
+function loadState(){
+  try{
+    const r=localStorage.getItem(LS_KEY);
+    if(!r)return null;
+    const s=JSON.parse(r);
+    if(!s||s.v!==2)return null;
+    // Ensure all players have name field
+    s.players.forEach(p=>{ if(p.name===undefined) p.name=""; });
+    return s;
+  }catch{return null;}
 }
-
-function getSpecForPos(pos, laufer){
-  const slot = getSlotForPos(pos, laufer);
-  const baseSpec = {Z:'Z',A1:'A',A2:'A',M1:'M',M2:'M',D:'D'};
-  return baseSpec[slot] || '?';
-}
-function getNameForPos(pos, laufer){
-  const slot = getSlotForPos(pos, laufer);
-  return assignedNames[slot] || "";
-}
+let state = loadState() || defState();
+const save = () => { try{localStorage.setItem(LS_KEY,JSON.stringify(state));}catch{} };
 
 // ── Lib ──
-const libCache = {};
 async function loadLib(k){
+  // Always try server first
   try{
-    const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),6000);
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),5000);
     const r=await fetch(`${SERVER}/lib/${k}?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
     clearTimeout(tid);
-    if(r.ok){ const d=await r.json(); if(d.length){ libCache[k]=d; return d; } }
+    if(r.ok){const d=await r.json();if(d.length){try{localStorage.setItem(`vb_lib2_${k}`,JSON.stringify(d));}catch{}return d;}}
   }catch{}
-  if(libCache[k]) return libCache[k];
+  // Fall back to cache
+  try{const c=localStorage.getItem(`vb_lib2_${k}`);if(c){const d=JSON.parse(c);if(d.length)return d;}}catch{}
   return[];
 }
+async function saveLib(k,lib){
+  try{localStorage.setItem(`vb_lib2_${k}`,JSON.stringify(lib));}catch{}
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),5000);
+    await fetch(`${SERVER}/lib/${k}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib),signal:ctrl.signal});
+    clearTimeout(tid);
+  }catch{}
+}
 
-// ── UI state ──
-let currentLaufer = 1;
-let currentCat = "grund";
-let formation = null; // saved formation positions for current laufer+cat
+// ── Active display state ──
+let activeTab = "grund";
+let activeFormation = null; // { name, players: [{id,spec,pos,x,y}] }
 
-// ── Court ──
-const court = document.getElementById("court");
-const field = document.getElementById("field");
+// ── Courts ──
+const courtEdit = document.getElementById("courtEdit");
+const halfEdit = document.getElementById("halfEdit");
+const courtDisplay = document.getElementById("courtDisplay");
+const halfDisplay = document.getElementById("halfDisplay");
 
-function getRect(){ const r=court.getBoundingClientRect(); return {w:r.width,h:r.height}; }
+function getRect(el){ const r=el.getBoundingClientRect(); return {w:r.width,h:r.height}; }
 
-// Zone numbers
-function renderZones(){
-  field.querySelectorAll(".zone-num").forEach(n=>n.remove());
-  [[4,0,0],[3,1,0],[2,2,0],[5,0,1],[6,1,1],[1,2,1]].forEach(([n,c,row])=>{
+function renderZones(el){
+  el.querySelectorAll(".zones").forEach(n=>n.remove());
+  const z=document.createElement("div"); z.className="zones";
+  const v1=document.createElement("div"); v1.className="zone-line-v"; v1.style.left="33.333%";
+  const v2=document.createElement("div"); v2.className="zone-line-v"; v2.style.left="66.666%";
+  const h=document.createElement("div"); h.className="zone-line-h";
+  z.appendChild(v1); z.appendChild(v2); z.appendChild(h);
+  [[4,0,0],[3,1,0],[2,2,0],[5,0,1],[6,1,1],[1,2,1]].forEach(([n,c,r])=>{
     const d=document.createElement("div"); d.className="zone-num";
-    d.style.left=`${c*100/3}%`; d.style.top=`${row*50}%`;
+    d.style.left=`${c*100/3}%`; d.style.top=`${r*50}%`;
     d.style.width=`${100/3}%`; d.style.height="50%";
-    d.textContent=n; field.appendChild(d);
+    d.textContent=n; z.appendChild(d);
+  });
+  el.appendChild(z);
+}
+
+function renderEditField(){
+  halfEdit.querySelectorAll(".chip,.three-m,.three-m-lbl").forEach(n=>n.remove());
+  renderZones(halfEdit);
+  const ln=document.createElement("div"); ln.className="three-m";
+  const lb=document.createElement("div"); lb.className="three-m-lbl"; lb.textContent="3m";
+  halfEdit.appendChild(ln); halfEdit.appendChild(lb);
+
+  const {w,h}=getRect(courtEdit);
+  state.players.forEach(p=>{
+    const size=Math.min(w,h)*0.18;
+    const el=document.createElement("div");
+    el.className="chip"+(([2,3,4].includes(p.pos))?" front":"");
+    el.dataset.id=p.id;
+    el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(p.x,w)}px;top:${p2px(p.y,h)}px;font-size:${size*0.22}px;`;
+    el.innerHTML=`<div><div class="spec">${p.spec}${p.pos}</div><div class="pname">${esc(p.name)}</div></div>`;
+    halfEdit.appendChild(el);
+  });
+}
+
+function renderDisplayField(){
+  halfDisplay.innerHTML="";
+  const hint=document.createElement("div"); hint.className="display-hint"; hint.textContent="Läufer wählen →";
+
+  if(!activeFormation){ halfDisplay.appendChild(hint); return; }
+
+  renderZones(halfDisplay);
+  const ln=document.createElement("div"); ln.className="three-m";
+  const lb=document.createElement("div"); lb.className="three-m-lbl"; lb.textContent="3m";
+  halfDisplay.appendChild(ln); halfDisplay.appendChild(lb);
+
+  const {w,h}=getRect(courtDisplay);
+  const liveById={};
+  state.players.forEach(p=>{ liveById[p.id]=p; });
+
+  activeFormation.players.forEach(p=>{
+    const live=liveById[p.id];
+    const name=(live?.name!==undefined&&live.name!=="")?live.name:(p.name||"");
+    const size=Math.min(w,h)*0.18;
+    const el=document.createElement("div");
+    el.className="chip display-chip"+(([2,3,4].includes(p.pos))?" front":"");
+    el.style.cssText=`width:${size}px;height:${size}px;left:${p2px(p.x,w)}px;top:${p2px(p.y,h)}px;font-size:${size*0.22}px;z-index:4;`;
+    el.innerHTML=`<div><div class="spec">${p.spec||""}${p.pos||""}</div><div class="pname">${esc(name)}</div></div>`;
+    halfDisplay.appendChild(el);
   });
 }
 
 // ── Name panel ──
 function renderNameGrid(){
-  const grid=document.getElementById("nameGrid"); grid.innerHTML="";
-  [1,2,3,4,5,6].forEach(pos=>{
-    const slot=getSlotForPos(pos,currentLaufer);
-    const spec=getSpecForPos(pos,currentLaufer);
-    const cell=document.createElement("div"); cell.className="name-cell";
-    const usedSlots=Object.entries(assignedNames).filter(([s,n])=>s!==slot&&n).map(([,n])=>n);
-    const usedSet=new Set(usedSlots);
-    const curName=assignedNames[slot]||"";
-    const opts=NAMES.filter(n=>n===""||n===curName||!usedSet.has(n))
+  const grid=document.getElementById("nameGrid");
+  grid.innerHTML="";
+  state.players.slice().sort((a,b)=>a.pos-b.pos).forEach(p=>{
+    const cell=document.createElement("div"); cell.className="name-cell"; cell.dataset.id=p.id;
+    const usedNames=new Set(state.players.filter(x=>x.id!==p.id&&x.name).map(x=>x.name));
+    const opts=NAMES.filter(n=>n===""||n===p.name||!usedNames.has(n))
       .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
-    cell.innerHTML=`<div class="badge"><div class="spec-badge">${esc(spec)}${pos}</div><div class="pos-lbl">Pos ${pos}</div></div>
-      <select class="name-sel" data-slot="${slot}">${opts}</select>`;
-    const sel=cell.querySelector("select"); sel.value=curName;
+    cell.innerHTML=`
+      <div class="badge">
+        <div class="spec-badge">${p.spec}${p.pos}</div>
+        <div class="pos-label">Pos ${p.pos}</div>
+      </div>
+      <select class="name-sel">${opts}</select>`;
+    const sel=cell.querySelector("select");
+    sel.value=p.name||"";
     sel.addEventListener("change",()=>{
-      assignedNames[slot]=sel.value; saveNames();
-      const chip=field.querySelector(`.chip[data-pos="${pos}"]`);
-      if(chip) chip.querySelector(".pname").textContent=sel.value;
-      renderNameGrid();
+      p.name=sel.value;
+      save();
+      // Update chip on field
+      const chip=halfEdit.querySelector(`.chip[data-id="${cssEsc(p.id)}"]`);
+      if(chip) chip.querySelector(".pname").textContent=p.name;
+      // Update display field if active
+      renderDisplayField();
+      // Update other selects without losing their values
+      grid.querySelectorAll(".name-cell").forEach(other=>{
+        if(other===cell)return;
+        const oid=other.dataset.id;
+        const op=state.players.find(x=>x.id===oid); if(!op)return;
+        const otherSel=other.querySelector("select");
+        const curVal=otherSel.value;
+        const usedN=new Set(state.players.filter(x=>x.id!==op.id&&x.name).map(x=>x.name));
+        otherSel.innerHTML=NAMES.filter(n=>n===""||n===op.name||!usedN.has(n))
+          .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
+        otherSel.value=curVal;
+      });
+      updateCurrentLaufer();
     });
     grid.appendChild(cell);
   });
 }
 
-let isAnimating=false;
+// ── Auto title ──
+function updateCurrentLaufer(){
+  const z=state.players.find(p=>p.spec==="Z");
+  document.getElementById("currentLaufer").textContent=z?`Läufer ${z.pos}`:"";
+}
 
-function renderField(players, animate, updateText){
-  // updateText=true → update spec/name in chips; false → keep existing text
-  if(updateText===undefined) updateText=true;
-  const {w,h}=getRect();
-  const size=Math.min(w,h)*0.20;
-  if(!players){
-    field.querySelectorAll(".chip,.empty-hint").forEach(function(n){n.remove();});
-    renderZones();
-    var hint=document.createElement("div"); hint.className="empty-hint";
-    hint.textContent="Kein Eintrag für diesen Läufer"; field.appendChild(hint); return;
+// ── Actions ──
+function rotate(){
+  state.players=state.players.map(p=>{
+    const newPos=ROT[p.pos];
+    return {...p, pos:newPos, x:DEFAULT_XY[newPos].x, y:DEFAULT_XY[newPos].y};
+  });
+  save(); renderEditField(); renderNameGrid(); updateCurrentLaufer();
+}
+
+function resetSpots(){
+  state.players=state.players.map(p=>({...p, x:DEFAULT_XY[p.pos].x, y:DEFAULT_XY[p.pos].y}));
+  save(); renderEditField();
+}
+
+function resetAll(){
+  state=defState(); save();
+  renderEditField(); renderNameGrid(); updateCurrentLaufer();
+}
+
+// ── Lib ──
+const LIB_MAP={grund:"libGrund", annahme:"libAnnahme", aufschlag:"libAufschlag"};
+
+async function deleteFormation(k, name){
+  if(!confirm(`„${name}" wirklich löschen?`)) return;
+  const lib=await loadLib(k);
+  const newLib=lib.filter(e=>e.name!==name);
+  await saveLib(k,newLib);
+  await renderLibBox(k);
+  if(activeFormation?.name===name){ activeFormation=null; document.getElementById("displayTitle").textContent=""; renderDisplayField(); updateSaveBtn(); }
+}
+
+function makeBtns(k, lib){
+  const btns=document.createElement("div"); btns.className="lib-btns";
+  if(lib.length===0){
+    const h=document.createElement("div"); h.className="no-lib"; h.textContent="Noch keine Aufstellungen.";
+    btns.appendChild(h);
+  } else {
+    lib.forEach(e=>{
+      const wrap=document.createElement("span"); wrap.style.cssText="display:inline-flex;align-items:center;gap:2px;";
+      const b=document.createElement("button"); b.className="lib-btn"; b.textContent=e.name;
+      b.addEventListener("click",()=>loadFormation(k,e.name));
+      const del=document.createElement("button");
+      del.style.cssText="border:none;background:none;cursor:pointer;color:#e91e63;font-size:12px;padding:0 2px;line-height:1;font-weight:900;";
+      del.textContent="✕"; del.title="Löschen";
+      del.addEventListener("click",(ev)=>{ ev.stopPropagation(); deleteFormation(k,e.name); });
+      wrap.appendChild(b); wrap.appendChild(del);
+      btns.appendChild(wrap);
+    });
   }
-  field.querySelectorAll(".empty-hint").forEach(function(n){n.remove();});
-  renderZones();
-  // Map existing chips by slot
-  var existingBySlot={};
-  field.querySelectorAll(".chip").forEach(function(el){ existingBySlot[el.dataset.slot]=el; });
+  return btns;
+}
 
-  players.forEach(function(p){
-    var slot=getSlotForPos(p.pos,currentLaufer);
-    var isFront=[2,3,4].includes(p.pos);
-    var spec=getSpecForPos(p.pos,currentLaufer);
-    var name=getNameForPos(p.pos,currentLaufer);
-    var tl=p2px(p.x,w)+"px", tt=p2px(p.y,h)+"px";
-    if(existingBySlot[slot]){
-      var el=existingBySlot[slot];
-      if(updateText){
-        el.querySelector(".spec").textContent=spec+p.pos;
-        el.querySelector(".pname").textContent=name;
+async function renderLibBox(k){
+  const box=document.getElementById(LIB_MAP[k]);
+  const title=box.querySelector(".lib-title");
+  box.innerHTML=""; box.appendChild(title);
+  const lib=await loadLib(k);
+  box.appendChild(makeBtns(k,lib));
+  const sr=document.createElement("div"); sr.className="lib-save-row";
+  const inp=document.createElement("input"); inp.className="lib-inp"; inp.placeholder="Name…"; inp.maxLength=40;
+  const sbtn=document.createElement("button"); sbtn.className="lib-save-btn"; sbtn.textContent="💾 Speichern";
+  sbtn.addEventListener("mousedown",e=>e.preventDefault());
+  sbtn.addEventListener("click",()=>{ if(inp.value.trim()) saveFormation(k,inp.value); });
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"&&inp.value.trim()) saveFormation(k,inp.value); });
+  sr.appendChild(inp); sr.appendChild(sbtn);
+  box.appendChild(sr);
+}
+
+async function saveFormation(k,name){
+  name=name.trim(); if(!name)return;
+  const lib=await loadLib(k);
+  const entry={name, players:state.players.map(p=>({id:p.id,spec:p.spec,pos:p.pos,x:p.x,y:p.y,name:p.name}))};
+  const idx=lib.findIndex(e=>e.name===name);
+  if(idx>=0)lib[idx]=entry; else lib.push(entry);
+  await saveLib(k,lib);
+  const box=document.getElementById(LIB_MAP[k]);
+  const old=box.querySelector(".lib-btns"); if(old) old.remove();
+  box.insertBefore(makeBtns(k,lib), box.querySelector(".lib-save-row"));
+  box.querySelector(".lib-inp").value="";
+}
+
+async function loadFormation(k,name){
+  const lib=await loadLib(k);
+  const entry=lib.find(e=>e.name===name); if(!entry)return;
+  activeTab=k; activeFormation=entry;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===k));
+  const labels={grund:"Grundaufstellung",annahme:"Annahme",aufschlag:"Bei eigenem Aufschlag"};
+  document.getElementById("displayTitle").textContent=`${labels[k]} · ${name}`;
+  renderDisplayField();
+  updateSaveBtn();
+}
+
+function updateSaveBtn(){
+  const btn=document.getElementById("btnSaveCurrent");
+  const hint=document.getElementById("saveHint");
+  if(activeFormation){
+    btn.disabled=false;
+    hint.textContent=`Speichert aktuelle Positionen als „${activeFormation.name}"`;
+  } else {
+    btn.disabled=true;
+    hint.textContent="Läufer wählen, dann hier speichern";
+  }
+}
+
+document.getElementById("btnSaveCurrent").addEventListener("click",async()=>{
+  if(!activeFormation)return;
+  await saveFormation(activeTab, activeFormation.name);
+  await loadFormation(activeTab, activeFormation.name);
+});
+
+// ── Tabs ──
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",async()=>{
+    activeTab=tab.dataset.tab;
+    document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t===tab));
+    if(activeFormation){
+      const lib=await loadLib(activeTab);
+      const entry=lib.find(e=>e.name===activeFormation.name);
+      if(entry){
+        activeFormation=entry;
+        const labels={grund:"Grundaufstellung",annahme:"Annahme",aufschlag:"Bei eigenem Aufschlag"};
+        document.getElementById("displayTitle").textContent=`${labels[activeTab]} · ${activeFormation.name}`;
+      } else {
+        activeFormation=null;
+        document.getElementById("displayTitle").textContent="";
       }
-      el.dataset.pos=p.pos;
-      el.className="chip"+(isFront?" front":"")+(animate?" animating":"");
-      el.style.left=tl; el.style.top=tt;
-      delete existingBySlot[slot];
-    } else {
-      var el=document.createElement("div");
-      el.className="chip"+(isFront?" front":"");
-      el.dataset.pos=p.pos;
-      el.dataset.slot=slot;
-      el.style.cssText="width:"+size+"px;height:"+size+"px;left:"+tl+";top:"+tt+";opacity:"+(animate?"0":"1")+";";
-      el.innerHTML="<div><div class=\"spec\">"+esc(spec)+p.pos+"</div><div class=\"pname\">"+esc(name)+"</div></div>";
-      field.appendChild(el);
-      if(animate){ requestAnimationFrame(function(){ el.style.transition="opacity 1.6s"; el.style.opacity="1"; }); }
+      renderDisplayField();
     }
   });
-  Object.values(existingBySlot).forEach(function(el){ el.remove(); });
-}
-
-// Update text in chips after animation
-function updateChipTexts(players){
-  const {w,h}=getRect();
-  players.forEach(function(p){
-    var slot=getSlotForPos(p.pos,currentLaufer);
-    var el=field.querySelector(".chip[data-slot=\""+CSS.escape(slot)+"\"]");
-    if(!el) return;
-    var isFront=[2,3,4].includes(p.pos);
-    var spec=getSpecForPos(p.pos,currentLaufer);
-    var name=getNameForPos(p.pos,currentLaufer);
-    el.dataset.pos=p.pos;
-    el.classList.toggle("front", isFront);
-    el.querySelector(".spec").textContent=spec+p.pos;
-    el.querySelector(".pname").textContent=name;
-  });
-}
-
-async function loadAndRender(animate){
-  document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · "+CAT_LABELS[currentCat];
-  var lib=await loadLib(CAT_KEYS[currentCat]);
-  var entry=lib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
-  formation=entry||null;
-  renderField(formation?formation.players:null, animate, true);
-  renderNameGrid();
-}
-
-async function navigateToLaufer(newLaufer){
-  if(isAnimating) return;
-  var prevLaufer=currentLaufer;
-  currentLaufer=newLaufer;
-  document.querySelectorAll(".nav-btn").forEach(function(b){ b.classList.toggle("active",+b.dataset.l===newLaufer); });
-  if(currentCat==="grund"){ await loadAndRender(false); return; }
-  isAnimating=true;
-  document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · Grundaufstellung…";
-  var grundLib=await loadLib("grund");
-  var grundEntry=grundLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
-  if(grundEntry){
-    // Phase 1: move chips to Grundaufstellung positions of new Läufer
-    // Keep old text (numbers), use new laufer's slot mapping for positioning
-    currentLaufer=newLaufer;
-    renderField(grundEntry.players,true,false);
-    await new Promise(function(r){ setTimeout(r,3000); });
-    // Now update text to show new positions
-    updateChipTexts(grundEntry.players);
-  }
-  document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · "+CAT_LABELS[currentCat];
-  var targetLib=await loadLib(CAT_KEYS[currentCat]);
-  var targetEntry=targetLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
-  formation=targetEntry||null;
-  await new Promise(function(r){ setTimeout(r,800); });
-  // Phase 2: move to target positions, update text
-  renderField(formation?formation.players:null,true,true);
-  await new Promise(function(r){ setTimeout(r,3000); });
-  field.querySelectorAll(".chip").forEach(function(el){ el.classList.remove("animating"); });
-  renderNameGrid();
-  isAnimating=false;
-}
-
-document.getElementById("navRow").addEventListener("click",function(e){
-  var b=e.target.closest(".nav-btn"); if(!b) return;
-  navigateToLaufer(+b.dataset.l);
-});
-document.getElementById("btnRepeat").addEventListener("click",function(){
-  navigateToLaufer(currentLaufer);
-});
-var navOrder=LAUFER_ORDER;
-document.getElementById("btnNext").addEventListener("click",function(){
-  var idx=navOrder.indexOf(currentLaufer);
-  navigateToLaufer(navOrder[(idx+1)%navOrder.length]);
-});
-document.getElementById("btnPrev").addEventListener("click",function(){
-  var idx=navOrder.indexOf(currentLaufer);
-  navigateToLaufer(navOrder[(idx-1+navOrder.length)%navOrder.length]);
-});
-
-// ── Category tabs ──
-document.getElementById("catTabs").addEventListener("click",e=>{
-  const t=e.target.closest(".tab"); if(!t) return;
-  currentCat=t.dataset.cat;
-  document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===t));
-  loadAndRender(false);
 });
 
 // ── Drag ──
 let drag=null;
-court.addEventListener("pointerdown",e=>{
-  const t=e.target.closest(".chip"); if(!t||!formation) return; e.preventDefault();
-  const pos=+t.dataset.pos;
-  const p=formation.players.find(x=>x.pos===pos); if(!p) return;
-  const cr=court.getBoundingClientRect(); const {w,h}=getRect();
-  drag={pos,ptr:e.pointerId,ox:p2px(p.x,w)-(e.clientX-cr.left),oy:p2px(p.y,h)-(e.clientY-cr.top)};
+courtEdit.addEventListener("pointerdown",e=>{
+  const t=e.target.closest(".chip"); if(!t)return; e.preventDefault();
+  const p=state.players.find(x=>x.id===t.dataset.id); if(!p)return;
+  const cr=courtEdit.getBoundingClientRect();
+  const {w,h}=getRect(courtEdit);
+  drag={id:p.id,ptr:e.pointerId,ox:p2px(p.x,w)-(e.clientX-cr.left),oy:p2px(p.y,h)-(e.clientY-cr.top)};
   t.classList.add("dragging"); t.setPointerCapture(e.pointerId);
 });
-court.addEventListener("pointermove",e=>{
-  if(!drag||e.pointerId!==drag.ptr||!formation) return;
-  const p=formation.players.find(x=>x.pos===drag.pos); if(!p) return;
-  const cr=court.getBoundingClientRect(); const {w,h}=getRect();
+courtEdit.addEventListener("pointermove",e=>{
+  if(!drag||e.pointerId!==drag.ptr)return;
+  const p=state.players.find(x=>x.id===drag.id); if(!p)return;
+  const cr=courtEdit.getBoundingClientRect();
+  const {w,h}=getRect(courtEdit);
+  const pad=Math.min(w,h)*0.09;
   p.x=clamp(px2p(e.clientX-cr.left+drag.ox,w),0,100);
   p.y=clamp(px2p(e.clientY-cr.top+drag.oy,h),0,100);
-  const chip=field.querySelector(`.chip[data-pos="${drag.pos}"]`);
-  if(chip){ chip.style.left=`${p2px(p.x,w)}px`; chip.style.top=`${p2px(p.y,h)}px`; }
+  const chip=halfEdit.querySelector(`.chip[data-id="${cssEsc(p.id)}"]`);
+  if(chip){chip.style.left=`${p2px(p.x,w)}px`;chip.style.top=`${p2px(p.y,h)}px`;}
+  save();
 });
-court.addEventListener("pointerup",e=>{
-  if(!drag||e.pointerId!==drag.ptr) return;
-  field.querySelector(`.chip[data-pos="${drag.pos}"]`)?.classList.remove("dragging");
+courtEdit.addEventListener("pointerup",e=>{
+  if(!drag||e.pointerId!==drag.ptr)return;
+  halfEdit.querySelector(`.chip[data-id="${cssEsc(drag.id)}"]`)?.classList.remove("dragging");
   drag=null;
 });
-court.addEventListener("pointercancel",()=>{ drag=null; });
+courtEdit.addEventListener("pointercancel",()=>{ drag=null; });
 
-// ── Reset ──
-document.getElementById("btnReset").addEventListener("click",()=>{
-  if(!formation) return;
-  formation.players.forEach(p=>{ p.x=DEFAULT_XY[p.pos].x; p.y=DEFAULT_XY[p.pos].y; });
-  renderField(formation?formation.players:null,false,false);
-});
-
-window.addEventListener("resize",()=>{ renderField(formation?formation.players:null,false,true); });
-
-
-// ── Lib (save/load/delete formations) ──
-const LIB_CONFIG=[
-  {key:"grund_herren",    mountId:"libBoxGrund",    label:"Grundaufstellung"},
-  {key:"annahme_herren",  mountId:"libBoxAnnahme",  label:"Annahme"},
-  {key:"aufschlag_herren",mountId:"libBoxAufschlag",label:"Bei eigenem Aufschlag"},
-];
-const libCaches={};
-async function loadLibBox(k){
-  try{const c=localStorage.getItem("vb_lib_h_"+k);if(c){const d=JSON.parse(c);if(d.length){libCaches[k]=d;return d;}}}catch{}
-  try{
-    const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),6000);
-    const r=await fetch(SERVER+"/lib/"+k+"?t="+Date.now(),{cache:"no-store",signal:ctrl.signal});
-    clearTimeout(tid);
-    if(r.ok){const d=await r.json();if(d.length){try{localStorage.setItem("vb_lib_h_"+k,JSON.stringify(d));}catch{}libCaches[k]=d;return d;}}
-  }catch{}
-  return libCaches[k]||[];
-}
-async function saveLibBox(k,lib){
-  try{localStorage.setItem("vb_lib_h_"+k,JSON.stringify(lib));}catch{}
-  try{const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),6000);
-    await fetch(SERVER+"/lib/"+k,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib),signal:ctrl.signal});
-    clearTimeout(tid);}catch{}
-  libCaches[k]=lib;
-}
-function makeBtns(k,lib){
-  const div=document.createElement("div");div.className="lib-btns";
-  if(!lib.length){const h=document.createElement("div");h.className="no-lib";h.textContent="Noch keine Einträge.";div.appendChild(h);}
-  else lib.forEach(e=>{
-    const wrap=document.createElement("span");wrap.style.cssText="display:inline-flex;align-items:center;gap:2px;";
-    const b=document.createElement("button");b.className="lib-btn";b.textContent=e.name;
-    b.addEventListener("click",()=>loadFormationFromLib(k,e.name));
-    const del=document.createElement("button");
-    del.style.cssText="border:none;background:none;cursor:pointer;color:#e91e63;font-size:11px;padding:0 2px;font-weight:900;";
-    del.textContent="✕";
-    del.addEventListener("click",ev=>{ev.stopPropagation();deleteFromLib(k,e.name);});
-    wrap.appendChild(b);wrap.appendChild(del);div.appendChild(wrap);
-  });
-  return div;
-}
-async function renderLibSection(cfg){
-  const box=document.getElementById(cfg.mountId);box.innerHTML="";
-  const title=document.createElement("div");title.className="lib-cat-title";title.textContent=cfg.label;box.appendChild(title);
-  const lib=await loadLibBox(cfg.key);
-  const btns=makeBtns(cfg.key,lib);box.appendChild(btns);
-  const sr=document.createElement("div");sr.className="lib-save-row";
-  const inp=document.createElement("input");inp.className="lib-inp";inp.placeholder="Name…";inp.maxLength=40;
-  const sbtn=document.createElement("button");sbtn.className="lib-save-btn";sbtn.textContent="💾";
-  sbtn.addEventListener("mousedown",e=>e.preventDefault());
-  sbtn.addEventListener("click",()=>{if(inp.value.trim())saveToLib(cfg.key,inp.value,cfg.mountId);});
-  inp.addEventListener("keydown",e=>{if(e.key==="Enter"&&inp.value.trim())saveToLib(cfg.key,inp.value,cfg.mountId);});
-  sr.appendChild(inp);sr.appendChild(sbtn);box.appendChild(sr);
-}
-async function saveToLib(k,name,mountId){
-  name=name.trim();if(!name)return;
-  const lib=await loadLibBox(k);
-  const entry={name,players:state.players.map(p=>({id:p.id,spec:p.spec,pos:p.pos,x:p.x,y:p.y,name:p.name}))};
-  const idx=lib.findIndex(e=>e.name===name);
-  if(idx>=0)lib[idx]=entry;else lib.push(entry);
-  await saveLibBox(k,lib);
-  const cfg=LIB_CONFIG.find(c=>c.key===k);if(cfg)await renderLibSection(cfg);
-}
-async function loadFormationFromLib(k,name){
-  const lib=await loadLibBox(k);
-  const entry=lib.find(e=>e.name===name);if(!entry)return;
-  // Switch category tab
-  const catMap={"grund_herren":"grund","annahme_herren":"annahme","aufschlag_herren":"aufschlag"};
-  const cat=catMap[k];if(cat){
-    currentCat=cat;
-    document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.cat===cat));
-  }
-  await navigateToLaufer(+entry.name.replace(/[^0-9]/g,'')||currentLaufer);
-}
-async function deleteFromLib(k,name){
-  if(!confirm("\""+name+"\" wirklich löschen?"))return;
-  const lib=await loadLibBox(k);
-  await saveLibBox(k,lib.filter(e=>e.name!==name));
-  const cfg=LIB_CONFIG.find(c=>c.key===k);if(cfg)await renderLibSection(cfg);
-}
-async function renderAllLibs(){
-  for(const cfg of LIB_CONFIG)await renderLibSection(cfg);
-}
+// ── Wire buttons ──
+document.getElementById("btnRot").addEventListener("click",rotate);
+document.getElementById("btnSpots").addEventListener("click",resetSpots);
+document.getElementById("btnReset").addEventListener("click",()=>{ if(confirm("Alles zurücksetzen?")) resetAll(); });
+window.addEventListener("resize",()=>{ renderEditField(); renderDisplayField(); });
 
 // ── Init ──
-renderZones();
-loadAndRender(false);
-renderAllLibs();
+async function init(){
+  renderEditField();
+  renderNameGrid();
+  updateCurrentLaufer();
+  await Promise.all([renderLibBox("grund"),renderLibBox("annahme"),renderLibBox("aufschlag")]);
+}
+init();
 
 })();
 </script>
