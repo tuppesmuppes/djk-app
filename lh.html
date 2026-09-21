@@ -192,7 +192,7 @@ function defPlayers(){
     y: DEFAULT_XY[pos].y,
   }));
 }
-function defState(){ return { v:2, players: defPlayers() }; }
+function defState(){ return { v:2, players: defPlayers(), liberoName:'' }; }
 function loadState(){
   try{
     const r=localStorage.getItem(LS_KEY);
@@ -346,6 +346,19 @@ function renderNameGrid(){
     });
     grid.appendChild(cell);
   });
+  // Libero cell
+  const lcell=document.createElement("div"); lcell.className="name-cell";
+  const lUsed=new Set(state.players.filter(x=>x.name).map(x=>x.name));
+  const lCur=state.liberoName||"";
+  const lOpts=NAMES.filter(n=>n===""||n===lCur||!lUsed.has(n))
+    .map(n=>`<option value="${esc(n)}">${n||"—"}</option>`).join("");
+  lcell.innerHTML=`<div class="badge"><div class="spec-badge" style="border-color:#6a1b9a;color:#6a1b9a;">L</div><div class="pos-label">Libero</div></div>
+    <div class="inputs"><select class="small name" id="liberoSel">${lOpts}</select></div>`;
+  const lsel=lcell.querySelector("#liberoSel"); lsel.value=lCur;
+  lsel.addEventListener("change",()=>{
+    state.liberoName=lsel.value; save(); renderEditField();
+  });
+  grid.appendChild(lcell);
 }
 
 // ── Auto title ──
