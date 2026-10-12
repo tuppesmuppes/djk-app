@@ -1,0 +1,1299 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Volleyball Scouting</title>
+<style>
+:root{
+  --bg:#f3f4f7;--card:#fff;--ink:#1d2330;--muted:#677084;--line:#dde1e8;
+  --accent:#1f6feb;--sel:#ffd34d;--sel-ink:#1d2330;
+  --r0:#1a9e55;--r1:#6dbb5f;--r2:#8b94a5;--r3:#ef9a22;--r4:#e0662f;--r5:#d0342c;
+}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--card:#1c2029;--ink:#e8ebf1;--muted:#99a1b3;--line:#2f3544}}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transparent}
+header{display:flex;align-items:center;gap:16px;padding:8px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+header h1{font-size:18px;margin:0}
+.badge{margin-left:auto;font-size:13px;padding:6px 10px}.badge.ok{color:var(--r0)}.badge.err{color:var(--r5);border-color:var(--r5)}
+textarea{font:12px/1.4 ui-monospace,monospace;width:100%;min-height:160px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);padding:8px}
+.form{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center;max-width:760px}.form input{width:100%}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+main{padding:12px 16px;max-width:1400px;margin:0 auto}
+h2{font-size:18px;margin:0 0 10px}h3{font-size:16px;margin:0 0 8px}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:10px 14px;cursor:pointer;touch-action:manipulation;user-select:none}
+button.on,button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.danger{color:var(--r5)}
+button:disabled{opacity:.3;cursor:default}
+input,select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);max-width:100%}
+input.w4{width:70px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--muted)}.small{font-size:13px}
+.hint{background:var(--sel);color:var(--sel-ink);padding:8px 12px;border-radius:8px;margin-bottom:8px;font-weight:600}
+.live{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:860px){.live{grid-template-columns:1fr}}
+.score{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.score .big{font-size:46px;font-weight:800;font-variant-numeric:tabular-nums}
+.score .side{text-align:center;min-width:90px}
+.srv{display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--r3);margin-left:6px;vertical-align:middle}
+.net{text-align:center;font-size:12px;letter-spacing:.25em;color:var(--muted);border-bottom:4px solid var(--ink);margin:6px 0 8px;padding-bottom:2px}
+.court{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.half{position:relative;width:min(100%,50vh);aspect-ratio:4/5;margin:0 auto;touch-action:manipulation}
+.half .fl{position:absolute;left:0;right:0;top:4%;height:80%;background:#e4a96b;border:2px solid #fff;border-top:5px solid var(--ink);border-radius:2px}
+.half .al{position:absolute;left:0;right:0;top:calc(30.67% - 1px);border-top:2px solid #fff}
+.half .nt{position:absolute;left:0;right:0;top:0;text-align:center;font-size:11px;letter-spacing:.25em;color:var(--muted)}
+.tok{position:absolute;transform:translate(-50%,-50%);width:23%;height:14%;padding:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.tok .num{font-size:24px;font-weight:800;line-height:1}.tok .nm{font-size:12px;color:var(--muted);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tok .zn{position:absolute;top:2px;left:6px;font-size:10px;color:var(--muted)}
+.tok.lib{background:#ffe8c7;color:#1d2330;border:2px solid var(--r3)}.tok.lib .nm,.tok.lib .zn{color:#5a4a33}
+.tok.sel{background:var(--sel);color:var(--sel-ink);border-color:#d9a900}.tok.sel .nm,.tok.sel .zn{color:var(--sel-ink)}
+.phase{text-align:center;font-size:13px;margin-top:6px}
+.pl{height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;padding:4px}
+.pl .num{font-size:30px;font-weight:800;line-height:1}.pl .nm{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pl .zn{position:absolute;top:4px;left:8px;font-size:12px;color:var(--muted)}
+.pl.sel{background:var(--sel);border-color:#d9a900}.pl.sel .nm,.pl.sel .zn{color:var(--sel-ink)}.pl.sel .num{color:var(--sel-ink)}
+.pl.lib{border:3px dashed var(--r3)}
+.bench{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.bench button{padding:6px 10px;font-size:14px}
+.bench button.sel{background:var(--sel);color:var(--sel-ink)}
+.skills{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.skills button{height:58px;font-weight:700}
+.skills button.sel{background:var(--sel);color:var(--sel-ink);border-color:#d9a900}
+.ratings{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.ratings button{height:80px;color:#fff;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.ratings .sym{font-size:30px;font-weight:900;line-height:1}.ratings .lb{font-size:12px}
+.c0{background:var(--r0)}.c1{background:var(--r1)}.c2{background:var(--r2)}.c3{background:var(--r3)}.c4{background:var(--r4)}.c5{background:var(--r5)}
+.pts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.pts button{height:54px;font-weight:700}
+.log{font-size:14px;max-height:260px;overflow:auto;margin:0;padding:0;list-style:none}
+.log li{padding:5px 0;border-bottom:1px solid var(--line)}
+.log .w-us{color:var(--r0);font-weight:700}.log .w-them{color:var(--r5);font-weight:700}
+.tblwrap{overflow-x:auto}
+.tbl{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl tr.tot td{font-weight:700}
+.setup{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:640px}
+.setup label{display:flex;flex-direction:column;font-size:13px;color:var(--muted);gap:4px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+.modal.hidden{display:none}
+.modal-box{background:var(--card);border-radius:14px;padding:16px;max-width:520px;width:100%;max-height:100%;overflow:auto}
+.courtsvg{display:block;margin:0 auto;height:min(64vh,620px);width:auto;max-width:100%;aspect-ratio:1/2}
+#trajsvg{touch-action:none;cursor:crosshair}
+.courtsvg .hf{fill:#e4a96b}.courtsvg .hf.own{fill:#d99a5c}
+.courtsvg .outa{fill:var(--bg)}.courtsvg .ina{fill:#e4a96b;stroke:#fff;stroke-width:.8}
+.courtsvg .al{stroke:#fff;stroke-width:.6}.courtsvg .zl{stroke:#fff;stroke-width:.3;stroke-dasharray:1.5 1.5;opacity:.7}
+.courtsvg .netl{stroke:var(--ink);stroke-width:1.6}.courtsvg .zt{fill:#fff;font-size:6px;opacity:.6;text-anchor:middle}
+.courtsvg .lbl{fill:var(--muted);font-size:4px;text-anchor:middle}
+.courtsvg .tl{stroke-width:1;fill:none;opacity:.85;stroke-linecap:round}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.printonly{display:none}
+@media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  header,.noprint{display:none!important}
+  .printonly{display:block}
+  .pagebreak{break-after:page}
+  .courtsvg{height:9cm}
+  body{background:#fff;color:#000}
+  .card{border:none;padding:0;break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header><h1>🏐 Volleyball Scouting</h1><nav id="nav"></nav><button id="syncBadge" class="badge" data-act="tab" data-k="data"></button></header>
+<main id="app"></main>
+<div id="modal" class="modal hidden"></div>
+<script>
+'use strict';
+/* ---------- Konstanten ---------- */
+const KEY = 'vbscout_v1';
+const SK = {S:'Aufschlag', R:'Annahme', E:'Zuspiel', A:'Angriff', B:'Block', D:'Abwehr'};
+const SKILLS = ['S','R','E','A','B','D'];
+const RT = ['#','+','!','-','/','='];
+const RL = {
+  S:['Ass','Gegner unter Druck','Gegner Annahme mittel','Gegner gute Annahme','Gegner perfekte Annahme','Fehler'],
+  R:['Perfekt','Gut','Mittel','Schlecht','Overpass','Fehler (Ass)'],
+  E:['Perfekt','Gut','Ok','Schlecht','Sehr schlecht','Fehler'],
+  A:['Punkt','Gut','Abgewehrt','Schlecht','Geblockt','Fehler'],
+  B:['Punkt','Gut berührt','Berührt','Schlecht berührt','Block-out','Fehler'],
+  D:['Perfekt','Gut','Ok','Schlecht','Kaum spielbar','Fehler']
+};
+// Welche Bewertung beendet den Ballwechsel zu wessen Gunsten
+const POINT = {
+  S:{'#':'us','=':'them'}, R:{'=':'them'}, E:{'=':'them'},
+  A:{'#':'us','/':'them','=':'them'}, B:{'#':'us','/':'them','=':'them'}, D:{'=':'them'}
+};
+const POS = {Z:'Zuspiel', AA:'Außen', D:'Diagonal', MB:'Mitte', L:'Libero', U:'Universal'};
+const ZN = ['I','II','III','IV','V','VI'];
+const COURT_ORDER = [3,2,1,4,5,0]; // Anzeige: IV III II / V VI I
+const RCOL = ['#1a9e55','#6dbb5f','#8b94a5','#ef9a22','#e0662f','#d0342c'];
+
+/* ---------- Speicher ---------- */
+function load(){
+  try { const s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch(e) {}
+  return {teams:[], matches:[]};
+}
+function persist(){
+  try { localStorage.setItem(KEY, JSON.stringify(db)); }
+  catch(e) { alert('Speichern im Browser fehlgeschlagen: ' + e.message + '\nBitte unter "Daten" eine Sicherung herunterladen.'); }
+}
+function save(){ stamp(); persist(); schedulePush(); }
+let db = load();
+if (!db.tomb) db.tomb = [];
+
+/* ---------- Online-Sync (Supabase) ----------
+   Jedes Team und jedes Spiel ist ein Datensatz mit Zeitstempel (upd). Der neuere Stand gewinnt.
+   Gelöschte Datensätze werden als {"deleted": true} übertragen, damit andere Geräte sie ebenfalls entfernen. */
+const SYNC_KEY = 'vbscout_sync';
+let sync = (() => { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch(e) { return {}; } })();
+if (!sync.pushed) sync.pushed = {};
+// Supabase-Projekt fest hinterlegt (öffentliche Werte wie in den anderen DJK-Apps); eigene Eingaben unter „Daten“ haben Vorrang
+const DEFAULT_SUPA = {
+  url: 'https://pgftkscaubdqprdvwvmt.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnZnRrc2NhdWJkcXByZHZ3dm10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMjcyODAsImV4cCI6MjA5MzkwMzI4MH0.pvUMfEMCxwKjBDc3yJ4pG2wcgdElmcjxWeAzMlMxYzU'
+};
+if (!sync.url) sync.url = DEFAULT_SUPA.url;
+if (!sync.key) sync.key = DEFAULT_SUPA.key;
+// Geräte-Link: …/scout.html#k=SYNC-SCHLÜSSEL übernimmt den Schlüssel einmalig und entfernt ihn aus der Adresszeile
+(() => {
+  const k = new URLSearchParams(location.hash.slice(1)).get('k');
+  if (k && k.length >= 24) {
+    if (sync.space !== k) { sync.space = k; sync.pushed = {}; }
+    try { localStorage.setItem('vbscout_sync', JSON.stringify(sync)); } catch(e) {}
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+})();
+const syncState = {status: 'idle', msg: '', last: null};
+const saveSync = () => { try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch(e) {} };
+const syncOn = () => !!(sync.url && sync.key && sync.space);
+const lastJson = new Map();
+const bodyOf = d => { const {upd, ...rest} = d; return rest; };
+const allDocs = () => [...db.teams.map(d => ['team', d]), ...db.matches.map(d => ['match', d])];
+allDocs().forEach(([, d]) => { if (!d.upd) d.upd = 1; lastJson.set(d.id, JSON.stringify(bodyOf(d))); });
+function stamp(){
+  const now = Date.now();
+  for (const [, d] of allDocs()) {
+    const j = JSON.stringify(bodyOf(d));
+    if (lastJson.get(d.id) !== j) { lastJson.set(d.id, j); d.upd = now; }
+  }
+}
+function markDeleted(kind, id){
+  db.tomb = db.tomb.filter(x => x.id !== id);
+  db.tomb.push({id, kind, upd: Date.now()});
+  lastJson.delete(id);
+}
+async function rpc(fn, body){
+  const h = {'Content-Type': 'application/json', apikey: sync.key};
+  if (sync.key.startsWith('eyJ')) h.Authorization = 'Bearer ' + sync.key; // ältere anon-Keys (JWT)
+  const r = await fetch(sync.url.replace(/\/+$/, '') + '/rest/v1/rpc/' + fn, {method: 'POST', headers: h, body: JSON.stringify(body)});
+  const txt = await r.text();
+  if (!r.ok) {
+    let m = txt; try { const j = JSON.parse(txt); m = j.message || j.msg || j.error || txt; } catch(e) {}
+    throw new Error('HTTP ' + r.status + ': ' + String(m).slice(0, 200));
+  }
+  return txt ? JSON.parse(txt) : null;
+}
+function setSync(status, msg){
+  syncState.status = status; syncState.msg = msg || '';
+  if (status === 'ok') syncState.last = new Date();
+  renderSyncBadge();
+  if (ui.tab === 'data') { const el = document.getElementById('syncInfo'); if (el) el.innerHTML = syncInfoHtml(); }
+}
+let pushTimer = null, pushing = false, retryTimer = null;
+function schedulePush(){
+  if (!syncOn()) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushNow, 700);
+}
+async function pushNow(){
+  if (!syncOn()) return;
+  if (pushing) { schedulePush(); return; }
+  const rows = allDocs().filter(([, d]) => (sync.pushed[d.id] || 0) < d.upd)
+    .map(([kind, d]) => ({id: d.id, kind, data: bodyOf(d), updated_at: d.upd}));
+  db.tomb.filter(x => (sync.pushed[x.id] || 0) < x.upd)
+    .forEach(x => rows.push({id: x.id, kind: x.kind, data: {deleted: true}, updated_at: x.upd}));
+  if (!rows.length) { if (syncState.status !== 'err') setSync('ok'); return; }
+  pushing = true; setSync('busy', 'speichert …');
+  try {
+    await rpc('scout_push', {p_space: sync.space, p_rows: rows});
+    rows.forEach(r => sync.pushed[r.id] = r.updated_at);
+    saveSync(); setSync('ok');
+  } catch (e) {
+    setSync('err', e.message);
+    clearTimeout(retryTimer); retryTimer = setTimeout(pushNow, 30000);
+  } finally { pushing = false; }
+}
+async function pullNow(){
+  if (!syncOn()) return;
+  setSync('busy', 'lädt …');
+  let rows;
+  try { rows = await rpc('scout_pull', {p_space: sync.space}) || []; }
+  catch (e) { setSync('err', e.message); return; }
+  const tomb = new Map(db.tomb.map(x => [x.id, x]));
+  let changed = false;
+  for (const r of rows) {
+    const arr = r.kind === 'team' ? db.teams : db.matches;
+    const i = arr.findIndex(d => d.id === r.id);
+    const localT = i >= 0 ? (arr[i].upd || 0) : ((tomb.get(r.id) || {}).upd || 0);
+    if (r.updated_at > localT) {
+      if (r.data && r.data.deleted) {
+        if (i >= 0) arr.splice(i, 1);
+        tomb.set(r.id, {id: r.id, kind: r.kind, upd: r.updated_at});
+        lastJson.delete(r.id);
+      } else {
+        const d = {...r.data, upd: r.updated_at};
+        if (i >= 0) arr[i] = d; else arr.push(d);
+        tomb.delete(r.id);
+        lastJson.set(r.id, JSON.stringify(bodyOf(d)));
+      }
+      changed = true;
+    }
+    sync.pushed[r.id] = Math.max(sync.pushed[r.id] || 0, r.updated_at);
+  }
+  db.tomb = [...tomb.values()];
+  saveSync();
+  if (changed) {
+    persist();
+    if (!team(ui.editTeam)) ui.editTeam = db.teams[0] ? db.teams[0].id : null;
+    if (!team(ui.f.team)) { ui.f.team = db.teams[0] ? db.teams[0].id : null; ui.f.match = 'all'; }
+    if (ui.f.match !== 'all' && !match(ui.f.match)) ui.f.match = 'all';
+    if (ui.matchId && !match(ui.matchId)) ui.matchId = null;
+    if ($modal.classList.contains('hidden')) render();
+  }
+  setSync('ok');
+  pushNow();
+}
+function renderSyncBadge(){
+  const el = document.getElementById('syncBadge'); if (!el) return;
+  if (!syncOn()) { el.textContent = '💾 nur lokal'; el.title = 'Online-Speicherung unter „Daten“ einrichten'; el.className = 'badge'; return; }
+  const map = {idle: ['☁ verbunden', ''], busy: ['☁ ' + syncState.msg, ''], ok: ['☁ gespeichert', 'ok'], err: ['⚠ Sync-Fehler', 'err']};
+  const [txt, cls] = map[syncState.status] || map.idle;
+  el.textContent = txt; el.className = 'badge ' + cls;
+  el.title = syncState.status === 'err' ? syncState.msg + ' – Daten bleiben lokal gespeichert, neuer Versuch automatisch.' : '';
+}
+function newSpace(){
+  const a = new Uint8Array(24); crypto.getRandomValues(a);
+  return Array.from(a, b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
+}
+const SETUP_SQL = `-- Volleyball Scouting: Online-Speicher in Supabase
+-- Einmal im Supabase-Dashboard im SQL Editor ausführen.
+-- Legt nur die Tabelle scout_store und zwei Funktionen an; bestehende Tabellen bleiben unberührt.
+
+create table if not exists public.scout_store (
+  space      text   not null,              -- Sync-Schlüssel (geheim, mind. 24 Zeichen)
+  id         text   not null,              -- ID des Teams bzw. Spiels
+  kind       text   not null check (kind in ('team', 'match')),
+  data       jsonb  not null,              -- Inhalt; {"deleted": true} = gelöscht
+  updated_at bigint not null,              -- Zeitstempel der letzten Änderung (ms)
+  primary key (space, id)
+);
+
+-- Kein direkter Zugriff auf die Tabelle: RLS an, keine Policies.
+alter table public.scout_store enable row level security;
+revoke all on table public.scout_store from anon, authenticated;
+
+-- Lesen: nur Zeilen mit passendem Sync-Schlüssel
+create or replace function public.scout_pull(p_space text)
+returns setof public.scout_store
+language sql
+security definer
+set search_path = public
+as $$
+  select * from public.scout_store
+  where space = p_space and length(p_space) >= 24;
+$$;
+
+-- Schreiben: neuere Stände überschreiben ältere
+create or replace function public.scout_push(p_space text, p_rows jsonb)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_space is null or length(p_space) < 24 then
+    raise exception 'Sync-Schlüssel zu kurz';
+  end if;
+  insert into public.scout_store (space, id, kind, data, updated_at)
+  select p_space, r->>'id', r->>'kind', r->'data', (r->>'updated_at')::bigint
+  from jsonb_array_elements(p_rows) as r
+  on conflict (space, id) do update
+    set kind = excluded.kind, data = excluded.data, updated_at = excluded.updated_at
+    where public.scout_store.updated_at <= excluded.updated_at;
+end;
+$$;
+
+revoke all on function public.scout_pull(text) from public;
+revoke all on function public.scout_push(text, jsonb) from public;
+grant execute on function public.scout_pull(text) to anon, authenticated;
+grant execute on function public.scout_push(text, jsonb) to anon, authenticated;
+
+-- Supabase-API über die neuen Funktionen informieren
+notify pgrst, 'reload schema';
+`;
+
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const team = id => db.teams.find(t => t.id === id);
+const match = id => db.matches.find(m => m.id === id);
+const today = () => new Date().toISOString().slice(0,10);
+const fmtDate = d => d ? d.split('-').reverse().join('.') : '';
+function playerOf(t, id){ return t && t.players.find(p => p.id === id); }
+function pname(t, id, short){
+  const p = playerOf(t, id);
+  if (!p) return 'Gelöschter Spieler';
+  return short ? '#' + p.num : '#' + p.num + ' ' + p.name;
+}
+const pct = (a, n) => n ? Math.round(a / n * 100) + '%' : '–';
+
+/* ---------- UI-Zustand ---------- */
+const openMatch = db.matches.filter(m => !m.finished).slice(-1)[0];
+const ui = {
+  tab: openMatch ? 'live' : (db.teams.length ? 'matches' : 'teams'),
+  matchId: openMatch ? openMatch.id : null,
+  selP: null, selS: null, mode: null, subOut: null, preKey: null,
+  traj: true, pending: null,
+  editTeam: db.teams[0] ? db.teams[0].id : null,
+  f: {team: db.teams[0] ? db.teams[0].id : null, match:'all', set:'all', rot:'all', player:'all', skill:'A'}
+};
+
+/* ---------- Formationen (5-1-System, 3er-Annahme) ---------- */
+// Koordinaten im eigenen Halbfeld: x 0 = linke, 1 = rechte Seitenlinie (Blick zum Netz), y 0 = Netz, 1 = Grundlinie.
+// Annahme-Formation je Rotation (P = Zone des Zuspielers); Schlüssel = Rotationszone. Alle Formationen halten die
+// Überschneidungsregeln für die annehmende Mannschaft ein (I hinter II, VI hinter III, V hinter IV; links-rechts je Reihe).
+const REC = {
+  1:{4:[.15,.1], 3:[.5,.1],  2:[.8,.55], 5:[.2,.6],  6:[.5,.62], 1:[.92,.88]},
+  2:{4:[.1,.08], 3:[.25,.5], 2:[.85,.08],5:[.08,.88],6:[.5,.62], 1:[.82,.6]},
+  3:{4:[.15,.5], 3:[.55,.08],2:[.85,.08],5:[.4,.62], 6:[.55,.9], 1:[.8,.6]},
+  4:{4:[.3,.08], 3:[.58,.08],2:[.85,.5], 5:[.15,.6], 6:[.5,.62], 1:[.92,.88]},
+  5:{4:[.1,.08], 3:[.22,.5], 2:[.85,.1], 5:[.12,.3], 6:[.5,.65], 1:[.82,.6]},
+  6:{4:[.15,.5], 3:[.6,.1],  2:[.85,.1], 5:[.45,.62],6:[.65,.3], 1:[.8,.62]}
+};
+// 4er-Annahme Jugend (U16) aus der Läufer-App übernommen; L5/L6: Zuspielerin leicht nach links korrigiert (Überschneidungsregel)
+const REC4 = {
+  1:{4:[0.06,0.41], 3:[0.53,0.16], 2:[0.895,0.635], 5:[0.265,0.6], 6:[0.55,0.72], 1:[0.96,0.77]},
+  2:{4:[0.04,0.25], 3:[0.215,0.61], 2:[0.7,0.13], 5:[0.36,0.75], 6:[0.58,0.72], 1:[0.76,0.67]},
+  3:{4:[0.21,0.62], 3:[0.69,0.09], 2:[0.785,0.3], 5:[0.44,0.7], 6:[0.635,0.73], 1:[0.81,0.69]},
+  4:{4:[0.087,0.084], 3:[0.13,0.31], 2:[0.23,0.59], 5:[0.42,0.7], 6:[0.62,0.71], 1:[0.845,0.68]},
+  5:{4:[0.044,0.23], 3:[0.145,0.64], 2:[0.88,0.625], 5:[0.37,0.33], 6:[0.41,0.735], 1:[0.68,0.695]},
+  6:{4:[0.156,0.645], 3:[0.837,0.09], 2:[0.873,0.64], 5:[0.372,0.75], 6:[0.6,0.23], 1:[0.648,0.71]}
+};
+// Spezialpositionen: vorne Außen IV, Mitte III, Zuspiel/Diagonal II; hinten Zuspiel/Diagonal I, Außen VI, Libero/Mitte V
+const SPOT = {4:[.17,.12], 3:[.5,.12], 2:[.83,.12], 5:[.17,.75], 6:[.5,.8], 1:[.83,.75]};
+const SERVER_SPOT = [.85,1.1];
+const STD_ORDER = ['Z','AA','MB','D','AA','MB']; // ab Zuspieler in Zonenreihenfolge I → II → III …
+const posOf = (t, id) => (playerOf(t, id) || {}).pos;
+// Ein als normaler Spieler eingewechselter Libero (Position L in der regulären Aufstellung) spielt die Rolle der Mitte
+const roleOf = (t, id) => { const p = posOf(t, id); return p === 'L' ? 'MB' : p; };
+function isStd51(lineup, t){
+  const pos = lineup.map(id => roleOf(t, id)), s = pos.indexOf('Z');
+  return s >= 0 && STD_ORDER.every((r, k) => pos[(s + k) % 6] === r);
+}
+function specZone(pos, front){
+  if (front) return pos === 'AA' ? 4 : pos === 'MB' ? 3 : 2;
+  return pos === 'AA' ? 6 : (pos === 'MB' || pos === 'L') ? 5 : 1;
+}
+// Spielposition nach dem Wechsel. Ausnahme Läufer 1 (L1) nach eigener Annahme:
+// vorne kein Wechsel – Diagonal bleibt auf IV, Außen auf II, Mitte auf III.
+// Wechselregel pro Team: 'pro' = alle wechseln, 'jugend' = nur Vorderspieler und Zuspiel
+const sysOf = t => (t && t.sys) || 'pro';
+const SYS = {pro:'Obere Ligen: alle wechseln auf Spezialpositionen (3er-Annahme)', jugend:'Jugend: nur Vorderspieler und Zuspiel wechseln (4er-Annahme)'};
+function specZoneFor(st, t, id, zone){
+  const front = zone >= 2 && zone <= 4;
+  if (front && st.serve === 'them' && rotOfState(st) === 1) return zone;
+  if (!front && sysOf(t) === 'jugend') {
+    // hinten wechselt nur die Zuspielerin auf I; wer auf I steht, tauscht mit ihr
+    if (posOf(t, id) === 'Z') return 1;
+    if (zone === 1) {
+      const sz = courtLineup(st, t).findIndex(x => posOf(t, x) === 'Z') + 1;
+      if ([5,6].includes(sz)) return sz;
+    }
+    return zone;
+  }
+  return specZone(id === st.libId ? 'L' : roleOf(t, id), front);
+}
+// Libero ersetzt automatisch die Mitte in der hinteren Reihe – außer wenn sie auf I aufschlägt
+function liberoFor(st, t){
+  if (!st.libId || !st.lineup) return null;
+  for (const i of [0,4,5]) {
+    const id = st.lineup[i];
+    if (roleOf(t, id) === 'MB') return (i === 0 && st.serve === 'us') ? null : id;
+  }
+  return null;
+}
+function courtLineup(st, t){
+  const f = liberoFor(st, t);
+  return st.lineup.map(id => id === f ? st.libId : id);
+}
+const phaseOf = st => st.rallyFresh ? (st.serve === 'us' ? 'serve' : 'recv') : 'spec';
+function formation(st, t){
+  const cl = courtLineup(st, t), std = isStd51(st.lineup, t), rot = rotOfState(st), ph = phaseOf(st);
+  return cl.map((id, i) => {
+    const zone = i + 1, front = zone >= 2 && zone <= 4;
+    let xy;
+    if (ph === 'serve' && zone === 1) xy = SERVER_SPOT;
+    else if (!std) xy = SPOT[zone];
+    else if (ph === 'recv') xy = (sysOf(t) === 'jugend' ? REC4 : REC)[rot][zone];
+    else xy = SPOT[specZoneFor(st, t, id, zone)];
+    return {id, zone, xy};
+  });
+}
+function rotOfState(st){
+  const i = st.lineup ? st.lineup.indexOf(st.ref) : -1;
+  return i >= 0 ? i + 1 : null;
+}
+
+/* ---------- Spiellogik: alle Ereignisse neu abspielen ---------- */
+function replay(m){
+  const t = team(m.teamId);
+  const st = {set:0, us:0, them:0, setsUs:0, setsThem:0, lineup:null, serve:null,
+    libId:null, ref:null, setOver:false, matchOver:false,
+    rallyFresh:true, rec:null, att:false, setScores:[]};
+  const ann = [], rallies = [];
+  const rotate = () => { const o = st.lineup; st.lineup = o.map((_, i) => o[(i + 1) % 6]); };
+  const award = (w, a) => {
+    a.win = w;
+    rallies.push({set:a.set, rot:a.rot, serve:a.serve, win:w});
+    if (w === 'us') { st.us++; if (st.serve === 'them') { rotate(); st.serve = 'us'; } }
+    else { st.them++; st.serve = 'them'; }
+    st.rallyFresh = true; st.rec = null; st.att = false; st.pendSet = null;
+    const tgt = st.set === 5 ? 15 : 25;
+    if ((st.us >= tgt || st.them >= tgt) && Math.abs(st.us - st.them) >= 2) {
+      st.setOver = true;
+      st.setScores.push([st.us, st.them]);
+      if (st.us > st.them) st.setsUs++; else st.setsThem++;
+      if (st.setsUs === 3 || st.setsThem === 3) st.matchOver = true;
+    }
+  };
+  for (const ev of m.events) {
+    const a = {...ev, set:st.set, us:st.us, them:st.them, serve:st.serve, rot:st.lineup ? rotOfState(st) : null};
+    switch (ev.t) {
+      case 'set':
+        Object.assign(st, {set:st.set + 1, us:0, them:0, lineup:ev.lineup.slice(), serve:ev.serve,
+          libId:ev.lib || null, ref:ev.ref, setOver:false, rallyFresh:true, rec:null, att:false});
+        a.set = st.set; a.us = 0; a.them = 0;
+        break;
+      case 'sub': {
+        const i = st.lineup.indexOf(ev.out);
+        if (i >= 0) st.lineup[i] = ev.in;
+        if (st.ref === ev.out) st.ref = ev.in;
+        break;
+      }
+      case 'act': {
+        const i = courtLineup(st, t).indexOf(ev.p);
+        a.zone = i >= 0 ? i + 1 : null;
+        // Spielposition (für Angriffsverteilung): nach Wechsel auf Spezialpositionen
+        a.pz = a.zone;
+        if (a.zone && phaseOf(st) === 'spec' && isStd51(st.lineup, t))
+          a.pz = specZoneFor(st, t, ev.p, a.zone);
+        if (ev.s === 'R') st.rec = ev.r;
+        if (ev.s === 'A') {
+          a.recQ = st.rec; a.firstAtt = !st.att; st.att = true;
+          // Zuspiel mit dem folgenden Angriff verknüpfen
+          if (st.pendSet) { a.setBy = st.pendSet.p; a.setQ = st.pendSet.r; st.pendSet.attPz = a.pz ?? a.zone; st.pendSet.attR = a.r; }
+          st.pendSet = null;
+        } else if (ev.s === 'E') st.pendSet = a;
+        else st.pendSet = null;
+        st.rallyFresh = false;
+        const w = (POINT[ev.s] || {})[ev.r];
+        if (w) award(w, a);
+        break;
+      }
+      case 'libOff': st.libId = null; break;
+      case 'pt':
+        award(ev.w, a);
+        break;
+      // 'lib' / 'libout' aus älteren Versionen: Libero wird jetzt automatisch geführt
+    }
+    ann.push(a);
+  }
+  return {st, ann, rallies};
+}
+
+/* ---------- Rendering ---------- */
+const TABS = [['live','Live'],['matches','Spiele'],['teams','Teams'],['stats','Statistik'],['data','Daten']];
+const $app = document.getElementById('app');
+const $modal = document.getElementById('modal');
+
+function render(){
+  document.getElementById('nav').innerHTML = TABS.map(([k,l]) =>
+    `<button class="${ui.tab === k ? 'on' : ''}" data-act="tab" data-k="${k}">${l}</button>`).join('');
+  $app.innerHTML = ({live:vLive, matches:vMatches, teams:vTeams, stats:vStats, data:vData})[ui.tab]();
+}
+
+/* ----- Teams ----- */
+function posOptions(sel){
+  return Object.entries(POS).map(([k,l]) => `<option value="${k}" ${sel === k ? 'selected' : ''}>${l}</option>`).join('');
+}
+function vTeams(){
+  let h = `<div class="card"><h2>Teams</h2>
+    <div class="row">${db.teams.map(t => `<button class="${ui.editTeam === t.id ? 'on' : ''}" data-act="editTeam" data-id="${t.id}">${esc(t.name)} (${t.players.length})</button>`).join('') || '<span class="muted">Noch kein Team angelegt.</span>'}</div>
+    <div class="row" style="margin-top:12px"><input id="newTeam" placeholder="Name des neuen Teams"><button class="primary" data-act="addTeam">Team anlegen</button></div></div>`;
+  const t = team(ui.editTeam);
+  if (t) {
+    const ps = t.players.slice().sort((a,b) => a.num - b.num);
+    h += `<div class="card">
+      <div class="row" style="justify-content:space-between"><label class="row">Teamname <input data-change="teamName" value="${esc(t.name)}"></label>
+      <label class="row">Positionswechsel <select data-change="teamSys">${Object.entries(SYS).map(([k,l]) => `<option value="${k}" ${sysOf(t) === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <button class="danger" data-act="delTeam">Team löschen</button></div>
+      <div class="tblwrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>Nr.</th><th style="text-align:left">Name</th><th style="text-align:left">Position</th><th></th></tr></thead><tbody>
+      ${ps.map(p => `<tr><td><input type="number" class="w4" data-change="pNum" data-id="${p.id}" value="${p.num}"></td>
+        <td style="text-align:left"><input data-change="pName" data-id="${p.id}" value="${esc(p.name)}"></td>
+        <td style="text-align:left"><select data-change="pPos" data-id="${p.id}">${posOptions(p.pos)}</select></td>
+        <td><button class="danger" data-act="delPlayer" data-id="${p.id}">✕</button></td></tr>`).join('')}
+      <tr><td><input id="npNum" type="number" class="w4" placeholder="Nr."></td>
+        <td style="text-align:left"><input id="npName" placeholder="Name"></td>
+        <td style="text-align:left"><select id="npPos">${posOptions('AA')}</select></td>
+        <td><button class="primary" data-act="addPlayer">Hinzufügen</button></td></tr>
+      </tbody></table></div></div>`;
+  }
+  return h;
+}
+
+/* ----- Spiele ----- */
+function resultOf(m){
+  const {st} = replay(m);
+  return st.setsUs + ':' + st.setsThem + (st.setScores.length ? ' (' + st.setScores.map(s => s.join(':')).join(', ') + ')' : '');
+}
+function vMatches(){
+  if (!db.teams.length) return `<div class="card">Lege zuerst unter <b>Teams</b> ein Team mit Spielern an.</div>`;
+  const list = db.matches.slice().sort((a,b) => (b.date || '').localeCompare(a.date || ''));
+  return `<div class="card"><h2>Neues Spiel</h2>
+    <div class="row">
+      <select id="nmTeam">${db.teams.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select>
+      <input id="nmOpp" placeholder="Gegner">
+      <input id="nmDate" type="date" value="${today()}">
+      <button class="primary" data-act="addMatch">Spiel anlegen</button>
+    </div></div>
+    <div class="card"><h2>Spiele</h2>
+    ${list.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Datum</th><th style="text-align:left">Team</th><th style="text-align:left">Gegner</th><th>Ergebnis</th><th>Status</th><th></th></tr></thead><tbody>
+    ${list.map(m => { const t = team(m.teamId); return `<tr><td>${fmtDate(m.date)}</td><td style="text-align:left">${esc(t ? t.name : '?')}</td><td style="text-align:left">${esc(m.opponent)}</td><td>${resultOf(m)}</td><td>${m.finished ? 'beendet' : 'offen'}</td>
+      <td><div class="row" style="justify-content:flex-end"><button data-act="openMatch" data-id="${m.id}">Scouten</button><button data-act="statsMatch" data-id="${m.id}">Statistik</button><button class="danger" data-act="delMatch" data-id="${m.id}">✕</button></div></td></tr>`; }).join('')}
+    </tbody></table></div>` : '<span class="muted">Noch keine Spiele.</span>'}</div>`;
+}
+
+/* ----- Live ----- */
+function vLive(){
+  const m = match(ui.matchId);
+  if (!m) return `<div class="card">Kein Spiel geöffnet. Lege unter <b>Spiele</b> ein Spiel an oder öffne eines.</div>`;
+  const t = team(m.teamId);
+  if (!t) return `<div class="card">Das Team dieses Spiels wurde gelöscht.</div>`;
+  const R = replay(m), st = R.st;
+  const head = `<div class="row" style="justify-content:space-between;margin-bottom:10px"><div><b>${esc(t.name)}</b> vs. <b>${esc(m.opponent)}</b> <span class="muted">· ${fmtDate(m.date)}</span></div>
+    <div class="row noprint">${m.events.length ? '<button data-act="undo">↶ Rückgängig</button>' : ''}<button data-act="finish">${m.finished ? 'Spiel wieder öffnen' : 'Spiel beenden'}</button></div></div>`;
+  if (m.finished) return head + `<div class="card"><h2>Spiel beendet: ${resultOf(m)}</h2><button class="primary" data-act="statsMatch" data-id="${m.id}">Zur Statistik</button></div>`;
+  if (st.matchOver) return head + `<div class="card"><h2>Spiel vorbei: ${resultOf(m)}</h2><p class="muted">Letzten Punkt falsch? Mit „Rückgängig“ korrigieren.</p><button class="primary" data-act="finish">Spiel beenden</button></div>`;
+  if (st.set === 0 || st.setOver) return head + vSetup(m, t, st);
+
+  // Vorauswahl zu Beginn jedes Ballwechsels
+  if (ui.preKey !== m.events.length) {
+    ui.preKey = m.events.length;
+    if (st.rallyFresh && !ui.mode) {
+      if (st.serve === 'us') { ui.selP = st.lineup[0]; ui.selS = 'S'; }
+      else { ui.selP = null; ui.selS = 'R'; }
+    }
+  }
+  const onCourt = new Set(courtLineup(st, t));
+  const bench = t.players.filter(p => !onCourt.has(p.id) && p.id !== st.libId).sort((a,b) => a.num - b.num);
+  let hint = '';
+  if (ui.mode === 'sub') hint = ui.subOut ? `Wechsel: ${esc(pname(t, ui.subOut))} geht raus – jetzt Bankspieler antippen` : 'Wechsel: Spieler auf dem Feld antippen, der rausgeht';
+
+  const ph = phaseOf(st), std = isStd51(st.lineup, t), rot = rotOfState(st);
+  const top = y => ((y + 0.05) / 1.25 * 100).toFixed(1) + '%';
+  // nur Anzeige: überlappende Spielfiguren auseinanderschieben (Figur ≈ 0,23 breit, 0,175 hoch in Feldkoordinaten)
+  const F = formation(st, t).map(f => ({...f, xy: [Math.min(.88, Math.max(.12, f.xy[0])), f.xy[1]]}));
+  for (let it = 0; it < 20; it++) {
+    let moved = false;
+    for (let i = 0; i < F.length; i++) for (let j = i + 1; j < F.length; j++) {
+      const a = F[i].xy, b = F[j].xy, dx = b[0] - a[0], dy = b[1] - a[1];
+      if (Math.abs(dx) < .235 && Math.abs(dy) < .18) {
+        const sh = (.18 - Math.abs(dy)) / 2 + .002, sg = dy >= 0 ? 1 : -1;
+        F[i].xy = [a[0], a[1] - sg * sh]; F[j].xy = [b[0], b[1] + sg * sh]; moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  const tokens = F.map(({id, zone, xy}) => {
+    const p = playerOf(t, id);
+    const cls = ['tok', (ui.mode === 'sub' ? ui.subOut === id : ui.selP === id) ? 'sel' : '', id === st.libId ? 'lib' : ''].join(' ');
+    return `<button class="${cls}" style="left:${(Math.min(.88, Math.max(.12, xy[0])) * 100).toFixed(1)}%;top:${top(xy[1])}" data-act="selP" data-id="${id}"><span class="zn">${ZN[zone - 1]}</span><span class="num">${p ? p.num : '?'}</span><span class="nm">${esc(p ? p.name : '')}</span></button>`;
+  }).join('');
+  const phaseTxt = !std ? 'Rotationspositionen – keine Standard-5-1-Aufstellung (Z–AA–MB–D–AA–MB) erkannt'
+    : ph === 'recv' ? (sysOf(t) === 'jugend' ? `4er-Annahme L${rot}` : `Annahme-Formation L${rot}`)
+    : ph === 'serve' ? (sysOf(t) === 'jugend' ? 'Eigener Aufschlag – Vorderspielerinnen und Zuspielerin stehen bereits auf ihren Positionen' : 'Eigener Aufschlag – Spieler stehen bereits auf Spezialpositionen')
+    : (st.serve === 'them' && rot === 1) ? 'Spezialpositionen nach Annahme L1 – vorne kein Wechsel (Diagonal IV, Außen II)' : 'Spezialpositionen';
+  const courtHtml = `<div class="half"><div class="nt">NETZ</div><div class="fl"></div><div class="al"></div>${tokens}</div><div class="phase muted">${phaseTxt} · römische Ziffer = Rotationszone</div>`;
+
+  const canRate = ui.selP && ui.selS && !ui.mode;
+  const labels = RL[ui.selS] || RL.E;
+  const n = R.ann.length;
+  const log = R.ann.slice(-40).reverse().map((a, k) => `<li>${logText(a, t)}${a.t === 'act' ? ` <button class="small" style="padding:2px 8px" data-act="editP" data-i="${n - 1 - k}" title="Spieler ändern">✎</button>` : ''}</li>`).join('');
+
+  return head + `<div class="live">
+    <section>
+      <div class="card">
+        <div class="score">
+          <div class="side"><div class="muted small">${esc(t.name)}${st.serve === 'us' ? '<span class="srv"></span>' : ''}</div><div class="big">${st.us}</div></div>
+          <div style="text-align:center"><div class="small muted">Satz ${st.set}</div><div><b>${st.setsUs} : ${st.setsThem}</b></div><div class="small muted">${st.setScores.map(s => s.join(':')).join(' · ')}</div><div class="small">Läufer <b>L${rotOfState(st) || '?'}</b></div></div>
+          <div class="side"><div class="muted small">${esc(m.opponent)}${st.serve === 'them' ? '<span class="srv"></span>' : ''}</div><div class="big">${st.them}</div></div>
+        </div>
+      </div>
+      <div class="card">
+        ${hint ? `<div class="hint">${hint}</div>` : ''}
+        ${courtHtml}
+        <div class="bench">${bench.map(p => `<button class="${ui.mode === 'sub' && ui.subOut ? '' : ''}" data-act="benchP" data-id="${p.id}" ${ui.mode === 'sub' && ui.subOut ? '' : 'disabled'}>#${p.num} ${esc(p.name)}</button>`).join('')}</div>
+        <div class="row" style="margin-top:10px">
+          <button class="${ui.mode === 'sub' ? 'on' : ''}" data-act="subMode">${ui.mode === 'sub' ? 'Wechsel abbrechen' : 'Wechsel'}</button>
+          ${st.libId ? '<span class="small muted">Libero wechselt automatisch für die hintere Mitte.</span><button data-act="libOff">Libero-Automatik aus (nur per Wechsel)</button>' : ''}
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="card">
+        <div class="skills">${SKILLS.map(s => `<button class="${ui.selS === s ? 'sel' : ''}" data-act="selS" data-s="${s}">${SK[s]}</button>`).join('')}</div>
+        <div class="ratings">${RT.map((r, i) => `<button class="c${i}" data-act="rate" data-r="${esc(r)}" ${canRate ? '' : 'disabled'}><span class="sym">${esc(r)}</span><span class="lb">${labels[i]}</span></button>`).join('')}</div>
+        <label class="row small" style="margin-top:10px"><input type="checkbox" data-change="traj" ${ui.traj ? 'checked' : ''}> Flugbahn bei Aufschlag und Angriff erfassen</label>
+        <div class="pts">
+          <button data-act="point" data-w="us" style="color:var(--r0)">+1 ${esc(t.name)}<br><span class="small muted">(z. B. Gegnerfehler)</span></button>
+          <button data-act="point" data-w="them" style="color:var(--r5)">+1 ${esc(m.opponent)}<br><span class="small muted">(z. B. Gegner-Punkt)</span></button>
+        </div>
+      </div>
+      <div class="card"><h3>Verlauf</h3><ul class="log">${log}</ul></div>
+    </section>
+  </div>`;
+}
+function logText(a, t){
+  const sc = `<span class="muted">${a.us}:${a.them}</span> `;
+  const win = a.win ? ` → <span class="w-${a.win}">Punkt ${a.win === 'us' ? 'wir' : 'Gegner'}</span>` : '';
+  switch (a.t) {
+    case 'set': return `<b>Satz ${a.set} gestartet</b>`;
+    case 'act': return sc + `${esc(pname(t, a.p))} · ${SK[a.s]} <b>${esc(a.r)}</b>${trajOf(a) ? ' ↗' : ''}` + win;
+    case 'pt': return sc + 'Punkt ohne Aktion' + win;
+    case 'libOff': return sc + '<b>Libero-Automatik aus</b> – Libero nur noch per Wechsel';
+    case 'sub': return sc + `Wechsel: ${esc(pname(t, a.in))} für ${esc(pname(t, a.out))}`;
+    case 'lib': return sc + `Libero für ${esc(pname(t, a.out))}`;
+    case 'libout': return sc + 'Libero raus';
+  }
+  return '';
+}
+function vSetup(m, t, st){
+  const prev = m.events.filter(e => e.t === 'set').slice(-1)[0];
+  const ps = t.players.slice().sort((a,b) => a.num - b.num);
+  if (ps.length < 6) return `<div class="card">Das Team braucht mindestens 6 Spieler. Bitte unter <b>Teams</b> ergänzen.</div>`;
+  const opt = (sel, empty) => (empty ? `<option value="">${empty}</option>` : '<option value="">–</option>') +
+    ps.map(p => `<option value="${p.id}" ${sel === p.id ? 'selected' : ''}>#${p.num} ${esc(p.name)} (${POS[p.pos] || ''})</option>`).join('');
+  const lu = prev ? prev.lineup : [];
+  const defLib = prev ? prev.lib : (ps.find(p => p.pos === 'L') || {}).id;
+  const defRef = prev ? prev.ref : null;
+  const banner = st.setOver ? `<div class="hint">Satz ${st.set} beendet: ${st.us}:${st.them} · Sätze ${st.setsUs}:${st.setsThem}</div>` : '';
+  return `<div class="card">${banner}<h2>Aufstellung Satz ${st.set + 1}</h2>
+    <p class="muted small">Rotationspositionen wie auf dem Feld: oben am Netz IV – III – II, hinten V – VI – I (I = Aufschläger). Für Annahme-Formationen und Spezialpositionen wird ein 5-1-System erwartet: ab Zuspieler in Zonenreihenfolge Zuspiel – Außen – Mitte – Diagonal – Außen – Mitte (z. B. Zuspiel I, Außen II, Mitte III, Diagonal IV, Außen V, Mitte VI). Der Libero wechselt automatisch für die hintere Mitte.</p>
+    <div class="net">NETZ</div>
+    <div class="setup">${COURT_ORDER.map(i => `<label>Position ${ZN[i]}<select id="lz${i}">${opt(lu[i])}</select></label>`).join('')}</div>
+    <div class="row" style="margin-top:14px">
+      <label class="row">Libero <select id="suLib">${opt(defLib, 'kein Libero')}</select></label>
+      <label class="row">Rotation zählt nach <select id="suRef">${opt(defRef, 'Zuspieler automatisch')}</select></label>
+    </div>
+    <div class="row" style="margin-top:14px">Aufschlag:
+      <label class="row"><input type="radio" name="suServe" value="us" checked> ${esc(t.name)}</label>
+      <label class="row"><input type="radio" name="suServe" value="them"> ${esc(m.opponent)}</label>
+    </div>
+    <div class="row" style="margin-top:14px"><button class="primary" data-act="startSet">Satz ${st.set + 1} starten</button></div></div>`;
+}
+
+/* ----- Statistik ----- */
+function evalList(s, list){
+  const c = {'#':0,'+':0,'!':0,'-':0,'/':0,'=':0};
+  list.forEach(a => c[a.r]++);
+  const n = list.length;
+  let eff;
+  if (s === 'A' || s === 'B') eff = c['#'] - c['/'] - c['='];
+  else if (s === 'R') eff = c['#'] + c['+'] - c['/'] - c['='];
+  else eff = c['#'] - c['='];
+  return {n, c, pos: pct(c['#'] + c['+'], n), perf: pct(c['#'], n), eff: pct(eff, n)};
+}
+function statData(){
+  const f = ui.f, t = team(f.team);
+  if (!t) return null;
+  const ms = db.matches.filter(m => m.teamId === t.id && (f.match === 'all' || m.id === f.match));
+  let acts = [], rallies = [];
+  ms.forEach(m => {
+    const R = replay(m);
+    R.ann.forEach(a => { if (a.t === 'act') acts.push({...a, mid:m.id}); });
+    R.rallies.forEach(r => rallies.push({...r, mid:m.id}));
+  });
+  const ok = x => (f.set === 'all' || x.set === +f.set) && (f.rot === 'all' || x.rot === +f.rot);
+  acts = acts.filter(ok); rallies = rallies.filter(ok);
+  const actsP = f.player === 'all' ? acts : acts.filter(a => a.p === f.player);
+  const pids = [...new Set(acts.map(a => a.p))].sort((a,b) => ((playerOf(t,a)||{num:999}).num) - ((playerOf(t,b)||{num:999}).num));
+  const by = (p, s) => acts.filter(a => a.p === p && a.s === s);
+  const tables = [];
+
+  // Übersicht
+  tables.push({title:'Übersicht', head:['Spieler','Punkte','Fehler','Aufschläge','Asse','Aufschl.-Fehler','Aufschl.-Eff.','Annahmen','Ann. pos.','Ann. perf.','Angriffe','Angr.-Punkte','Angr.-Eff.','Block-Punkte','Abwehr','Abw. pos.'],
+    rows: [...pids.map(p => [pname(t,p), ...ovRow(acts.filter(a => a.p === p))]), ['Team', ...ovRow(acts)]], totalLast:true});
+
+  // Details je Element (alle sechs)
+  const details = SKILLS.map(s => {
+    const detRow = list => { const e = evalList(s, list); return [e.n, ...RT.map(r => e.c[r]), e.pos, e.perf, e.eff]; };
+    return {title: SK[s] + ' Details', skill: s, head:['Spieler','Gesamt', ...RT.map((r,i) => r + ' ' + RL[s][i]), 'positiv','perfekt','Effizienz'],
+      rows: [...pids.filter(p => by(p,s).length).map(p => [pname(t,p), ...detRow(by(p,s))]), ['Team', ...detRow(acts.filter(a => a.s === s))]], totalLast:true};
+  });
+  tables.push(...details);
+
+  // Rotationen
+  const rotRow = list => {
+    const so = list.filter(r => r.serve === 'them'), br = list.filter(r => r.serve === 'us');
+    const won = list.filter(r => r.win === 'us').length;
+    return [list.length, won, list.length - won, pct(so.filter(r => r.win === 'us').length, so.length) + ' (' + so.length + ')', pct(br.filter(r => r.win === 'us').length, br.length) + ' (' + br.length + ')'];
+  };
+  tables.push({title:'Läufer', head:['Läufer','Ballwechsel','gewonnen','verloren','Side-out (bei Gegner-Aufschlag)','Break (bei eigenem Aufschlag)'],
+    rows: [...[1,2,3,4,5,6].map(r => ['L' + r, ...rotRow(rallies.filter(x => x.rot === r))]), ['Gesamt', ...rotRow(rallies)]], totalLast:true});
+
+  // Angriffsverteilung
+  const att = acts.filter(a => a.s === 'A');
+  const good = att.filter(a => a.firstAtt && (a.recQ === '#' || a.recQ === '+'));
+  const weak = att.filter(a => a.firstAtt && (a.recQ === '!' || a.recQ === '-'));
+  const zp = a => a.pz ?? a.zone;
+  const zoneGroups = [['Position IV', a => zp(a) === 4], ['Position III', a => zp(a) === 3], ['Position II', a => zp(a) === 2], ['Hinten (I, V, VI)', a => [1,5,6].includes(zp(a))]];
+  const share = (list, fn) => { const k = list.filter(fn).length; return k + ' (' + pct(k, list.length) + ')'; };
+  tables.push({title:'Angriffsverteilung', head:['Angriff von','Alle Angriffe','nach Annahme # / +','nach Annahme ! / -','Effizienz'],
+    rows: [...zoneGroups.map(([l, fn]) => [l, share(att, fn), share(good, fn), share(weak, fn), evalList('A', att.filter(fn)).eff]),
+      ['Gesamt', att.length, good.length, weak.length, evalList('A', att).eff]], totalLast:true});
+  tables.push({title:'Angriffe nach Spieler', head:['Spieler','Anteil Angriffe','Punkte','Effizienz'],
+    rows: pids.filter(p => by(p,'A').length).map(p => { const l = by(p,'A'); return [pname(t,p), l.length + ' (' + pct(l.length, att.length) + ')', l.filter(a => a.r === '#').length, evalList('A', l).eff]; })});
+
+  // Zuspiel → Angriff je Zuspieler
+  const setters = pids.filter(p => by(p, 'E').length);
+  setters.forEach(p => tables.push(...setterTables(t, acts, p, zoneGroups)));
+  return {t, ms, acts, actsP, rallies, tables, pids, details, zoneGroups, setters, filterTxt: filterText(t)};
+}
+// Zuspiel-Auswertung: wohin wurde zugespielt (Angriffsposition) und wie gut war der Angriff danach.
+// p = Zuspieler-ID oder null für das ganze Team
+function setterTables(t, acts, p, zoneGroups){
+  const sets = acts.filter(a => a.s === 'E' && (p == null || a.p === p));
+  const att = acts.filter(a => a.s === 'A' && a.setBy != null && (p == null || a.setBy === p));
+  const who = p == null ? 'Team' : pname(t, p);
+  const zp = a => a.pz ?? a.zone;
+  const good = att.filter(a => a.setQ === '#' || a.setQ === '+'), weak = att.filter(a => a.setQ === '!' || a.setQ === '-' || a.setQ === '/');
+  const share = (list, fn) => { const k = list.filter(fn).length; return k + ' (' + pct(k, list.length) + ')'; };
+  const dist = {title: 'Zuspielverteilung ' + who, head:['Angriff von','Zuspiele mit Angriff','nach Zuspiel # / +','nach Zuspiel ! / - / /','Angriffs-Punkte','Angriffs-Eff.'],
+    rows: [...zoneGroups.map(([l, fn]) => { const z = att.filter(fn); return [l, share(att, fn), share(good, fn), share(weak, fn), z.filter(a => a.r === '#').length, evalList('A', z).eff]; }),
+      ['Gesamt', att.length, good.length, weak.length, att.filter(a => a.r === '#').length, evalList('A', att).eff],
+      ['Zuspiele ohne erfassten Angriff', sets.length - att.length, '', '', '', '']], totalLast:false};
+  const posName = z => z === 4 ? 'IV' : z === 3 ? 'III' : z === 2 ? 'II' : z ? 'hinten' : '';
+  const qual = {title: 'Zuspielqualität → Angriff ' + who, head:['Zuspiel','Zuspiele','mit Angriff','Angriffs-Punkte','geblockt / Fehler','Angriffs-Eff.','häufigste Position'],
+    rows: RT.map((r, i) => {
+      const n = sets.filter(a => a.r === r).length, l = att.filter(a => a.setQ === r);
+      const cnt = {}; l.forEach(a => { const k = posName(zp(a)); cnt[k] = (cnt[k] || 0) + 1; });
+      const top = Object.entries(cnt).sort((x, y) => y[1] - x[1])[0];
+      return [r + ' ' + RL.E[i], n, l.length, l.filter(a => a.r === '#').length, l.filter(a => a.r === '/' || a.r === '=').length, evalList('A', l).eff, top ? top[0] + ' (' + top[1] + ')' : '–'];
+    })};
+  return [dist, qual];
+}
+// Elemente-Tabelle (eine Zeile je Element) für Team- und Einzelbericht
+function elemTable(title, list){
+  return {title, head:['Element','Gesamt','#','+','!','-','/','=','positiv','perfekt','Effizienz'],
+    rows: SKILLS.map(s => { const e = evalList(s, list.filter(a => a.s === s)); return [SK[s], e.n, ...RT.map(r => e.c[r]), e.pos, e.perf, e.eff]; })};
+}
+function filterText(t){
+  const f = ui.f, m = f.match === 'all' ? null : match(f.match);
+  return [m ? fmtDate(m.date) + ' vs. ' + m.opponent : 'Alle Spiele', f.set === 'all' ? null : 'Satz ' + f.set, f.rot === 'all' ? null : 'Läufer L' + f.rot].filter(Boolean).join(' · ');
+}
+const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = (# + +) / Gesamt · perfekt = # / Gesamt ·
+      Effizienz = (gute − schlechte Aktionen) / Gesamt: Angriff und Block (# − / − =), Annahme (# + + − / − =), Aufschlag, Zuspiel, Abwehr (# − =); Werte von −100 % bis +100 % möglich ·
+      Side-out = gewonnene Ballwechsel bei Gegner-Aufschlag · Break = gewonnene Ballwechsel bei eigenem Aufschlag · Läufer L1–L6 = Position des Zuspielers.
+      Angriffsverteilung „nach Annahme“ zählt jeweils den ersten Angriff nach einer eigenen Annahme; Positionen = Spielposition nach dem Wechsel auf Spezialpositionen.
+      Zuspielverteilung: Ein Zuspiel wird mit dem direkt folgenden Angriff im selben Ballwechsel verknüpft (nur wenn das Zuspiel erfasst wurde).</div>`;
+function vReport(D){
+  const r = ui.report, t = D.t;
+  const bar = `<div class="card noprint"><div class="row">
+      <button data-act="repBack">← Zurück zur Statistik</button>
+      ${r.kind === 'player' ? `<select data-change="repPlayer"><option value="all">Alle Spieler (je eine Seite)</option>${D.pids.map(p => `<option value="${p}" ${r.pid === p ? 'selected' : ''}>${esc(pname(t, p))}</option>`).join('')}</select>` : ''}
+      <button class="primary" data-act="print">Drucken / PDF</button>
+      <span class="small muted">Filter (Spiel, Satz, Läufer) wie in der Statistik.</span></div></div>`;
+  const courts = list => {
+    const sD = list.filter(a => a.s === 'S' && trajOf(a)), aD = list.filter(a => a.s === 'A' && trajOf(a));
+    return `<div class="card"><div class="grid2"><div><h3>Aufschläge (${sD.length})</h3>${courtSVG(sD)}${legend('S')}</div><div><h3>Angriffe (${aD.length})</h3>${courtSVG(aD)}${legend('A')}</div></div></div>`;
+  };
+  if (r.kind === 'team') {
+    const [lauf, dist] = D.tables.filter(x => x.title === 'Läufer' || x.title === 'Angriffsverteilung');
+    return bar + `<h2>Teambericht ${esc(t.name)} – ${esc(D.filterTxt)}</h2>
+      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${courts(D.acts)}${DEFS_HTML}`;
+  }
+  const ids = r.pid && r.pid !== 'all' ? [r.pid] : D.pids;
+  if (!ids.length) return bar + '<div class="card">Keine Aktionen für die gewählten Filter.</div>';
+  return bar + ids.map((p, i) => {
+    const l = D.acts.filter(a => a.p === p), att = l.filter(a => a.s === 'A');
+    const zp = a => a.pz ?? a.zone;
+    const dist = {title:'Angriffe nach Position', head:['Angriff von','Anzahl','Punkte','Effizienz'],
+      rows: D.zoneGroups.map(([lab, fn]) => { const z = att.filter(fn); return [lab, z.length + ' (' + pct(z.length, att.length) + ')', z.filter(a => a.r === '#').length, evalList('A', z).eff]; })};
+    return `<section class="${i < ids.length - 1 ? 'pagebreak' : ''}"><h2>Einzelbericht ${esc(pname(t, p))} – ${esc(t.name)}</h2><p class="muted">${esc(D.filterTxt)}</p>
+      ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courts(l)}${DEFS_HTML}</section>`;
+  }).join('');
+}
+function ovRow(l){
+  const g = s => l.filter(a => a.s === s);
+  const S = evalList('S', g('S')), R = evalList('R', g('R')), A = evalList('A', g('A')), D = evalList('D', g('D'));
+  const pts = l.filter(a => a.r === '#' && 'SAB'.includes(a.s)).length;
+  const err = l.filter(a => a.r === '=').length;
+  return [pts, err, S.n, S.c['#'], S.c['='], S.eff, R.n, R.pos, R.perf, A.n, A.c['#'], A.eff, g('B').filter(a => a.r === '#').length, D.n, D.pos];
+}
+function tableHtml(tb){
+  return `<div class="card"><h3>${esc(tb.title)}</h3><div class="tblwrap"><table class="tbl"><thead><tr>${tb.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+    ${tb.rows.map((r, i) => `<tr class="${tb.totalLast && i === tb.rows.length - 1 ? 'tot' : ''}">${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${tb.head.length}" class="muted">Keine Daten</td></tr>`}
+  </tbody></table></div></div>`;
+}
+/* Ganzes Feld: viewBox 100 x 200, Feld x 10–90, y 20–180, Netz y 100.
+   Gespeicherte Koordinaten: x 0–1 (linke → rechte Seitenlinie aus unserer Sicht),
+   y 0–1 (gegnerische Grundlinie → eigene Grundlinie), Werte außerhalb 0–1 = Aus. */
+const CX = x => 10 + x * 80, CY = y => 20 + y * 160;
+function trajOf(a){
+  if (a.line) return a.line;
+  if (a.x != null) return [null, null, a.x, a.y * 0.5]; // ältere Einträge: nur Zielpunkt
+  return null;
+}
+function trajMarks(acts){
+  return acts.map(a => {
+    const l = trajOf(a); if (!l) return '';
+    const c = RCOL[RT.indexOf(a.r)], ex = CX(l[2]).toFixed(1), ey = CY(l[3]).toFixed(1);
+    const line = l[0] != null ? `<line x1="${CX(l[0]).toFixed(1)}" y1="${CY(l[1]).toFixed(1)}" x2="${ex}" y2="${ey}" class="tl" stroke="${c}"/><circle cx="${CX(l[0]).toFixed(1)}" cy="${CY(l[1]).toFixed(1)}" r="1" fill="${c}"/>` : '';
+    return line + `<circle cx="${ex}" cy="${ey}" r="2" fill="${c}" stroke="#000" stroke-width=".3"/>`;
+  }).join('');
+}
+function courtSVG(acts, id){
+  const zt = (x, y, l) => `<text x="${x}" y="${y}" class="zt">${l}</text>`;
+  return `<svg ${id ? `id="${id}"` : ''} viewBox="0 0 100 200" class="courtsvg" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="0" width="100" height="200" class="outa"/>
+    <rect x="10" y="20" width="80" height="80" class="hf"/><rect x="10" y="100" width="80" height="80" class="hf own"/>
+    <rect x="10" y="20" width="80" height="160" fill="none" stroke="#fff" stroke-width=".8"/>
+    <line x1="36.67" y1="20" x2="36.67" y2="180" class="zl"/><line x1="63.33" y1="20" x2="63.33" y2="180" class="zl"/>
+    <line x1="10" y1="73.33" x2="90" y2="73.33" class="al"/><line x1="10" y1="126.67" x2="90" y2="126.67" class="al"/>
+    ${zt(23.3,92,'2')}${zt(50,92,'3')}${zt(76.7,92,'4')}${zt(23.3,50,'1')}${zt(50,50,'6')}${zt(76.7,50,'5')}
+    ${zt(23.3,116,'4')}${zt(50,116,'3')}${zt(76.7,116,'2')}${zt(23.3,158,'5')}${zt(50,158,'6')}${zt(76.7,158,'1')}
+    <line x1="3" y1="100" x2="97" y2="100" class="netl"/>
+    <text x="50" y="12" class="lbl">GEGNER</text><text x="50" y="192" class="lbl">WIR</text>
+    <g id="${id ? id + '-marks' : ''}">${trajMarks(acts)}</g>
+  </svg>`;
+}
+function legend(s){
+  // Farbpunkte als SVG statt CSS-Hintergrund: Browser lassen Hintergrundfarben beim Drucken standardmäßig weg
+  return `<div class="legend">${RT.map((r,i) => `<span><svg width="10" height="10" viewBox="0 0 10 10" style="margin-right:4px;vertical-align:-1px"><circle cx="5" cy="5" r="5" fill="${RCOL[i]}"/></svg>${esc(r)} ${RL[s][i]}</span>`).join('')}</div>`;
+}
+function vStats(){
+  if (!db.teams.length) return `<div class="card">Noch keine Daten.</div>`;
+  if (!team(ui.f.team)) ui.f.team = db.teams[0].id;
+  const D = statData(), f = ui.f, t = D.t;
+  if (ui.report) return vReport(D);
+  const sel = (key, opts) => `<select data-change="f" data-k="${key}">${opts.map(([v,l]) => `<option value="${esc(v)}" ${String(f[key]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  const mOpts = [['all','Alle Spiele'], ...db.matches.filter(m => m.teamId === t.id).map(m => [m.id, fmtDate(m.date) + ' vs. ' + m.opponent])];
+  const pOpts = [['all','Alle Spieler'], ...t.players.slice().sort((a,b) => a.num - b.num).map(p => [p.id, '#' + p.num + ' ' + p.name])];
+  const filterTxt = [mOpts.find(o => o[0] === f.match), f.set === 'all' ? null : ['', 'Satz ' + f.set], f.rot === 'all' ? null : ['', 'Läufer L' + f.rot]].filter(Boolean).map(o => o[1]).join(' · ');
+  const ov = D.tables[0], det = D.details.find(x => x.skill === f.skill), rest = D.tables.slice(1 + SKILLS.length);
+  const sDots = D.actsP.filter(a => a.s === 'S' && trajOf(a)), aDots = D.actsP.filter(a => a.s === 'A' && trajOf(a));
+  return `<div class="card noprint"><div class="row">
+      ${db.teams.length > 1 ? sel('team', db.teams.map(x => [x.id, x.name])) : ''}
+      ${sel('match', mOpts)}
+      ${sel('set', [['all','Alle Sätze'],['1','Satz 1'],['2','Satz 2'],['3','Satz 3'],['4','Satz 4'],['5','Satz 5']])}
+      ${sel('rot', [['all','Alle Läufer'], ...[1,2,3,4,5,6].map(r => [String(r), 'Läufer L' + r])])}
+      <button data-act="xlsx">Excel-Export</button><button data-act="print">Drucken / PDF (alles)</button>
+      <button data-act="repTeam">Teambericht</button><button data-act="repPlayer">Einzelberichte</button>
+    </div></div>
+    <h2>${esc(t.name)} – ${esc(filterTxt)}</h2>
+    ${tableHtml(ov)}
+    <div class="card noprint"><div class="row">Element: ${SKILLS.map(s => `<button class="${f.skill === s ? 'on' : ''}" data-act="fSkill" data-s="${s}">${SK[s]}</button>`).join('')}</div></div>
+    <div class="noprint">${tableHtml(det)}</div>
+    <div class="printonly">${D.details.map(tableHtml).join('')}</div>
+    ${rest.map(tableHtml).join('')}
+    <div class="card"><div class="row noprint" style="margin-bottom:10px">Flugbahnen für ${sel('player', pOpts)}</div>
+      <div class="grid2">
+        <div><h3>Aufschläge (${sDots.length})</h3>${courtSVG(sDots)}${legend('S')}</div>
+        <div><h3>Angriffe (${aDots.length})</h3>${courtSVG(aDots)}${legend('A')}</div>
+      </div></div>
+    ${DEFS_HTML}`;
+}
+
+/* ----- Daten ----- */
+function syncInfoHtml(){
+  if (!syncOn()) return '<span class="muted">Nicht verbunden – Daten liegen nur in diesem Browser.</span>';
+  const st = syncState.status === 'err' ? `<span style="color:var(--r5)">Fehler: ${esc(syncState.msg)}</span>`
+    : syncState.status === 'busy' ? esc(syncState.msg)
+    : syncState.last ? 'Zuletzt synchronisiert: ' + syncState.last.toLocaleTimeString('de-DE') : 'Verbunden';
+  return `<b>Online-Speicherung aktiv.</b> ${st}`;
+}
+function vData(){
+  return `<div class="card"><h2>Online-Speicherung (Supabase)</h2>
+    <p id="syncInfo">${syncInfoHtml()}</p>
+    <div class="form">
+      <label for="sUrl">Project URL</label><input id="sUrl" placeholder="https://xxxx.supabase.co" value="${esc(sync.url || '')}">
+      <label for="sKey">Publishable / anon key</label><input id="sKey" placeholder="sb_publishable_… oder eyJ…" value="${esc(sync.key || '')}">
+      <label for="sSpace">Sync-Schlüssel</label><div class="row"><input id="sSpace" style="flex:1;min-width:220px" value="${esc(sync.space || '')}" placeholder="wird erzeugt"><button data-act="newSpace">Neu erzeugen</button></div>
+    </div>
+    <p class="small muted">Niemals den <b>secret</b>- oder <b>service_role</b>-Key eintragen – nur den publishable bzw. anon key.
+      Der <b>Sync-Schlüssel</b> ist dein Passwort für die Daten: Wer ihn kennt, kann die Scouting-Daten lesen und ändern.
+      Auf jedem weiteren Gerät denselben Schlüssel eintragen. Gut aufbewahren – ohne ihn kommst du nicht mehr an die Online-Daten.</p>
+    <div class="row">
+      <button class="primary" data-act="syncConnect">Speichern &amp; verbinden</button>
+      ${syncOn() ? '<button data-act="syncNow">Jetzt synchronisieren</button><button data-act="deviceLink">Link für weiteres Gerät kopieren</button><button class="danger" data-act="syncOff">Verbindung trennen</button>' : ''}
+    </div>
+    <details style="margin-top:14px"><summary><b>Einrichtung in Supabase (einmalig)</b></summary>
+      <ol class="small">
+        <li>Im Supabase-Dashboard dein bestehendes Projekt öffnen.</li>
+        <li>Links <b>SQL Editor</b> öffnen, eine neue Abfrage anlegen, das folgende Skript hineinkopieren und auf <b>Run</b> klicken. Es legt nur die neue Tabelle <code>scout_store</code> und zwei Funktionen an; deine anderen Tabellen bleiben unberührt.</li>
+        <li>In den Projekteinstellungen bei den API-Einstellungen die <b>Project URL</b> und den <b>publishable</b> (bzw. <b>anon</b>) key kopieren und oben eintragen.</li>
+        <li>„Speichern &amp; verbinden“ klicken.</li>
+      </ol>
+      <div class="row" style="margin-bottom:6px"><button data-act="copySql">SQL kopieren</button></div>
+      <textarea id="sqlText" readonly>${esc(SETUP_SQL)}</textarea>
+    </details></div>
+  <div class="card"><h2>Daten sichern</h2>
+    <p>Zusätzlich zur Online-Speicherung kannst du jederzeit eine Sicherungsdatei herunterladen.</p>
+    <div class="row"><button class="primary" data-act="backup">Sicherung herunterladen (.json)</button>
+    <label class="row"><span>Sicherung laden:</span> <input type="file" id="restore" accept=".json,application/json"></label></div></div>
+    <div class="card"><h2>Alles löschen</h2><button class="danger" data-act="wipe">Alle Teams und Spiele löschen</button>
+    <p class="small muted">Bei aktiver Online-Speicherung wird auch dort gelöscht.</p></div>`;
+}
+
+/* ---------- Flugbahn-Erfassung (Wischen) ---------- */
+function openTraj(ev){
+  const t = team(match(ui.matchId).teamId);
+  ui.pending = ev;
+  $modal.innerHTML = `<div class="modal-box"><h3>${SK[ev.s]} ${esc(ev.r)} · ${esc(pname(t, ev.p))}</h3>
+    <p class="small muted" id="trajHint">Finger am Startpunkt aufsetzen und bis zum Landepunkt ziehen. Ziffern = Zonen aus Sicht des jeweiligen Teams.</p>
+    ${courtSVG([], 'trajsvg')}
+    <div class="row" style="margin-top:12px;justify-content:space-between"><button data-act="trajSkip">Ohne Flugbahn speichern</button><button class="danger" data-act="trajCancel">Abbrechen</button></div></div>`;
+  $modal.classList.remove('hidden');
+  const svg = document.getElementById('trajsvg'), g = document.getElementById('trajsvg-marks');
+  const toCourt = e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const v = pt.matrixTransform(svg.getScreenCTM().inverse());
+    return {vx: v.x, vy: v.y, x: +((v.x - 10) / 80).toFixed(3), y: +((v.y - 20) / 160).toFixed(3)};
+  };
+  let start = null;
+  const col = RCOL[RT.indexOf(ev.r)];
+  const draw = (a, b) => {
+    g.innerHTML = `<line x1="${a.vx}" y1="${a.vy}" x2="${b.vx}" y2="${b.vy}" class="tl" stroke="${col}" stroke-width="1.4"/>` +
+      `<circle cx="${a.vx}" cy="${a.vy}" r="1.4" fill="${col}"/><circle cx="${b.vx}" cy="${b.vy}" r="2.2" fill="${col}" stroke="#000" stroke-width=".3"/>`;
+  };
+  svg.addEventListener('pointerdown', e => {
+    e.preventDefault(); start = toCourt(e);
+    try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+    draw(start, start);
+  });
+  svg.addEventListener('pointermove', e => { if (start) draw(start, toCourt(e)); });
+  const finish = e => {
+    if (!start) return;
+    const end = toCourt(e), a = start; start = null;
+    if (Math.hypot(end.vx - a.vx, end.vy - a.vy) < 4) {
+      g.innerHTML = '';
+      document.getElementById('trajHint').innerHTML = '<b>Bitte eine Linie ziehen</b> – vom Startpunkt bis zum Landepunkt.';
+      return;
+    }
+    const ev2 = {...ui.pending, line: [a.x, a.y, end.x, end.y]};
+    closeModal(); pushEv(ev2);
+  };
+  svg.addEventListener('pointerup', finish);
+  svg.addEventListener('pointercancel', () => { start = null; g.innerHTML = ''; });
+}
+function closeModal(){ $modal.classList.add('hidden'); $modal.innerHTML = ''; ui.pending = null; }
+
+/* ---------- Aktionen ---------- */
+function pushEv(ev){
+  const m = match(ui.matchId);
+  m.events.push(ev); save();
+  ui.selP = null; ui.selS = null; ui.mode = null; ui.subOut = null;
+  render();
+}
+function download(name, content, type){
+  const blob = content instanceof Blob ? content : new Blob([content], {type});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+const A = {
+  tab: d => { ui.tab = d.k; ui.mode = null; ui.report = null; render(); },
+  addTeam: () => {
+    const n = document.getElementById('newTeam').value.trim();
+    if (!n) return;
+    const t = {id: uid(), name: n, players: []};
+    db.teams.push(t); ui.editTeam = t.id; if (!ui.f.team) ui.f.team = t.id; save(); render();
+  },
+  editTeam: d => { ui.editTeam = d.id; render(); },
+  delTeam: () => {
+    const t = team(ui.editTeam);
+    if (!confirm(`Team „${t.name}“ und alle zugehörigen Spiele löschen?`)) return;
+    markDeleted('team', t.id);
+    db.matches.filter(m => m.teamId === t.id).forEach(m => markDeleted('match', m.id));
+    db.teams = db.teams.filter(x => x !== t);
+    db.matches = db.matches.filter(m => m.teamId !== t.id);
+    ui.editTeam = db.teams[0] ? db.teams[0].id : null; ui.f.team = ui.editTeam; ui.f.match = 'all';
+    save(); render();
+  },
+  addPlayer: () => {
+    const t = team(ui.editTeam);
+    const num = parseInt(document.getElementById('npNum').value, 10);
+    const name = document.getElementById('npName').value.trim();
+    if (isNaN(num)) { alert('Bitte eine Rückennummer eingeben.'); return; }
+    if (t.players.some(p => p.num === num)) { alert('Nummer ' + num + ' ist schon vergeben.'); return; }
+    t.players.push({id: uid(), num, name, pos: document.getElementById('npPos').value});
+    save(); render();
+    document.getElementById('npNum').focus();
+  },
+  delPlayer: d => {
+    const t = team(ui.editTeam), p = playerOf(t, d.id);
+    const used = db.matches.some(m => m.teamId === t.id && m.events.some(e => e.p === d.id || (e.lineup || []).includes(d.id)));
+    if (!confirm(`#${p.num} ${p.name} löschen?` + (used ? '\nAchtung: Der Spieler kommt in gescouteten Spielen vor. Seine Aktionen bleiben, erscheinen aber als „Gelöschter Spieler“.' : ''))) return;
+    t.players = t.players.filter(x => x !== p); save(); render();
+  },
+  addMatch: () => {
+    const opp = document.getElementById('nmOpp').value.trim();
+    if (!opp) { alert('Bitte den Gegner eingeben.'); return; }
+    const m = {id: uid(), teamId: document.getElementById('nmTeam').value, opponent: opp, date: document.getElementById('nmDate').value, events: [], finished: false};
+    db.matches.push(m); ui.matchId = m.id; ui.tab = 'live'; ui.preKey = null; save(); render();
+  },
+  openMatch: d => { ui.matchId = d.id; ui.tab = 'live'; ui.preKey = null; ui.selP = ui.selS = null; render(); },
+  statsMatch: d => { const m = match(d.id); ui.report = null; ui.f.team = m.teamId; ui.f.match = m.id; ui.f.player = 'all'; ui.tab = 'stats'; render(); },
+  delMatch: d => {
+    const m = match(d.id);
+    if (!confirm(`Spiel gegen „${m.opponent}“ vom ${fmtDate(m.date)} löschen?`)) return;
+    markDeleted('match', m.id);
+    db.matches = db.matches.filter(x => x !== m);
+    if (ui.matchId === m.id) ui.matchId = null;
+    if (ui.f.match === m.id) ui.f.match = 'all';
+    save(); render();
+  },
+  startSet: () => {
+    const m = match(ui.matchId), t = team(m.teamId);
+    const lineup = [0,1,2,3,4,5].map(i => document.getElementById('lz' + i).value);
+    if (lineup.some(x => !x)) { alert('Bitte alle 6 Positionen besetzen.'); return; }
+    if (new Set(lineup).size !== 6) { alert('Ein Spieler ist doppelt aufgestellt.'); return; }
+    const lib = document.getElementById('suLib').value || null;
+    if (lib && lineup.includes(lib)) { alert('Der Libero darf nicht in der Startaufstellung stehen.'); return; }
+    let ref = document.getElementById('suRef').value;
+    if (!ref) ref = lineup.find(id => (playerOf(t, id) || {}).pos === 'Z') || lineup[0];
+    if (!lineup.includes(ref)) { alert('Die Rotations-Referenz muss in der Aufstellung stehen.'); return; }
+    const serve = document.querySelector('input[name=suServe]:checked').value;
+    if (!isStd51(lineup, t) && !confirm('Keine Standard-5-1-Aufstellung erkannt (ab Zuspieler in Zonenreihenfolge I→II→III…: Zuspiel, Außen, Mitte, Diagonal, Außen, Mitte).\nAnnahme-Formationen und Spezialpositionen werden dann nicht angezeigt, nur die Rotationspositionen. Trotzdem starten?')) return;
+    if (lib && posOf(t, lib) !== 'L' && !confirm('Der gewählte Libero hat in der Teamliste nicht die Position „Libero“. Trotzdem starten?')) return;
+    ui.preKey = null;
+    pushEv({t:'set', lineup, lib, ref, serve});
+  },
+  selP: d => {
+    const m = match(ui.matchId), st = replay(m).st;
+    if (ui.mode === 'sub') {
+      if (d.id === st.libId) { alert('Der Libero wechselt automatisch. Bitte einen anderen Spieler wählen.'); return; }
+      ui.subOut = ui.subOut === d.id ? null : d.id; render(); return;
+    }
+    ui.selP = ui.selP === d.id ? null : d.id; render();
+  },
+  benchP: d => { if (ui.mode === 'sub' && ui.subOut) pushEv({t:'sub', out: ui.subOut, in: d.id}); },
+  selS: d => { ui.selS = ui.selS === d.s ? null : d.s; render(); },
+  rate: d => {
+    if (!ui.selP || !ui.selS) return;
+    const ev = {t:'act', p: ui.selP, s: ui.selS, r: d.r};
+    if (ui.traj && (ev.s === 'S' || ev.s === 'A')) openTraj(ev); else pushEv(ev);
+  },
+  trajSkip: () => { const ev = ui.pending; closeModal(); pushEv(ev); },
+  trajCancel: () => closeModal(),
+  libOff: () => {
+    if (!confirm('Libero-Automatik für den Rest dieses Satzes ausschalten?\n\nDie Mitte bleibt dann auch hinten auf dem Feld. Soll der Libero spielen, wechsle ihn über „Wechsel“ wie einen normalen Spieler für die Mitte ein. Bisherige Aktionen bleiben unverändert (mit ✎ im Verlauf korrigierbar).')) return;
+    pushEv({t:'libOff'});
+  },
+  editP: d => {
+    const m = match(ui.matchId), t = team(m.teamId), i = +d.i, ev = m.events[i];
+    if (!ev || ev.t !== 'act') return;
+    const ps = t.players.slice().sort((a,b) => a.num - b.num);
+    $modal.innerHTML = `<div class="modal-box"><h3>Aktion korrigieren</h3>
+      <p>${SK[ev.s]} <b>${esc(ev.r)}</b> – bisher: <b>${esc(pname(t, ev.p))}</b>. Wer hat die Aktion ausgeführt?</p>
+      <div class="row">${ps.map(p => `<button class="${p.id === ev.p ? 'on' : ''}" data-act="editPset" data-i="${i}" data-id="${p.id}">#${p.num} ${esc(p.name)}</button>`).join('')}</div>
+      <div class="row" style="margin-top:12px;justify-content:flex-end"><button data-act="trajCancel">Abbrechen</button></div></div>`;
+    $modal.classList.remove('hidden');
+  },
+  editPset: d => {
+    const m = match(ui.matchId), ev = m.events[+d.i];
+    if (ev && ev.t === 'act') { ev.p = d.id; save(); }
+    closeModal(); render();
+  },
+  point: d => pushEv({t:'pt', w: d.w}),
+  subMode: () => { ui.mode = ui.mode === 'sub' ? null : 'sub'; ui.subOut = null; render(); },
+  cancelMode: () => { ui.mode = null; ui.subOut = null; render(); },
+  undo: () => {
+    const m = match(ui.matchId);
+    if (!m.events.length) return;
+    m.events.pop(); ui.preKey = null; ui.selP = ui.selS = null; ui.mode = null; save(); render();
+  },
+  finish: () => { const m = match(ui.matchId); m.finished = !m.finished; save(); render(); },
+  fSkill: d => { ui.f.skill = d.s; render(); },
+  print: () => window.print(),
+  repTeam: () => { ui.report = {kind:'team'}; render(); },
+  repPlayer: () => { ui.report = {kind:'player', pid:'all'}; render(); },
+  repBack: () => { ui.report = null; render(); },
+  xlsx: () => {
+    const D = statData();
+    const raw = [['Spiel','Datum','Satz','Stand','Läufer','Spieler','Zone','Element','Bewertung','Bedeutung','Punkt','Start X (m)','Start Y (m)','Ziel X (m)','Ziel Y (m)']];
+    D.acts.forEach(a => {
+      const m = match(a.mid);
+      raw.push([m.opponent, fmtDate(m.date), a.set, a.us + ':' + a.them, a.rot ? 'L' + a.rot : '', pname(D.t, a.p), a.zone ? ZN[a.zone - 1] : '', SK[a.s], a.r, RL[a.s][RT.indexOf(a.r)], a.win === 'us' ? 'wir' : a.win === 'them' ? 'Gegner' : '', ...trajMeters(a)]);
+    });
+    const sheets = [...D.tables.map(tb => [tb.title, [tb.head, ...tb.rows]]), ['Aktionen', raw]];
+    download('scouting-' + D.t.name.replace(/[^\w-]+/g, '_') + '.xlsx', makeXlsx(sheets));
+  },
+  newSpace: () => {
+    if (sync.space && !confirm('Neuen Sync-Schlüssel erzeugen? Mit dem alten Schlüssel gespeicherte Online-Daten sind dann von diesem Gerät aus nicht mehr erreichbar (sie bleiben aber in Supabase).')) return;
+    document.getElementById('sSpace').value = newSpace();
+  },
+  syncConnect: async () => {
+    const url = document.getElementById('sUrl').value.trim(), key = document.getElementById('sKey').value.trim();
+    let space = document.getElementById('sSpace').value.trim();
+    if (!/^https:\/\/.+/.test(url)) { alert('Bitte die Project URL eintragen (beginnt mit https://).'); return; }
+    if (!key) { alert('Bitte den publishable bzw. anon key eintragen.'); return; }
+    if (/^sb_secret_/.test(key) || /service_role/.test(key)) { alert('Das ist ein geheimer Schlüssel. Bitte nur den publishable bzw. anon key verwenden.'); return; }
+    if (!space) space = newSpace();
+    if (space.length < 24) { alert('Der Sync-Schlüssel muss mindestens 24 Zeichen lang sein.'); return; }
+    const changedSpace = sync.space !== space || sync.url !== url;
+    Object.assign(sync, {url, key, space});
+    if (changedSpace) sync.pushed = {}; // alles einmal hochladen
+    saveSync(); render();
+    await pullNow();
+    if (syncState.status === 'ok') alert('Verbunden. Notiere dir den Sync-Schlüssel für weitere Geräte:\n\n' + space);
+  },
+  syncNow: () => pullNow(),
+  deviceLink: async () => {
+    const link = location.origin + location.pathname + '#k=' + sync.space;
+    try { await navigator.clipboard.writeText(link); alert('Link kopiert. Auf dem neuen Gerät einmal öffnen – danach ist es verbunden.\n\nDer Link enthält den Sync-Schlüssel: nur an Personen weitergeben, die die Daten sehen dürfen.'); }
+    catch (e) { prompt('Diesen Link auf dem neuen Gerät öffnen:', link); }
+  },
+  syncOff: () => {
+    if (!confirm('Verbindung trennen? Die Daten bleiben in diesem Browser und in Supabase erhalten.')) return;
+    sync = {pushed: {}}; saveSync(); syncState.status = 'idle'; render(); renderSyncBadge();
+  },
+  copySql: async () => {
+    try { await navigator.clipboard.writeText(SETUP_SQL); alert('SQL kopiert.'); }
+    catch (e) { const ta = document.getElementById('sqlText'); ta.select(); alert('Kopieren nicht möglich – Text ist markiert, bitte manuell kopieren.'); }
+  },
+  backup: () => download('volleyball-scout-sicherung-' + today() + '.json', JSON.stringify(db, null, 1), 'application/json'),
+  wipe: () => {
+    if (!confirm('Wirklich ALLE Teams und Spiele löschen? Das lässt sich nicht rückgängig machen.')) return;
+    allDocs().forEach(([kind, d]) => markDeleted(kind, d.id));
+    db = {teams:[], matches:[], tomb: db.tomb}; ui.matchId = null; ui.editTeam = null; ui.f.team = null; ui.f.match = 'all'; save(); render();
+  }
+};
+const CH = {
+  teamSys: (d, el) => { team(ui.editTeam).sys = el.value; save(); render(); },
+  teamName: (d, el) => { team(ui.editTeam).name = el.value.trim() || 'Team'; save(); render(); },
+  pNum: (d, el) => {
+    const t = team(ui.editTeam), p = playerOf(t, d.id), n = parseInt(el.value, 10);
+    if (isNaN(n) || t.players.some(x => x !== p && x.num === n)) { alert('Ungültige oder doppelte Nummer.'); render(); return; }
+    p.num = n; save(); render();
+  },
+  pName: (d, el) => { playerOf(team(ui.editTeam), d.id).name = el.value.trim(); save(); },
+  pPos: (d, el) => { playerOf(team(ui.editTeam), d.id).pos = el.value; save(); },
+  traj: (d, el) => { ui.traj = el.checked; },
+  repPlayer: (d, el) => { ui.report.pid = el.value; render(); },
+  f: (d, el) => {
+    ui.f[d.k] = el.value;
+    if (d.k === 'team') { ui.f.match = 'all'; ui.f.player = 'all'; }
+    render();
+  }
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const fn = A[el.dataset.act];
+  if (fn) fn(el.dataset, el);
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.id === 'restore' && el.files[0]) {
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const d = JSON.parse(r.result);
+        if (!Array.isArray(d.teams) || !Array.isArray(d.matches)) throw new Error('Unbekanntes Format');
+        if (!confirm('Sicherung laden? Die aktuellen Daten werden ersetzt.')) return;
+        const tomb = db.tomb;
+        db = d; db.tomb = (tomb || []).filter(x => !allDocs().some(([, doc]) => doc.id === x.id));
+        const now = Date.now(); allDocs().forEach(([, doc]) => { doc.upd = now; lastJson.set(doc.id, JSON.stringify(bodyOf(doc))); });
+        ui.matchId = null; ui.editTeam = db.teams[0] ? db.teams[0].id : null; ui.f.team = ui.editTeam; ui.f.match = 'all';
+        save(); render(); alert('Sicherung geladen.');
+      } catch (err) { alert('Datei konnte nicht gelesen werden: ' + err.message); }
+    };
+    r.readAsText(el.files[0]);
+    return;
+  }
+  const fn = el.dataset && CH[el.dataset.change];
+  if (fn) fn(el.dataset, el);
+});
+
+// Meter: X ab linker Seitenlinie (aus unserer Sicht), Y ab gegnerischer Grundlinie (Netz = 9 m)
+function trajMeters(a){
+  const l = trajOf(a); if (!l) return ['', '', '', ''];
+  const m = (v, f) => v == null ? '' : Math.round(v * f * 10) / 10;
+  return [m(l[0], 9), m(l[1], 18), m(l[2], 9), m(l[3], 18)];
+}
+/* ---------- Minimaler XLSX-Writer (ohne externe Bibliothek) ---------- */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b){ let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zip(files){ // files: [[name, string]] – unkomprimiert (STORE)
+  const enc = new TextEncoder(), parts = [], central = [];
+  let off = 0;
+  for (const [name, str] of files) {
+    const nb = enc.encode(name), data = enc.encode(str), crc = crc32(data);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, nb.length, true);
+    parts.push(new Uint8Array(h.buffer), nb, data);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+    c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, nb.length, true);
+    c.setUint32(42, off, true);
+    central.push(new Uint8Array(c.buffer), nb);
+    off += 30 + nb.length + data.length;
+  }
+  const cSize = central.reduce((s, x) => s + x.length, 0);
+  const e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
+  e.setUint32(12, cSize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function makeXlsx(sheets){
+  const x = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+  const col = i => { let s = ''; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+  const used = new Set();
+  const names = sheets.map(([n]) => { let b = n.replace(/[\\\/?*\[\]:]/g, ' ').slice(0, 31) || 'Tabelle', k = b, i = 2; while (used.has(k)) k = b.slice(0, 28) + ' ' + i++; used.add(k); return k; });
+  const files = [
+    ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+      sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') + '</Types>'],
+    ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+    ['xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+      names.map((n, i) => `<sheet name="${x(n)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') + '</sheets></workbook>'],
+    ['xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('') +
+      `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+    ['xl/styles.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>']
+  ];
+  sheets.forEach(([, rows], si) => {
+    const body = rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => {
+      const ref = col(ci) + (ri + 1), s = ri === 0 ? ' s="1"' : '';
+      if (typeof v === 'number' && isFinite(v)) return `<c r="${ref}"${s}><v>${v}</v></c>`;
+      if (v === '' || v == null) return '';
+      return `<c r="${ref}" t="inlineStr"${s}><is><t xml:space="preserve">${x(v)}</t></is></c>`;
+    }).join('') + '</row>').join('');
+    files.push([`xl/worksheets/sheet${si + 1}.xml`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`]);
+  });
+  return zip(files);
+}
+
+render();
+renderSyncBadge();
+if (syncOn()) pullNow();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && syncOn()) pullNow(); });
+</script>
+</body>
+</html>
