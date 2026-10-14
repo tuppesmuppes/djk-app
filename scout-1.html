@@ -93,6 +93,13 @@ input.w4{width:70px}
 @media (max-width:760px){.grid2{grid-template-columns:1fr}}
 .tbl.narrow th{white-space:normal;vertical-align:bottom}
 .tbl.narrow th:nth-child(3){max-width:4.5em}
+.lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+.lgsvg{width:100%;max-width:300px;display:block;margin:0 auto}
+.lgsvg .lgc{fill:#e4a96b;stroke:#fff;stroke-width:.8}.lgsvg .lgn{stroke:#1d2330;stroke-width:1.6}.lgsvg .lga{stroke:#fff;stroke-width:.5}
+.lgsvg .lgl{font-size:5px;fill:#fff;opacity:.85;text-anchor:middle;font-weight:700}
+.lgsvg .lgt{font-size:5px;fill:#1d2330;text-anchor:middle;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:1.4px}
+.lgsvg .lgo{fill:#1d2330}.lgsvg .lgon{font-size:4.5px;fill:#fff;text-anchor:middle;font-weight:700}
+.lgsvg .lgb{font-size:4px;fill:var(--ink);text-anchor:middle}
 .printonly{display:none}
 @media print{
   .tblwrap{overflow:visible}
@@ -497,9 +504,15 @@ function replay(m){
         a.pz = a.zone;
         if (a.zone && phaseOf(st) === 'spec' && isStd51(st.lineup, t))
           a.pz = specZoneFor(st, t, ev.p, a.zone);
-        if (ev.s === 'R') { st.rec = ev.r; st.fromRec = true; }
+        if (ev.s === 'R') {
+          st.rec = ev.r; st.fromRec = true;
+          // tatsächlicher Annahmeort aus der aktuellen Formation: links = 5, Mitte = 6, rechts = 1
+          const f = formation(st, t).find(x => x.id === ev.p);
+          st.recLane = f ? (f.xy[0] < 1/3 ? 5 : f.xy[0] < 2/3 ? 6 : 1) : null;
+          a.recLane = st.recLane;
+        }
         // Zuspiel direkt aus der Annahme (Side-out) oder aus Abwehr/Block (Transition)
-        if (ev.s === 'E') a.recQ = st.fromRec ? st.rec : null;
+        if (ev.s === 'E') { a.recQ = st.fromRec ? st.rec : null; a.recLane = st.fromRec ? st.recLane : null; }
         if (ev.s === 'A' || ev.s === 'D' || ev.s === 'B') st.fromRec = false;
         if (ev.s === 'A') {
           a.recQ = st.rec; a.firstAtt = !st.att; st.att = true;
@@ -826,7 +839,14 @@ function setterTables(t, acts, p, zoneGroups){
   byRot.sheet = ('Zusp-Läufer ' + sw).slice(0, 31);
   qual.sheet = ('Zusp-Qualität ' + sw).slice(0, 31);
   chain.sheet = ('Ann-Zusp-Angr ' + sw).slice(0, 31);
-  return [dist, byRot, qual, chain];
+  // Annahmeort (5 | 6 | 1) → Zuspiel → Angriffsposition, als Tabelle und Pfeilgrafik
+  const lanes = [5, 6, 1];
+  const laneT = {title: 'Annahmeort → Zuspiel → Angriff ' + who, narrow:true,
+    head:['Annahme von','Zuspiele','Zuspiel pos.', ...zoneGroups.map(([l]) => (l.startsWith('Hinten') ? 'hinten' : l.replace('Position ', '')) + ' (n · Eff.)'), 'Angriffs-Eff.'],
+    rows: lanes.map(L => { const r = chainRow('Position ' + L, sets.filter(x => x.recLane === L)); return [r[0], r[1], r[2], ...r.slice(4, 8), r[9]]; })};
+  laneT.graphic = laneGraphic(sets, zoneGroups, (p == null ? 'team' : p));
+  laneT.sheet = ('Ann-Ort ' + sw).slice(0, 31);
+  return [dist, byRot, qual, chain, laneT];
 }
 // Elemente-Tabelle (eine Zeile je Element) für Team- und Einzelbericht
 function elemTable(title, list){
@@ -880,8 +900,46 @@ function ovRow(l){
   const err = l.filter(a => a.r === '=').length;
   return [pts, err, S.n, S.c['#'], S.c['='], S.eff, R.n, R.pos, R.perf, A.n, A.c['#'], A.eff, g('B').filter(a => a.r === '#').length, D.n, D.pos];
 }
+// Pfeilgrafik: je Annahmeort ein Halbfeld, Pfeil zur Angriffsposition (Dicke = Anzahl, Farbe = Zuspielqualität)
+function laneGraphic(sets, zoneGroups, uid){
+  const TGT = [[20,24,'IV'],[50,24,'III'],[80,24,'II'],[50,56,'hinten']];
+  const ORG = {5:[20,86], 6:[50,90], 1:[80,86]};
+  const COL = q => q == null ? '#8b94a5' : q >= 2/3 ? '#1a9e55' : q > 1/3 ? '#e39a1b' : '#d0342c';
+  const all = sets.filter(x => x.recLane && x.attR);
+  const max = Math.max(1, ...[5,6,1].flatMap(L => zoneGroups.map(([, fn]) => all.filter(x => x.recLane === L && fn({pz: x.attPz})).length)));
+  const panel = L => {
+    const ls = sets.filter(x => x.recLane === L), wa = ls.filter(x => x.attR);
+    const [ox, oy] = ORG[L];
+    const arrows = zoneGroups.map(([, fn], i) => {
+      const z = wa.filter(x => fn({pz: x.attPz})); if (!z.length) return '';
+      const [tx, ty, lab] = TGT[i];
+      const q = z.filter(x => x.r === '#' || x.r === '+').length / z.length, c = COL(q);
+      const w = 0.8 + 3 * z.length / max;
+      const dx = tx - ox, dy = ty - oy, d = Math.hypot(dx, dy), ex = tx - dx / d * 3, ey = ty - dy / d * 3;
+      const mk = 'm' + String(uid).replace(/\W/g, '') + L + i;
+      return `<defs><marker id="${mk}" viewBox="0 0 10 10" refX="6" refY="5" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker></defs>
+        <line x1="${ox}" y1="${oy - 4}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="${c}" stroke-width="${w.toFixed(1)}" stroke-linecap="round" marker-end="url(#${mk})" opacity=".9"/>
+        <text x="${tx}" y="${ty - 8}" class="lgt">${z.length} · ${evalList('A', z.map(x => ({r: x.attR}))).eff}</text>`;
+    }).join('');
+    const posq = ls.length ? Math.round(ls.filter(x => x.r === '#' || x.r === '+').length / ls.length * 100) + ' %' : '–';
+    return `<div class="lgp"><svg viewBox="0 0 100 112" class="lgsvg" xmlns="http://www.w3.org/2000/svg">
+      <rect x="5" y="8" width="90" height="90" class="lgc"/><line x1="2" y1="8" x2="98" y2="8" class="lgn"/>
+      <line x1="5" y1="38" x2="95" y2="38" class="lga"/>
+      ${TGT.map(([x, y, l]) => `<text x="${x}" y="${y + 10}" class="lgl">${l}</text>`).join('')}
+      ${arrows}
+      <circle cx="${ox}" cy="${oy}" r="4" class="lgo"/><text x="${ox}" y="${oy + 1.6}" class="lgon">${L}</text>
+      <text x="50" y="105" class="lgb"><tspan font-weight="700">Annahme von ${L}</tspan> · ${ls.length} Zuspiele · pos. ${posq}</text>
+    </svg></div>`;
+  };
+  return `<div class="lgrid">${[5,6,1].map(panel).join('')}</div>
+    <div class="legend"><span><b>Pfeilfarbe = Zuspielqualität</b> (Anteil # / +):</span>
+      <span><svg width="14" height="6"><line x1="0" y1="3" x2="14" y2="3" stroke="#1a9e55" stroke-width="3"/></svg> ≥ 67 %</span>
+      <span><svg width="14" height="6"><line x1="0" y1="3" x2="14" y2="3" stroke="#e39a1b" stroke-width="3"/></svg> 34–66 %</span>
+      <span><svg width="14" height="6"><line x1="0" y1="3" x2="14" y2="3" stroke="#d0342c" stroke-width="3"/></svg> ≤ 33 %</span>
+      <span><b>Dicke</b> = Anzahl · <b>Zahl</b> = Anzahl · Angriffs-Effizienz</span></div>`;
+}
 function tableHtml(tb){
-  return `<div class="card"><h3>${esc(tb.title)}</h3><div class="tblwrap"><table class="tbl${tb.narrow ? ' narrow' : ''}"><thead><tr>${tb.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+  return `<div class="card"><h3>${esc(tb.title)}</h3>${tb.graphic || ''}<div class="tblwrap"><table class="tbl${tb.narrow ? ' narrow' : ''}"><thead><tr>${tb.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
     ${tb.rows.map((r, i) => `<tr class="${tb.totalLast && i === tb.rows.length - 1 ? 'tot' : ''}">${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${tb.head.length}" class="muted">Keine Daten</td></tr>`}
   </tbody></table></div></div>`;
 }
