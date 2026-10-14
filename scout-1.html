@@ -101,6 +101,7 @@ input.w4{width:70px}
 .lgsvg .lgt{font-size:5px;fill:#1d2330;text-anchor:middle;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:1.4px}
 .lgsvg .lgo{fill:none;stroke:#1d2330;stroke-width:1;stroke-dasharray:1.5 1}.lgsvg .lgon{font-size:4.5px;fill:#1d2330;text-anchor:middle;font-weight:700}
 .lgsvg .lgb{font-size:4px;fill:var(--ink);text-anchor:middle}
+.insight h4{margin:10px 0 4px;font-size:14px}.insight ul{margin:0 0 4px;padding-left:18px}.insight li{margin-bottom:4px}
 .printonly{display:none}
 @media print{
   .tblwrap{overflow:visible}
@@ -903,8 +904,107 @@ function vReport(D){
     const dist = {title:'Angriffe nach Position', head:['Angriff von','Anzahl','Punkte','Effizienz'],
       rows: D.zoneGroups.map(([lab, fn]) => { const z = att.filter(fn); return [lab, z.length + ' (' + pct(z.length, att.length) + ')', z.filter(a => a.r === '#').length, evalList('A', z).eff]; })};
     return `<section class="${i < ids.length - 1 ? 'pagebreak' : ''}"><h2>Einzelbericht ${esc(pname(t, p))} – ${esc(t.name)}</h2><p class="muted">${esc(D.filterTxt)}</p>
+      ${insightsHtml(t, D, p)}
       ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courts(l)}${DEFS_HTML}</section>`;
   }).join('');
+}
+/* ---------- Automatische Spieleranalyse (Du-Form) ----------
+   Regelbasiert aus den Scouting-Daten. Schwellenwerte sind Richtwerte der App (fachliche Einschätzung, keine Norm).
+   Aussagen nur ab MIN Aktionen je Element bzw. MINS je Teilbereich. */
+function insightsHtml(t, D, p){
+  const MIN = 5, MINS = 4;
+  const mine = D.acts.filter(a => a.p === p);
+  const n = arr => arr.length, cnt = (arr, f) => arr.filter(f).length;
+  const P = (a, b) => b ? Math.round(a / b * 100) : null;
+  const eff = (s, l) => { if (!l.length) return null; const c = r => cnt(l, a => a.r === r);
+    const e = (s === 'A' || s === 'B') ? c('#') - c('/') - c('=') : s === 'R' ? c('#') + c('+') - c('/') - c('=') : c('#') - c('=');
+    return Math.round(e / l.length * 100); };
+  const sg = v => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v) + ' %';
+  const by = s => mine.filter(a => a.s === s);
+  const S = by('S'), R = by('R'), A = by('A'), B = by('B'), Dg = by('D'), E = by('E');
+  const pos = (l) => P(cnt(l, a => a.r === '#' || a.r === '+'), n(l));
+  const out = {plus: [], minus: [], hint: []};
+  const add = (k, score, txt, focus) => out[k].push({score, txt, focus});
+  const posName = z => z === 4 ? 'IV' : z === 3 ? 'III' : z === 2 ? 'II' : 'hinten';
+  const zgrp = a => { const z = a.pz ?? a.zone; return [1,5,6].includes(z) ? 'hinten' : posName(z); };
+
+  // Aufschlag
+  if (n(S) >= MIN) {
+    const err = P(cnt(S, a => a.r === '='), n(S)), pr = P(cnt(S, a => a.r === '#' || a.r === '+'), n(S)), noEff = P(cnt(S, a => a.r === '/'), n(S)), ace = cnt(S, a => a.r === '#');
+    if (err >= 25) add('minus', err, `<b>Aufschlagfehler:</b> ${cnt(S, a => a.r === '=')} von ${n(S)} (${err} %). Das Risiko steht nicht im Verhältnis zum Ertrag – Druckphase und Sicherheitsphase bewusster trennen.`, 'Aufschlag: Zielaufschläge auf Zone 1/5 mit klarer Risikostufe, Serien unter Druck (z. B. 5 in Folge ohne Fehler).');
+    else if (err <= 10) add('plus', 20 - err, `<b>Sicherer Aufschlag:</b> ${err ? `nur ${err} % Fehler` : 'kein Fehler'} bei ${n(S)} Aufschlägen.`);
+    if (pr >= 35) add('plus', pr, `<b>Druckaufschlag:</b> ${pr} % deiner Aufschläge bringen den Gegner unter Druck oder sind Asse (${ace ? ace + ' Ass' + (ace === 1 ? '' : 'e') : 'kein Ass'}).`);
+    if (noEff >= 30) add('minus', noEff - 5, `<b>Aufschlag ohne Wirkung:</b> ${noEff} % führen zu einer perfekten gegnerischen Annahme. Mehr Tempo oder gezieltere Zonen.`, 'Aufschlag: Tempo und Platzierung – Zielzonen und Annahmelücken ansteuern.');
+  }
+  // Annahme
+  if (n(R) >= MIN) {
+    const ps = pos(R), pf = P(cnt(R, a => a.r === '#'), n(R)), ac = cnt(R, a => a.r === '='), acP = P(ac, n(R)), ef = eff('R', R);
+    if (ps >= 50) add('plus', ps, `<b>Stabile Annahme:</b> ${ps} % positiv, ${pf} % perfekt (Effizienz ${sg(ef)}).`);
+    else if (ps < 35) add('minus', 50 - ps, `<b>Annahme:</b> nur ${ps} % positiv bei ${n(R)} Annahmen. Daraus entstehen schwierige Side-out-Situationen.`, 'Annahme: Plattform früh stellen, Ball hoch in die Feldmitte statt riskant ans Netz; Annahme gegen Sprungaufschlag/Float im Wechsel.');
+    if (acP >= 10) add('minus', acP + 10, `<b>Asse gegen dich:</b> ${ac} (${acP} %). Hier gibt es direkte Punkte für den Gegner.`, 'Annahme: Grundposition und Laufweg vor dem Aufschlag, Zuständigkeiten im Annahmeriegel klären.');
+    const lanes = [5, 6, 1].map(L => ({L, l: R.filter(a => a.recLane === L)})).filter(x => n(x.l) >= MINS).map(x => ({...x, ps: pos(x.l)}));
+    if (lanes.length >= 2) { lanes.sort((a, b) => b.ps - a.ps); const hi = lanes[0], lo = lanes[lanes.length - 1];
+      if (hi.ps - lo.ps >= 20) add('hint', hi.ps - lo.ps, `<b>Annahme nach Position:</b> auf ${hi.L} ${hi.ps} % positiv (${n(hi.l)}), auf ${lo.L} nur ${lo.ps} % (${n(lo.l)}).`); }
+  }
+  // Angriff
+  if (n(A) >= MIN) {
+    const ef = eff('A', A), k = P(cnt(A, a => a.r === '#'), n(A)), ebl = cnt(A, a => a.r === '=' || a.r === '/'), eblP = P(ebl, n(A));
+    if (ef >= 25) add('plus', ef, `<b>Effizienter Angriff:</b> ${sg(ef)} Effizienz, ${k} % Kill-Quote bei ${n(A)} Angriffen.`);
+    else if (ef < 5) add('minus', 25 - ef, `<b>Angriffseffizienz:</b> ${sg(ef)} bei ${n(A)} Angriffen – ${ef < 0 ? 'mehr Fehler und Blocks als direkte Punkte' : 'Punkte und Fehler heben sich nahezu auf'}.`, 'Angriff: Schlagvarianten gegen den Block (Block-out, Linie/Diagonale, Lob) und kontrollierte Bälle unter Druck.');
+    if (k >= 40) add('plus', k, `<b>Abschlussstärke:</b> ${k} % deiner Angriffe sind direkte Punkte.`);
+    if (eblP >= 20) add('minus', eblP, `<b>Eigenfehler im Angriff:</b> ${ebl} von ${n(A)} (${eblP} %) im Aus, im Netz oder geblockt.`, 'Angriff: Risiko an die Situation anpassen – bei schlechtem Zuspiel Ball sicher halten statt Vollrisiko.');
+    const grp = {}; A.forEach(a => { const g = zgrp(a); (grp[g] = grp[g] || []).push(a); });
+    const ps = Object.entries(grp).filter(([, l]) => n(l) >= MINS).map(([g, l]) => ({g, l, e: eff('A', l)})).sort((a, b) => b.e - a.e);
+    if (ps.length >= 2 && ps[0].e - ps[ps.length - 1].e >= 20) add('hint', ps[0].e - ps[ps.length - 1].e, `<b>Angriff nach Position:</b> über ${ps[0].g} deutlich besser (${sg(ps[0].e)}, ${n(ps[0].l)} Angriffe) als über ${ps[ps.length - 1].g} (${sg(ps[ps.length - 1].e)}, ${n(ps[ps.length - 1].l)}).`);
+    const gs = A.filter(a => a.setQ === '#' || a.setQ === '+'), ws = A.filter(a => a.setQ && !['#', '+', '='].includes(a.setQ));
+    if (n(ws) >= MINS) { const ew = eff('A', ws);
+      if (ew < 0) add('minus', 15 - ew, `<b>Schwierige Bälle:</b> nach schwächerem Zuspiel ${sg(ew)} Effizienz (${n(ws)} Angriffe)${n(gs) >= MINS ? `, nach gutem Zuspiel ${sg(eff('A', gs))}` : ''}.`, 'Angriff: hohe, ungenaue Bälle verwerten – Anlaufanpassung, Block anschlagen, tief ins Feld spielen.');
+      else if (ew >= 10) add('plus', ew + 10, `<b>Verwertest auch schwierige Bälle:</b> ${sg(ew)} Effizienz nach schwächerem Zuspiel (${n(ws)}).`); }
+    const so = A.filter(a => a.firstAtt && a.recQ != null), tr = A.filter(a => !(a.firstAtt && a.recQ != null));
+    if (n(so) >= MINS && n(tr) >= MINS) { const a1 = eff('A', so), a2 = eff('A', tr);
+      if (Math.abs(a1 - a2) >= 20) add('hint', Math.abs(a1 - a2), `<b>Side-out vs. Transition:</b> im Side-out ${sg(a1)} (${n(so)}), in der Transition ${sg(a2)} (${n(tr)}).`); }
+  }
+  // Block
+  if (n(B) >= MIN) {
+    const pt = P(cnt(B, a => a.r === '#'), n(B)), bad = P(cnt(B, a => a.r === '-' || a.r === '/'), n(B)), gd = P(cnt(B, a => a.r === '#' || a.r === '+'), n(B));
+    if (pt >= 15 || gd >= 60) add('plus', Math.max(pt * 2, gd - 20), `<b>Blockwirkung:</b> ${cnt(B, a => a.r === '#')} Blockpunkte, ${gd} % deiner Blockaktionen mit Wirkung (# / +).`);
+    if (bad >= 30) add('minus', bad, `<b>Block:</b> in ${bad} % der Aktionen zu spät, offen oder ausgenutzt (− / Block-out).`, 'Block: Timing und Handstellung, früher Anschluss an den Nebenblocker, Richtung zustellen.');
+  }
+  // Abwehr
+  if (n(Dg) >= MIN) {
+    const ps = pos(Dg), er = P(cnt(Dg, a => a.r === '='), n(Dg));
+    if (ps >= 55) add('plus', ps - 10, `<b>Feldabwehr:</b> ${ps} % deiner Abwehraktionen sind gut spielbar.`);
+    if (er >= 25) add('minus', er, `<b>Abwehrfehler:</b> ${er} % deiner Abwehraktionen enden am Boden.`, 'Abwehr: Grundstellung vor dem gegnerischen Angriff, Lesen von Anlauf und Schulter.');
+  }
+  // Zuspiel
+  if (n(E) >= 10) {
+    const ps = pos(E), linked = E.filter(a => a.attR), ae = linked.length ? eff('A', linked.map(a => ({r: a.attR}))) : null;
+    if (ps >= 65) add('plus', ps - 20, `<b>Zuspielqualität:</b> ${ps} % deiner Zuspiele sind gut oder perfekt${ae != null ? `; Angriffe danach ${sg(ae)}` : ''}.`);
+    else if (ps < 50) add('minus', 60 - ps, `<b>Zuspielqualität:</b> nur ${ps} % gut oder perfekt bei ${n(E)} Zuspielen.`, 'Zuspiel: Präzision unter Laufbelastung, Ball-Rhythmus mit den Angreifern abstimmen.');
+    const dist = {}; linked.forEach(a => { const g = posName(a.attPz); dist[g] = (dist[g] || 0) + 1; });
+    const top = Object.entries(dist).sort((a, b) => b[1] - a[1])[0];
+    if (top && linked.length >= 10 && top[1] / linked.length >= .55) add('hint', 30, `<b>Verteilung:</b> ${P(top[1], linked.length)} % deiner Zuspiele gehen auf ${top[0]} – für den gegnerischen Block gut ausrechenbar.`);
+    const weakRec = E.filter(a => a.recQ === '!' || a.recQ === '-' || a.recQ === '/'), wl = weakRec.filter(a => a.attR);
+    if (wl.length >= MINS) { const iv = cnt(wl, a => a.attPz === 4); if (iv / wl.length >= .7) add('hint', 25, `<b>Nach schwacher Annahme:</b> ${P(iv, wl.length)} % deiner Zuspiele gehen auf IV (${wl.length} Situationen).`); }
+  }
+  // Verlauf über die Sätze (Angriff)
+  const sets = [...new Set(A.map(a => a.mid + '|' + a.set))];
+  if (sets.length >= 2) {
+    const per = [1,2,3,4,5].map(sn => ({sn, l: A.filter(a => a.set === sn)})).filter(x => n(x.l) >= MINS).map(x => ({...x, e: eff('A', x.l)}));
+    if (per.length >= 2) { per.sort((a, b) => b.e - a.e); const hi = per[0], lo = per[per.length - 1];
+      if (hi.e - lo.e >= 30) add('hint', hi.e - lo.e, `<b>Verlauf:</b> Angriffseffizienz in Satz ${hi.sn} ${sg(hi.e)}, in Satz ${lo.sn} ${sg(lo.e)}.`); }
+  }
+  const top3 = arr => arr.sort((a, b) => b.score - a.score).slice(0, 3);
+  const plus = top3(out.plus), minus = top3(out.minus), hint = top3(out.hint);
+  const focus = minus.filter(x => x.focus).slice(0, 2);
+  const li = arr => arr.length ? '<ul>' + arr.map(x => `<li>${x.txt}</li>`).join('') + '</ul>' : '<p class="muted small">Keine eindeutige Aussage aus den vorhandenen Daten.</p>';
+  const games = new Set(mine.map(a => a.mid)).size;
+  return `<div class="card insight"><h3>Deine Analyse</h3>
+    <p class="small muted">Grundlage: ${mine.length} Aktionen aus ${games} Spiel${games === 1 ? '' : 'en'} (${esc(D.filterTxt)}). Aussagen erst ab ${MIN} Aktionen je Element.</p>
+    <div class="grid2"><div><h4>Stärken</h4>${li(plus)}</div><div><h4>Baustellen</h4>${li(minus)}</div></div>
+    ${hint.length ? `<h4>Auffällig</h4>${li(hint)}` : ''}
+    ${focus.length ? `<h4>Trainingsfokus</h4><ul>${focus.map(x => `<li>${x.focus}</li>`).join('')}</ul>` : ''}
+    <p class="small muted">Die Einordnung beruht auf Richtwerten der App (z. B. Aufschlagfehler ab 25 %, Annahme unter 35 % positiv, Angriffseffizienz unter 5 %). Sie ersetzt nicht den Blick aufs Spiel – bei wenigen Spielen sind einzelne Werte Momentaufnahmen.</p></div>`;
 }
 function ovRow(l){
   const g = s => l.filter(a => a.s === s);
