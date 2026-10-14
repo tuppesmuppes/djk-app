@@ -475,7 +475,7 @@ function replay(m){
     rallies.push({set:a.set, rot:a.rot, serve:a.serve, win:w});
     if (w === 'us') { st.us++; if (st.serve === 'them') { rotate(); st.serve = 'us'; } }
     else { st.them++; st.serve = 'them'; }
-    st.rallyFresh = true; st.rec = null; st.att = false; st.pendSet = null; st.fromRec = false;
+    st.rallyFresh = true; st.rec = null; st.att = false; st.pendSet = null; st.fromRec = false; st.fromDig = false;
     const tgt = st.set === 5 ? 15 : 25;
     if ((st.us >= tgt || st.them >= tgt) && Math.abs(st.us - st.them) >= 2) {
       st.setOver = true;
@@ -505,16 +505,17 @@ function replay(m){
         a.pz = a.zone;
         if (a.zone && phaseOf(st) === 'spec' && isStd51(st.lineup, t))
           a.pz = specZoneFor(st, t, ev.p, a.zone);
-        if (ev.s === 'R') {
-          st.rec = ev.r; st.fromRec = true;
-          // tatsächlicher Annahmeort aus der aktuellen Formation: links = 5, Mitte = 6, rechts = 1
-          const f = formation(st, t).find(x => x.id === ev.p);
-          st.recLane = f ? (f.xy[0] < 1/3 ? 5 : f.xy[0] < 2/3 ? 6 : 1) : null;
-          a.recLane = st.recLane;
-        }
+        // tatsächlicher Ort aus der aktuellen Formation: links = 5, Mitte = 6, rechts = 1
+        const laneOf = id => { const f = formation(st, t).find(x => x.id === id); return f ? (f.xy[0] < 1/3 ? 5 : f.xy[0] < 2/3 ? 6 : 1) : null; };
+        if (ev.s === 'R') { st.rec = ev.r; st.fromRec = true; st.fromDig = false; st.recLane = laneOf(ev.p); a.recLane = st.recLane; }
+        if (ev.s === 'D') { st.fromDig = true; st.digLane = laneOf(ev.p); a.digLane = st.digLane; }
         // Zuspiel direkt aus der Annahme (Side-out) oder aus Abwehr/Block (Transition)
-        if (ev.s === 'E') { a.recQ = st.fromRec ? st.rec : null; a.recLane = st.fromRec ? st.recLane : null; }
+        if (ev.s === 'E') {
+          a.recQ = st.fromRec ? st.rec : null; a.recLane = st.fromRec ? st.recLane : null;
+          a.digLane = !st.fromRec && st.fromDig ? st.digLane : null;
+        }
         if (ev.s === 'A' || ev.s === 'D' || ev.s === 'B') st.fromRec = false;
+        if (ev.s === 'A' || ev.s === 'B') st.fromDig = false;
         if (ev.s === 'A') {
           a.recQ = st.rec; a.firstAtt = !st.att; st.att = true;
           // Zuspiel mit dem folgenden Angriff verknüpfen
@@ -845,9 +846,19 @@ function setterTables(t, acts, p, zoneGroups){
   const laneT = {title: 'Annahmeort → Zuspiel → Angriff ' + who, narrow:true,
     head:['Annahme von','Zuspiele','Zuspiel pos.', ...zoneGroups.map(([l]) => (l.startsWith('Hinten') ? 'hinten' : l.replace('Position ', '')) + ' (n · Eff.)'), 'Angriffs-Eff.'],
     rows: lanes.map(L => { const r = chainRow('Position ' + L, sets.filter(x => x.recLane === L)); return [r[0], r[1], r[2], ...r.slice(4, 8), r[9]]; })};
-  laneT.graphic = laneGraphic(sets, zoneGroups, (p == null ? 'team' : p));
+  laneT.graphic = laneGraphic(sets, zoneGroups, 'recLane', 'Annahme von', 'Annahmeort');
   laneT.sheet = ('Ann-Ort ' + sw).slice(0, 31);
-  return [dist, byRot, qual, chain, laneT];
+  const nRec = sets.filter(x => x.recQ != null).length, nTr = sets.length - nRec, nDig = sets.filter(x => x.digLane).length;
+  laneT.note = `${sets.length} Zuspiele: ${nRec} direkt nach eigener Annahme (hier nach Annahmeort), ${nTr} in der Transition (eigene Grafik unten).`;
+  // Transition: Abwehrort (5 | 6 | 1) → Zuspiel → Angriffsposition
+  const digT = {title: 'Abwehrort → Zuspiel → Angriff (Transition) ' + who, narrow:true,
+    head: laneT.head.map((h, i) => i === 0 ? 'Abwehr von' : h),
+    rows: [...lanes.map(L => { const r = chainRow('Position ' + L, sets.filter(x => x.digLane === L)); return [r[0], r[1], r[2], ...r.slice(4, 8), r[9]]; }),
+      (() => { const r = chainRow('ohne erfasste Abwehr', sets.filter(x => x.recQ == null && !x.digLane)); return [r[0], r[1], r[2], ...r.slice(4, 8), r[9]]; })()]};
+  digT.graphic = laneGraphic(sets, zoneGroups, 'digLane', 'Abwehr von', 'Abwehrort');
+  digT.note = `${nTr} Transition-Zuspiele: ${nDig} nach eigener Abwehr (hier nach Abwehrort), ${nTr - nDig} ohne erfasste Abwehr davor (z. B. nach Block, Freeball oder abgewehrtem eigenem Angriff).`;
+  digT.sheet = ('Abw-Ort ' + sw).slice(0, 31);
+  return [dist, byRot, qual, chain, laneT, digT];
 }
 // Elemente-Tabelle (eine Zeile je Element) für Team- und Einzelbericht
 function elemTable(title, list){
@@ -863,6 +874,7 @@ const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = 
       Side-out = gewonnene Ballwechsel bei Gegner-Aufschlag · Break = gewonnene Ballwechsel bei eigenem Aufschlag · Läufer L1–L6 = Position des Zuspielers.
       Angriffsverteilung „nach Annahme“ zählt jeweils den ersten Angriff nach einer eigenen Annahme; Positionen = Spielposition nach dem Wechsel auf Spezialpositionen.
       Zuspielverteilung: Ein Zuspiel wird mit dem direkt folgenden Angriff im selben Ballwechsel verknüpft (nur wenn das Zuspiel erfasst wurde).
+      Annahme- bzw. Abwehrort = tatsächlicher Standort laut Formation (links = 5, Mitte = 6, rechts = 1); Transition-Zuspiele werden nach dem Ort der letzten eigenen Abwehr zugeordnet.
       Annahme → Zuspiel → Angriff: Ausgangslage = Qualität der eigenen Annahme direkt vor dem Zuspiel; „Transition“ = Zuspiel nach Abwehr oder Block. Zellen „n · Eff.“ = Anzahl Angriffe von dieser Position und deren Effizienz.<br>
       <b>Block</b> (bewertet wird die Wirkung, eine Berührung ist nicht nötig): # Punkt · + Gut – Block lenkt kontrolliert ab oder stellt die Hauptschlagrichtung zu, Abwehr bekommt einen leicht spielbaren Ball ·
       ! Neutral – Block steht, bewirkt aber nichts Entscheidendes, Ball bleibt im Spiel · − Schlecht – Block falsch, zu spät oder offen, Angreifer hat freie Bahn ·
@@ -902,12 +914,12 @@ function ovRow(l){
   return [pts, err, S.n, S.c['#'], S.c['='], S.eff, R.n, R.pos, R.perf, A.n, A.c['#'], A.eff, g('B').filter(a => a.r === '#').length, D.n, D.pos];
 }
 // Grafik je Annahmeort: Kreise an den Angriffspositionen (Größe = Anzahl, Farbe = Zuspielqualität, Zahl darunter = Angriffs-Effizienz)
-function laneGraphic(sets, zoneGroups, uid){
+function laneGraphic(sets, zoneGroups, key, prefix, originName){
   const TGT = [[20,22,'IV'],[50,22,'III'],[80,22,'II'],[50,60,'hinten']];
   const ORG = {5:[20,86], 6:[50,90], 1:[80,86]};
   const COL = q => q >= 2/3 ? '#1a9e55' : q > 1/3 ? '#e39a1b' : '#d0342c';
   const panel = L => {
-    const ls = sets.filter(x => x.recLane === L), wa = ls.filter(x => x.attR);
+    const ls = sets.filter(x => x[key] === L), wa = ls.filter(x => x.attR);
     const [ox, oy] = ORG[L];
     const bubbles = zoneGroups.map(([, fn], i) => {
       const z = wa.filter(x => fn({pz: x.attPz})); if (!z.length) return '';
@@ -925,17 +937,17 @@ function laneGraphic(sets, zoneGroups, uid){
       ${TGT.map(([x, y, l]) => `<text x="${x}" y="${l === 'hinten' ? y : y + 1.5}" class="lgl">${l}</text>`).join('')}
       ${bubbles}
       <rect x="${ox - 6}" y="${oy - 4}" width="12" height="8" rx="2" class="lgo"/><text x="${ox}" y="${oy + 1.6}" class="lgon">${L}</text>
-      <text x="50" y="105" class="lgb"><tspan font-weight="700">Annahme von ${L}</tspan> · ${ls.length} Zuspiele · pos. ${posq}</text>
+      <text x="50" y="105" class="lgb"><tspan font-weight="700">${prefix} ${L}</tspan> · ${ls.length} Zuspiele · pos. ${posq}</text>
     </svg></div>`;
   };
   const dot = c => `<svg width="10" height="10" viewBox="0 0 10 10" style="vertical-align:-1px;margin-right:3px"><circle cx="5" cy="5" r="5" fill="${c}"/></svg>`;
   return `<div class="lgrid">${[5,6,1].map(panel).join('')}</div>
     <div class="legend"><span><b>Kreisfarbe = Zuspielqualität</b> (Anteil # / +):</span>
       <span>${dot('#1a9e55')}≥ 67 %</span><span>${dot('#e39a1b')}34–66 %</span><span>${dot('#d0342c')}≤ 33 %</span>
-      <span><b>Größe / Zahl im Kreis</b> = Anzahl Zuspiele · <b>Zahl darunter</b> = Angriffs-Effizienz · gestricheltes Feld = Annahmeort</span></div>`;
+      <span><b>Größe / Zahl im Kreis</b> = Anzahl Zuspiele · <b>Zahl darunter</b> = Angriffs-Effizienz · gestricheltes Feld = ${originName}</span></div>`;
 }
 function tableHtml(tb){
-  return `<div class="card"><h3>${esc(tb.title)}</h3>${tb.graphic || ''}<div class="tblwrap"><table class="tbl${tb.narrow ? ' narrow' : ''}"><thead><tr>${tb.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+  return `<div class="card"><h3>${esc(tb.title)}</h3>${tb.note ? `<p class="small muted" style="margin:0 0 6px">${esc(tb.note)}</p>` : ''}${tb.graphic || ''}<div class="tblwrap"><table class="tbl${tb.narrow ? ' narrow' : ''}"><thead><tr>${tb.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
     ${tb.rows.map((r, i) => `<tr class="${tb.totalLast && i === tb.rows.length - 1 ? 'tot' : ''}">${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${tb.head.length}" class="muted">Keine Daten</td></tr>`}
   </tbody></table></div></div>`;
 }
