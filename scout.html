@@ -471,14 +471,16 @@ function replay(m){
   const t = team(m.teamId);
   const st = {set:0, us:0, them:0, setsUs:0, setsThem:0, lineup:null, serve:null,
     libId:null, ref:null, setOver:false, matchOver:false,
-    rallyFresh:true, rec:null, att:false, setScores:[]};
+    rallyFresh:true, rec:null, att:false, setScores:[], ri:0};
   const ann = [], rallies = [];
   const rotate = () => { const o = st.lineup; st.lineup = o.map((_, i) => o[(i + 1) % 6]); };
   const award = (w, a) => {
     a.win = w;
-    rallies.push({set:a.set, rot:a.rot, serve:a.serve, win:w});
+    const rl = {set:a.set, rot:a.rot, serve:a.serve, win:w, ri:st.ri++, us0:a.us, them0:a.them, by:a.t === 'act' ? a : null};
+    rallies.push(rl);
     if (w === 'us') { st.us++; if (st.serve === 'them') { rotate(); st.serve = 'us'; } }
     else { st.them++; st.serve = 'them'; }
+    rl.us1 = a.us1 = st.us; rl.them1 = a.them1 = st.them;
     st.rallyFresh = true; st.rec = null; st.att = false; st.pendSet = null; st.fromRec = false; st.fromDig = false;
     const tgt = st.set === 5 ? 15 : 25;
     if ((st.us >= tgt || st.them >= tgt) && Math.abs(st.us - st.them) >= 2) {
@@ -489,7 +491,7 @@ function replay(m){
     }
   };
   for (const ev of m.events) {
-    const a = {...ev, set:st.set, us:st.us, them:st.them, serve:st.serve, rot:st.lineup ? rotOfState(st) : null};
+    const a = {...ev, set:st.set, us:st.us, them:st.them, serve:st.serve, rot:st.lineup ? rotOfState(st) : null, ri:st.ri};
     switch (ev.t) {
       case 'set':
         Object.assign(st, {set:st.set + 1, us:0, them:0, lineup:ev.lineup.slice(), serve:ev.serve,
@@ -749,14 +751,15 @@ function statData(){
   const f = ui.f, t = team(f.team);
   if (!t) return null;
   const ms = db.matches.filter(m => m.teamId === t.id && (f.match === 'all' || m.id === f.match));
-  let acts = [], rallies = [];
+  let acts = [], rallies = [], log = [];
   ms.forEach(m => {
     const R = replay(m);
-    R.ann.forEach(a => { if (a.t === 'act') acts.push({...a, mid:m.id}); });
+    R.ann.forEach(a => { if (a.t === 'act') acts.push({...a, mid:m.id}); if (a.t === 'act' || a.t === 'pt') log.push({...a, mid:m.id}); });
     R.rallies.forEach(r => rallies.push({...r, mid:m.id}));
   });
   const ok = x => (f.set === 'all' || x.set === +f.set) && (f.rot === 'all' || x.rot === +f.rot);
-  acts = acts.filter(ok); rallies = rallies.filter(ok);
+  const setRallies = rallies.filter(x => f.set === 'all' || x.set === +f.set);
+  acts = acts.filter(ok); rallies = rallies.filter(ok); log = log.filter(ok);
   const actsP = f.player === 'all' ? acts : acts.filter(a => a.p === f.player);
   const pids = [...new Set(acts.map(a => a.p))].sort((a,b) => ((playerOf(t,a)||{num:999}).num) - ((playerOf(t,b)||{num:999}).num));
   const by = (p, s) => acts.filter(a => a.p === p && a.s === s);
@@ -803,7 +806,7 @@ function statData(){
   // Zuspiel → Angriff je Zuspieler
   const setters = pids.filter(p => by(p, 'E').length);
   setters.forEach(p => tables.push(...setterTables(t, acts, p, zoneGroups)));
-  return {t, ms, acts, actsP, rallies, tables, pids, details, zoneGroups, setters, filterTxt: filterText(t)};
+  return {t, ms, acts, actsP, rallies, setRallies, log, tables, pids, details, zoneGroups, setters, filterTxt: filterText(t)};
 }
 // Zuspiel-Auswertung: wohin wurde zugespielt (Angriffsposition) und wie gut war der Angriff danach.
 // p = Zuspieler-ID oder null für das ganze Team
@@ -1260,13 +1263,19 @@ const A = {
   pdfBatch: () => exportPlayerPdfs(),
   xlsx: () => {
     const D = statData();
-    const raw = [['Spiel','Datum','Satz','Stand','Läufer','Spieler','Zone','Spielposition','Element','Bewertung','Bedeutung','Punkt',
+    const raw = [['Spiel','Datum','Satz','Stand vorher','Stand nachher','Läufer','Spieler','Zone','Spielposition','Element','Bewertung','Bedeutung','Punkt',
       'Annahme davor','Zuspieler (bei Angriff)','Zuspielqualität (bei Angriff)','Angriff danach von (bei Zuspiel)','Angriffsergebnis (bei Zuspiel)',
       'Start X (m)','Start Y (m)','Ziel X (m)','Ziel Y (m)']];
     const posN = z => z === 4 ? 'IV' : z === 3 ? 'III' : z === 2 ? 'II' : z ? 'hinten' : '';
-    D.acts.forEach(a => {
+    const after = a => a.us1 != null ? a.us1 + ':' + a.them1 : a.us + ':' + a.them;
+    D.log.forEach(a => {
       const m = match(a.mid);
-      raw.push([m.opponent, fmtDate(m.date), a.set, a.us + ':' + a.them, a.rot ? 'L' + a.rot : '', pname(D.t, a.p), a.zone ? ZN[a.zone - 1] : '',
+      if (a.t === 'pt') { // Punkt ohne eigene Aktion (z. B. Gegnerfehler, Gegnerpunkt ohne Ballkontakt)
+        raw.push([m.opponent, fmtDate(m.date), a.set, a.us + ':' + a.them, after(a), a.rot ? 'L' + a.rot : '', '', '', '', 'Punkt ohne eigene Aktion', '',
+          a.w === 'us' ? 'für uns (z. B. Gegnerfehler)' : 'für Gegner', a.w === 'us' ? 'wir' : 'Gegner', '', '', '', '', '', '', '', '', '']);
+        return;
+      }
+      raw.push([m.opponent, fmtDate(m.date), a.set, a.us + ':' + a.them, a.win ? after(a) : '', a.rot ? 'L' + a.rot : '', pname(D.t, a.p), a.zone ? ZN[a.zone - 1] : '',
         a.s === 'A' ? posN(a.pz ?? a.zone) : (a.pz ? ZN[a.pz - 1] : ''),
         SK[a.s], a.r, RL[a.s][RT.indexOf(a.r)], a.win === 'us' ? 'wir' : a.win === 'them' ? 'Gegner' : '',
         (a.s === 'E' || a.s === 'A') && a.recQ ? a.recQ : (a.s === 'E' ? 'Transition' : ''),
@@ -1274,8 +1283,28 @@ const A = {
         a.s === 'E' && a.attPz ? posN(a.attPz) : '', a.s === 'E' && a.attR ? a.attR : '',
         ...trajMeters(a)]);
     });
+    // Ballwechsel: jeder Punkt, auch ohne eigene Aktion
+    const nAct = {}; D.acts.forEach(a => { const k = a.mid + '|' + a.ri; nAct[k] = (nAct[k] || 0) + 1; });
+    const ral = [['Spiel','Datum','Satz','Stand vorher','Stand nachher','Läufer','Aufschlag','Art','Punkt','Entschieden durch','erfasste Aktionen']];
+    D.rallies.forEach(r => {
+      const m = match(r.mid), b = r.by;
+      ral.push([m.opponent, fmtDate(m.date), r.set, r.us0 + ':' + r.them0, r.us1 + ':' + r.them1, r.rot ? 'L' + r.rot : '',
+        r.serve === 'us' ? 'wir' : 'Gegner', r.serve === 'us' ? 'Break-Chance' : 'Side-out-Chance', r.win === 'us' ? 'wir' : 'Gegner',
+        b ? pname(D.t, b.p) + ' · ' + SK[b.s] + ' ' + b.r + ' (' + RL[b.s][RT.indexOf(b.r)] + ')' : (r.win === 'us' ? 'ohne eigene Aktion (z. B. Gegnerfehler)' : 'ohne eigene Aktion'),
+        nAct[r.mid + '|' + r.ri] || 0]);
+    });
+    // Sätze: Endstand aus allen Ballwechseln (unabhängig vom Läufer-Filter)
+    const sets = [['Spiel','Datum','Satz','Endstand','Satz an','Ballwechsel','Side-out','Break','Punkte ohne eigene Aktion (wir)','Punkte ohne eigene Aktion (Gegner)']];
+    const bySet = new Map(); D.setRallies.forEach(r => { const k = r.mid + '|' + r.set; if (!bySet.has(k)) bySet.set(k, []); bySet.get(k).push(r); });
+    bySet.forEach(list => {
+      const m = match(list[0].mid), z = list[list.length - 1], so = list.filter(r => r.serve === 'them'), br = list.filter(r => r.serve === 'us');
+      const tgt = z.set === 5 ? 15 : 25, done = (z.us1 >= tgt || z.them1 >= tgt) && Math.abs(z.us1 - z.them1) >= 2;
+      sets.push([m.opponent, fmtDate(m.date), z.set, z.us1 + ':' + z.them1, done ? (z.us1 > z.them1 ? 'wir' : 'Gegner') : 'nicht beendet', list.length,
+        pct(so.filter(r => r.win === 'us').length, so.length) + ' (' + so.length + ')', pct(br.filter(r => r.win === 'us').length, br.length) + ' (' + br.length + ')',
+        list.filter(r => !r.by && r.win === 'us').length, list.filter(r => !r.by && r.win === 'them').length]);
+    });
     const teamSet = D.setters.length ? setterTables(D.t, D.acts, null, D.zoneGroups) : [];
-    const sheets = [...D.tables, ...teamSet].map(tb => [tb.sheet || tb.title, [tb.head, ...tb.rows]]).concat([['Aktionen', raw]]);
+    const sheets = [['Sätze', sets], ...[...D.tables, ...teamSet].map(tb => [tb.sheet || tb.title, [tb.head, ...tb.rows]]), ['Ballwechsel', ral], ['Aktionen', raw]];
     download('scouting-' + D.t.name.replace(/[^\w-]+/g, '_') + '.xlsx', makeXlsx(sheets));
   },
   newSpace: () => {
