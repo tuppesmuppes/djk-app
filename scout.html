@@ -101,6 +101,10 @@ input.w4{width:70px}
 .lgsvg .lgt{font-size:5px;fill:#1d2330;text-anchor:middle;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:1.4px}
 .lgsvg .lgo{fill:none;stroke:#1d2330;stroke-width:1;stroke-dasharray:1.5 1}.lgsvg .lgon{font-size:4.5px;fill:#1d2330;text-anchor:middle;font-weight:700}
 .lgsvg .lgb{font-size:4px;fill:var(--ink);text-anchor:middle}
+.pdfcap{--bg:#fff;--card:#fff;--ink:#1d2330;--muted:#5b6475;--line:#d6dbe4;background:#fff;color:#1d2330;font-size:16px}
+.pdfcap .card{break-inside:avoid}.pdfcap .tblwrap{overflow:visible}.pdfcap .tbl th{white-space:normal}
+.pdfcap .courtsvg{width:260px!important;height:520px!important;max-width:none}
+.pdfcap .lgsvg{width:300px!important;height:336px!important;max-width:none}
 .printonly{display:none}
 @media print{
   .tblwrap{overflow:visible}
@@ -895,32 +899,33 @@ const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = 
       <b>Block</b> (bewertet wird die Wirkung, eine Berührung ist nicht nötig): # Punkt · + Gut – Block lenkt kontrolliert ab oder stellt die Hauptschlagrichtung zu, Abwehr bekommt einen leicht spielbaren Ball ·
       ! Neutral – Block steht, bewirkt aber nichts Entscheidendes, Ball bleibt im Spiel · − Schlecht – Block falsch, zu spät oder offen, Angreifer hat freie Bahn ·
       / Block-out – Angreifer nutzt den Block aus (Punkt Gegner) · = Fehler (z. B. Netz, Punkt Gegner).</div>`;
+function courtsCard(list){
+  const sD = list.filter(a => a.s === 'S' && trajOf(a)), aD = list.filter(a => a.s === 'A' && trajOf(a));
+  return `<div class="card"><div class="grid2"><div><h3>Aufschläge (${sD.length})</h3>${courtSVG(sD)}${legend('S')}</div><div><h3>Angriffe (${aD.length})</h3>${courtSVG(aD)}${legend('A')}</div></div></div>`;
+}
+function playerSectionHtml(D, p, cls){
+  const t = D.t, l = D.acts.filter(a => a.p === p), att = l.filter(a => a.s === 'A');
+  const dist = {title:'Angriffe nach Position', head:['Angriff von','Anzahl','Punkte','Effizienz'],
+    rows: D.zoneGroups.map(([lab, fn]) => { const z = att.filter(fn); return [lab, z.length + ' (' + pct(z.length, att.length) + ')', z.filter(a => a.r === '#').length, evalList('A', z).eff]; })};
+  return `<section class="${cls || ''}"><h2>Einzelbericht ${esc(pname(t, p))} – ${esc(t.name)}</h2><p class="muted">${esc(D.filterTxt)}</p>
+    ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) + tableHtml(attBySetTable(t, D.acts, p)) : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courtsCard(l)}${DEFS_HTML}</section>`;
+}
 function vReport(D){
   const r = ui.report, t = D.t;
   const bar = `<div class="card noprint"><div class="row">
       <button data-act="repBack">← Zurück zur Statistik</button>
       ${r.kind === 'player' ? `<select data-change="repPlayer"><option value="all">Alle Spieler (je eine Seite)</option>${D.pids.map(p => `<option value="${p}" ${r.pid === p ? 'selected' : ''}>${esc(pname(t, p))}</option>`).join('')}</select>` : ''}
       <button class="primary" data-act="print">Drucken / PDF</button>
-      <span class="small muted">Filter (Spiel, Satz, Läufer) wie in der Statistik.</span></div></div>`;
-  const courts = list => {
-    const sD = list.filter(a => a.s === 'S' && trajOf(a)), aD = list.filter(a => a.s === 'A' && trajOf(a));
-    return `<div class="card"><div class="grid2"><div><h3>Aufschläge (${sD.length})</h3>${courtSVG(sD)}${legend('S')}</div><div><h3>Angriffe (${aD.length})</h3>${courtSVG(aD)}${legend('A')}</div></div></div>`;
-  };
+      ${r.kind === 'player' ? '<button class="primary" data-act="pdfBatch">Alle Einzelberichte als PDFs (ZIP, quer, farbig)</button>' : ''}
+      <span class="small muted">Filter (Spiel, Satz, Läufer) wie in der Statistik.</span><span id="pdfProg" class="small"></span></div></div>`;
   if (r.kind === 'team') {
     const [lauf, dist] = D.tables.filter(x => x.title === 'Läufer' || x.title === 'Angriffsverteilung');
     return bar + `<h2>Teambericht ${esc(t.name)} – ${esc(D.filterTxt)}</h2>
-      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${tableHtml(attBySetTable(t, D.acts, null))}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${courts(D.acts)}${DEFS_HTML}`;
+      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${tableHtml(attBySetTable(t, D.acts, null))}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${courtsCard(D.acts)}${DEFS_HTML}`;
   }
   const ids = r.pid && r.pid !== 'all' ? [r.pid] : D.pids;
   if (!ids.length) return bar + '<div class="card">Keine Aktionen für die gewählten Filter.</div>';
-  return bar + ids.map((p, i) => {
-    const l = D.acts.filter(a => a.p === p), att = l.filter(a => a.s === 'A');
-    const zp = a => a.pz ?? a.zone;
-    const dist = {title:'Angriffe nach Position', head:['Angriff von','Anzahl','Punkte','Effizienz'],
-      rows: D.zoneGroups.map(([lab, fn]) => { const z = att.filter(fn); return [lab, z.length + ' (' + pct(z.length, att.length) + ')', z.filter(a => a.r === '#').length, evalList('A', z).eff]; })};
-    return `<section class="${i < ids.length - 1 ? 'pagebreak' : ''}"><h2>Einzelbericht ${esc(pname(t, p))} – ${esc(t.name)}</h2><p class="muted">${esc(D.filterTxt)}</p>
-      ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) + tableHtml(attBySetTable(t, D.acts, p)) : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courts(l)}${DEFS_HTML}</section>`;
-  }).join('');
+  return bar + ids.map((p, i) => playerSectionHtml(D, p, i < ids.length - 1 ? 'pagebreak' : '')).join('');
 }
 function ovRow(l){
   const g = s => l.filter(a => a.s === s);
@@ -1020,7 +1025,7 @@ function vStats(){
       ${sel('set', [['all','Alle Sätze'],['1','Satz 1'],['2','Satz 2'],['3','Satz 3'],['4','Satz 4'],['5','Satz 5']])}
       ${sel('rot', [['all','Alle Läufer'], ...[1,2,3,4,5,6].map(r => [String(r), 'Läufer L' + r])])}
       <button data-act="xlsx">Excel-Export</button><button data-act="print">Drucken / PDF (alles)</button>
-      <button data-act="repTeam">Teambericht</button><button data-act="repPlayer">Einzelberichte</button>
+      <button data-act="repTeam">Teambericht</button><button data-act="repPlayer">Einzelberichte</button><button data-act="pdfBatch">Einzelberichte als PDF-Paket</button><span id="pdfProg" class="small"></span>
     </div></div>
     <h2>${esc(t.name)} – ${esc(filterTxt)}</h2>
     ${tableHtml(ov)}
@@ -1252,6 +1257,7 @@ const A = {
   repTeam: () => { ui.report = {kind:'team'}; render(); },
   repPlayer: () => { ui.report = {kind:'player', pid:'all'}; render(); },
   repBack: () => { ui.report = null; render(); },
+  pdfBatch: () => exportPlayerPdfs(),
   xlsx: () => {
     const D = statData();
     const raw = [['Spiel','Datum','Satz','Stand','Läufer','Spieler','Zone','Spielposition','Element','Bewertung','Bedeutung','Punkt',
@@ -1365,14 +1371,97 @@ function trajMeters(a){
   const m = (v, f) => v == null ? '' : Math.round(v * f * 10) / 10;
   return [m(l[0], 9), m(l[1], 18), m(l[2], 9), m(l[3], 18)];
 }
+/* ---------- Einzelberichte als PDF-Paket (A4 quer, farbig) ----------
+   Nutzt jsPDF und html2canvas (MIT-Lizenz), lokal unter libs/ – Fallback auf cdnjs. */
+function loadScript(srcs){
+  return srcs.reduce((pr, src) => pr.catch(() => new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = () => { sc.remove(); rej(); }; document.head.appendChild(sc);
+  })), Promise.reject());
+}
+async function pdfLibs(){
+  if (!window.html2canvas) await loadScript(['libs/html2canvas.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js']);
+  if (!(window.jspdf && window.jspdf.jsPDF)) await loadScript(['libs/jspdf.umd.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js']);
+}
+// Inline-SVGs (mit per CSS gesetzten Farben) als Bild einbetten
+const SVG_PROPS = ['fill','stroke','stroke-width','stroke-dasharray','stroke-linecap','opacity','fill-opacity','font-size','font-weight','font-family','text-anchor','paint-order'];
+async function svgsToImages(root){
+  const jobs = [...root.querySelectorAll('svg')].map(sv => {
+    const rc = sv.getBoundingClientRect(); if (!rc.width || !rc.height) return null;
+    const cl = sv.cloneNode(true), src = [sv, ...sv.querySelectorAll('*')], dst = [cl, ...cl.querySelectorAll('*')];
+    src.forEach((el, i) => { const cs = getComputedStyle(el); dst[i].setAttribute('style', SVG_PROPS.map(k => `${k}:${cs.getPropertyValue(k)}`).join(';')); });
+    cl.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); cl.setAttribute('width', rc.width); cl.setAttribute('height', rc.height);
+    cl.style.width = ''; cl.style.height = '';
+    const img = new Image(); img.width = rc.width; img.height = rc.height;
+    img.style.cssText = `width:${rc.width}px;height:${rc.height}px;display:${getComputedStyle(sv).display === 'inline' ? 'inline-block' : 'block'};margin:${getComputedStyle(sv).margin};vertical-align:${getComputedStyle(sv).verticalAlign}`;
+    const done = new Promise(res => { img.onload = res; img.onerror = res; });
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(cl));
+    sv.replaceWith(img);
+    return done;
+  }).filter(Boolean);
+  await Promise.all(jobs);
+}
+let pdfBusy = false;
+async function exportPlayerPdfs(){
+  if (pdfBusy) return;
+  const D = statData(); if (!D || !D.pids.length) { alert('Keine Spieler mit Aktionen für die gewählten Filter.'); return; }
+  const prog = msg => { const el = document.getElementById('pdfProg'); if (el) el.textContent = ' ' + msg; };
+  pdfBusy = true;
+  try {
+    prog('Lade PDF-Bausteine …');
+    try { await pdfLibs(); } catch (e) { alert('PDF-Bausteine konnten nicht geladen werden (libs/ fehlt und keine Internetverbindung).'); return; }
+    const W = 1400, MM_W = 297 - 16, MM_H = 210 - 16, PAGE_H = Math.floor(W * MM_H / MM_W);
+    const box = document.createElement('div'); box.className = 'pdfcap';
+    box.style.cssText = `position:absolute;left:-20000px;top:0;width:${W}px;padding:0;`;
+    document.body.appendChild(box);
+    const files = [];
+    for (let i = 0; i < D.pids.length; i++) {
+      const p = D.pids[i], pl = playerOf(D.t, p) || {};
+      prog(`PDF ${i + 1} von ${D.pids.length}: ${pname(D.t, p)} …`);
+      box.innerHTML = playerSectionHtml(D, p, '');
+      await new Promise(r => setTimeout(r, 30));
+      await svgsToImages(box); // html2canvas zeichnet Inline-SVGs unzuverlässig → vorher in Bilder umwandeln
+      const sec = box.firstElementChild, totalH = box.scrollHeight;
+      // Seitenumbrüche an Blockgrenzen (Überschrift, Absatz, Karte)
+      const pages = []; let start = 0;
+      for (const b of sec.children) {
+        const top = b.offsetTop, bottom = top + b.offsetHeight;
+        if (bottom - start > PAGE_H) {
+          if (top > start) { pages.push([start, top]); start = top; }
+          while (bottom - start > PAGE_H) { pages.push([start, start + PAGE_H]); start += PAGE_H; }
+        }
+      }
+      pages.push([start, totalH]);
+      const SC = 2;
+      const canvas = await html2canvas(box, {scale: SC, backgroundColor: '#ffffff', width: W, windowWidth: W, logging: false});
+      const pdf = new window.jspdf.jsPDF({orientation: 'landscape', unit: 'mm', format: 'a4'});
+      pages.forEach(([a, b], k) => {
+        const h = Math.max(1, b - a), c = document.createElement('canvas');
+        c.width = W * SC; c.height = Math.ceil(h * SC);
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(canvas, 0, a * SC, W * SC, h * SC, 0, 0, W * SC, h * SC);
+        if (k) pdf.addPage();
+        pdf.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 8, 8, MM_W, MM_W * h / W);
+        pdf.setFontSize(8); pdf.setTextColor(140);
+        pdf.text(`${pname(D.t, p)} · ${D.t.name} · ${D.filterTxt} · Seite ${k + 1}/${pages.length}`, 148.5, 205, {align: 'center'});
+      });
+      const fn = ('Einzelbericht ' + (pl.num ?? '') + ' ' + (pl.name || 'Spieler')).trim().replace(/[\\/:*?"<>|#]+/g, '').replace(/\s+/g, '_') + '.pdf';
+      files.push([fn, pdf.output('arraybuffer')]);
+    }
+    box.remove();
+    prog('ZIP wird erstellt …');
+    download('Einzelberichte-' + D.t.name.replace(/[^\w-]+/g, '_') + '-' + today() + '.zip', zip(files, 'application/zip'));
+    prog(`Fertig: ${files.length} PDFs.`);
+  } catch (e) { alert('PDF-Export fehlgeschlagen: ' + e.message); prog(''); }
+  finally { pdfBusy = false; const b = document.querySelector('.pdfcap'); if (b) b.remove(); }
+}
 /* ---------- Minimaler XLSX-Writer (ohne externe Bibliothek) ---------- */
 const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(b){ let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
-function zip(files){ // files: [[name, string]] – unkomprimiert (STORE)
+function zip(files, type){ // files: [[name, string | ArrayBuffer | Uint8Array]] – unkomprimiert (STORE)
   const enc = new TextEncoder(), parts = [], central = [];
   let off = 0;
   for (const [name, str] of files) {
-    const nb = enc.encode(name), data = enc.encode(str), crc = crc32(data);
+    const nb = enc.encode(name), data = typeof str === 'string' ? enc.encode(str) : new Uint8Array(str), crc = crc32(data);
     const h = new DataView(new ArrayBuffer(30));
     h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
     h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, nb.length, true);
@@ -1388,7 +1477,7 @@ function zip(files){ // files: [[name, string]] – unkomprimiert (STORE)
   const e = new DataView(new ArrayBuffer(22));
   e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true);
   e.setUint32(12, cSize, true); e.setUint32(16, off, true);
-  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], {type: type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
 function makeXlsx(sheets){
   const x = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
