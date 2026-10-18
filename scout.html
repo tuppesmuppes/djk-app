@@ -792,6 +792,10 @@ function statData(){
   tables.push({title:'Angriffe nach Spieler', head:['Spieler','Anteil Angriffe','Punkte','Effizienz'],
     rows: pids.filter(p => by(p,'A').length).map(p => { const l = by(p,'A'); return [pname(t,p), l.length + ' (' + pct(l.length, att.length) + ')', l.filter(a => a.r === '#').length, evalList('A', l).eff]; })});
 
+  // Angriff nach Zuspielqualität je Angreifer (+ Team)
+  tables.push(attBySetTable(t, acts, null));
+  pids.filter(p => by(p, 'A').length).forEach(p => tables.push(attBySetTable(t, acts, p)));
+
   // Zuspiel → Angriff je Zuspieler
   const setters = pids.filter(p => by(p, 'E').length);
   setters.forEach(p => tables.push(...setterTables(t, acts, p, zoneGroups)));
@@ -860,6 +864,17 @@ function setterTables(t, acts, p, zoneGroups){
   digT.sheet = ('Abw-Ort ' + sw).slice(0, 31);
   return [dist, byRot, qual, chain, laneT, digT];
 }
+// Angriffe eines Angreifers (bzw. des Teams) nach der Qualität des vorherigen Zuspiels
+function attBySetTable(t, acts, p){
+  const A = acts.filter(a => a.s === 'A' && (p == null || a.p === p));
+  const who = p == null ? 'Team' : pname(t, p);
+  const sw = p == null ? 'Team' : ('#' + ((playerOf(t, p) || {}).num ?? '?') + ' ' + ((playerOf(t, p) || {}).name || '')).trim();
+  const row = (label, l) => { const e = evalList('A', l); return [label, e.n, ...RT.map(r => e.c[r]), pct(e.c['#'], e.n), e.eff]; };
+  return {title: 'Angriff nach Zuspielqualität ' + who, sheet: ('Angr-Zusp ' + sw).slice(0, 31), narrow: true,
+    head: ['Zuspiel', 'Angriffe', '# Punkt', '+ Gut', '! Abgewehrt', '- Schlecht', '/ Geblockt', '= Fehler', 'Kill-Quote', 'Effizienz'],
+    rows: [...['#','+','!','-','/'].map(q => row(q + ' ' + RL.E[RT.indexOf(q)], A.filter(a => a.setQ === q))),
+      row('ohne erfasstes Zuspiel', A.filter(a => !a.setQ)), row('Gesamt', A)], totalLast: true};
+}
 // Elemente-Tabelle (eine Zeile je Element) für Team- und Einzelbericht
 function elemTable(title, list){
   return {title, head:['Element','Gesamt','#','+','!','-','/','=','positiv','perfekt','Effizienz'],
@@ -873,6 +888,7 @@ const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = 
       Effizienz = (gute − schlechte Aktionen) / Gesamt: Angriff und Block (# − / − =), Annahme (# + + − / − =), Aufschlag, Zuspiel, Abwehr (# − =); Werte von −100 % bis +100 % möglich ·
       Side-out = gewonnene Ballwechsel bei Gegner-Aufschlag · Break = gewonnene Ballwechsel bei eigenem Aufschlag · Läufer L1–L6 = Position des Zuspielers.
       Angriffsverteilung „nach Annahme“ zählt jeweils den ersten Angriff nach einer eigenen Annahme; Positionen = Spielposition nach dem Wechsel auf Spezialpositionen.
+      Angriff nach Zuspielqualität: Bewertung des Zuspiels direkt vor dem Angriff; „ohne erfasstes Zuspiel“ = kein Zuspiel unmittelbar davor gescoutet. Kill-Quote = Anteil direkter Punkte.
       Zuspielverteilung: Ein Zuspiel wird mit dem direkt folgenden Angriff im selben Ballwechsel verknüpft (nur wenn das Zuspiel erfasst wurde).
       Annahme- bzw. Abwehrort = tatsächlicher Standort laut Formation (links = 5, Mitte = 6, rechts = 1); Transition-Zuspiele werden nach dem Ort der letzten eigenen Abwehr zugeordnet.
       Annahme → Zuspiel → Angriff: Ausgangslage = Qualität der eigenen Annahme direkt vor dem Zuspiel; „Transition“ = Zuspiel nach Abwehr oder Block. Zellen „n · Eff.“ = Anzahl Angriffe von dieser Position und deren Effizienz.<br>
@@ -893,7 +909,7 @@ function vReport(D){
   if (r.kind === 'team') {
     const [lauf, dist] = D.tables.filter(x => x.title === 'Läufer' || x.title === 'Angriffsverteilung');
     return bar + `<h2>Teambericht ${esc(t.name)} – ${esc(D.filterTxt)}</h2>
-      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${courts(D.acts)}${DEFS_HTML}`;
+      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${tableHtml(attBySetTable(t, D.acts, null))}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${courts(D.acts)}${DEFS_HTML}`;
   }
   const ids = r.pid && r.pid !== 'all' ? [r.pid] : D.pids;
   if (!ids.length) return bar + '<div class="card">Keine Aktionen für die gewählten Filter.</div>';
@@ -903,7 +919,7 @@ function vReport(D){
     const dist = {title:'Angriffe nach Position', head:['Angriff von','Anzahl','Punkte','Effizienz'],
       rows: D.zoneGroups.map(([lab, fn]) => { const z = att.filter(fn); return [lab, z.length + ' (' + pct(z.length, att.length) + ')', z.filter(a => a.r === '#').length, evalList('A', z).eff]; })};
     return `<section class="${i < ids.length - 1 ? 'pagebreak' : ''}"><h2>Einzelbericht ${esc(pname(t, p))} – ${esc(t.name)}</h2><p class="muted">${esc(D.filterTxt)}</p>
-      ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courts(l)}${DEFS_HTML}</section>`;
+      ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) + tableHtml(attBySetTable(t, D.acts, p)) : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courts(l)}${DEFS_HTML}</section>`;
   }).join('');
 }
 function ovRow(l){
