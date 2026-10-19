@@ -93,6 +93,11 @@ input.w4{width:70px}
 @media (max-width:760px){.grid2{grid-template-columns:1fr}}
 .tbl.narrow th{white-space:normal;vertical-align:bottom}
 .tbl.narrow th:nth-child(3){max-width:4.5em}
+.szwrap{max-width:360px;margin:0 auto}.szsvg{width:100%;display:block}
+.szsvg .szl{font-size:4px;fill:#fff;font-weight:700;opacity:.8}.szsvg .szn{font-size:8px;fill:#fff;text-anchor:middle;font-weight:800}
+.szsvg .szt{font-size:3.6px;fill:#fff;text-anchor:middle;font-weight:600}.szsvg .szb{font-size:3.6px;fill:var(--muted);text-anchor:middle}
+.szsvg .sznet{stroke:var(--ink);stroke-width:1.6}
+.pdfcap .szwrap{max-width:none;width:420px}
 .lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
 .lgsvg{width:100%;max-width:300px;display:block;margin:0 auto}
 .lgsvg .lgc{fill:#e4a96b;stroke:#fff;stroke-width:.8}.lgsvg .lgn{stroke:#1d2330;stroke-width:1.6}.lgsvg .lga{stroke:#fff;stroke-width:.5}
@@ -753,8 +758,9 @@ function statData(){
   const ms = db.matches.filter(m => m.teamId === t.id && (f.match === 'all' || m.id === f.match));
   let acts = [], rallies = [], log = [];
   ms.forEach(m => {
-    const R = replay(m);
-    R.ann.forEach(a => { if (a.t === 'act') acts.push({...a, mid:m.id}); if (a.t === 'act' || a.t === 'pt') log.push({...a, mid:m.id}); });
+    const R = replay(m), rw = {};
+    R.rallies.forEach(r => { rw[r.ri] = r.win; });
+    R.ann.forEach(a => { if (a.t === 'act') acts.push({...a, mid:m.id, rwin:rw[a.ri] || null}); if (a.t === 'act' || a.t === 'pt') log.push({...a, mid:m.id}); });
     R.rallies.forEach(r => rallies.push({...r, mid:m.id}));
   });
   const ok = x => (f.set === 'all' || x.set === +f.set) && (f.rot === 'all' || x.rot === +f.rot);
@@ -785,6 +791,7 @@ function statData(){
   };
   tables.push({title:'Läufer', head:['Läufer','Ballwechsel','gewonnen','verloren','Side-out (bei Gegner-Aufschlag)','Break (bei eigenem Aufschlag)'],
     rows: [...[1,2,3,4,5,6].map(r => ['L' + r, ...rotRow(rallies.filter(x => x.rot === r))]), ['Gesamt', ...rotRow(rallies)]], totalLast:true});
+  tables.push(serveZoneTable(acts.filter(a => a.s === 'S')));
 
   // Angriffsverteilung
   const att = acts.filter(a => a.s === 'A');
@@ -911,7 +918,7 @@ function playerSectionHtml(D, p, cls){
   const dist = {title:'Angriffe nach Position', head:['Angriff von','Anzahl','Punkte','Effizienz'],
     rows: D.zoneGroups.map(([lab, fn]) => { const z = att.filter(fn); return [lab, z.length + ' (' + pct(z.length, att.length) + ')', z.filter(a => a.r === '#').length, evalList('A', z).eff]; })};
   return `<section class="${cls || ''}"><h2>Einzelbericht ${esc(pname(t, p))} – ${esc(t.name)}</h2><p class="muted">${esc(D.filterTxt)}</p>
-    ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) + tableHtml(attBySetTable(t, D.acts, p)) : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courtsCard(l)}${DEFS_HTML}</section>`;
+    ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) + tableHtml(attBySetTable(t, D.acts, p)) : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courtsCard(l)}${serveZoneCard(l.filter(a => a.s === 'S'))}${DEFS_HTML}</section>`;
 }
 function vReport(D){
   const r = ui.report, t = D.t;
@@ -924,7 +931,7 @@ function vReport(D){
   if (r.kind === 'team') {
     const [lauf, dist] = D.tables.filter(x => x.title === 'Läufer' || x.title === 'Angriffsverteilung');
     return bar + `<h2>Teambericht ${esc(t.name)} – ${esc(D.filterTxt)}</h2>
-      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${tableHtml(attBySetTable(t, D.acts, null))}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${courtsCard(D.acts)}${DEFS_HTML}`;
+      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${tableHtml(attBySetTable(t, D.acts, null))}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${courtsCard(D.acts)}${tableHtml(serveZoneTable(D.acts.filter(a => a.s === 'S')))}${serveZoneCard(D.acts.filter(a => a.s === 'S'))}${DEFS_HTML}`;
   }
   const ids = r.pid && r.pid !== 'all' ? [r.pid] : D.pids;
   if (!ids.length) return bar + '<div class="card">Keine Aktionen für die gewählten Filter.</div>';
@@ -936,6 +943,51 @@ function ovRow(l){
   const pts = l.filter(a => a.r === '#' && 'SAB'.includes(a.s)).length;
   const err = l.filter(a => a.r === '=').length;
   return [pts, err, S.n, S.c['#'], S.c['='], S.eff, R.n, R.pos, R.perf, A.n, A.c['#'], A.eff, g('B').filter(a => a.r === '#').length, D.n, D.pos];
+}
+// Aufschlag-Zielzonen im 9-Zonen-System (Sicht des Gegners): tief 1·6·5, halblang 9·8·7, am Netz 2·3·4 – je 3 m
+const SZ_ORDER = ['1','6','5','9','8','7','2','3','4'];
+function serveZone(a){
+  const l = trajOf(a); if (!l || l[2] == null) return null;
+  const x = l[2], y = l[3] * 18; // y: 0 = gegnerische Grundlinie, 9 = Netz
+  if (x < 0 || x > 1 || y < 0 || y > 9) return 'aus';
+  const c = x < 1/3 ? 0 : x < 2/3 ? 1 : 2;
+  return (y < 3 ? ['1','6','5'] : y < 6 ? ['9','8','7'] : ['2','3','4'])[c];
+}
+function szStats(list){
+  const c = r => list.filter(a => a.r === r).length, br = list.filter(a => a.rwin === 'us').length;
+  return {n: list.length, ace: c('#'), plus: c('+'), perf: c('/'), err: c('='), br, q: list.length ? br / list.length : null};
+}
+function serveZoneTable(serves, title){
+  const inField = serves.filter(a => SZ_ORDER.includes(serveZone(a)));
+  const row = (lab, l, share) => { const z = szStats(l); return [lab, z.n, share ? pct(z.n, inField.length) : '', z.ace, z.plus, z.perf, z.err, z.n ? pct(z.br, z.n) + ' (' + z.br + ')' : '–']; };
+  const rows = SZ_ORDER.map(z => row('Zone ' + z, serves.filter(a => serveZone(a) === z), true));
+  rows.push(row('Aus / Netz', serves.filter(a => serveZone(a) === 'aus')));
+  const none = serves.filter(a => serveZone(a) === null); if (none.length) rows.push(row('ohne Zielpunkt', none));
+  rows.push(row('Gesamt', serves));
+  return {title: title || 'Aufschlag nach Zielzone (9 Zonen)', sheet: 'Aufschlag-Zonen', head: ['Zielzone','Aufschläge','Anteil im Feld','Ass','+ Druck','/ perfekte Gegnerannahme','Fehler','Break (Ballwechsel gewonnen)'], rows, totalLast: true};
+}
+function serveZoneGraphic(serves){
+  const COL = q => q == null ? '#9aa3b2' : q >= .6 ? '#1a9e55' : q >= .4 ? '#e39a1b' : '#d0342c';
+  const cells = SZ_ORDER.map((z, i) => {
+    const r = Math.floor(i / 3), c = i % 3, x = 5 + c * 30, y = 8 + r * 30, st = szStats(serves.filter(a => serveZone(a) === z));
+    return `<rect x="${x}" y="${y}" width="30" height="30" fill="${COL(st.q)}" opacity="${st.n ? .9 : .35}" stroke="#fff" stroke-width=".8"/>
+      <text x="${x + 2.5}" y="${y + 5.5}" class="szl">${z}</text>
+      ${st.n ? `<text x="${x + 15}" y="${y + 15}" class="szn">${st.n}</text>
+      <text x="${x + 15}" y="${y + 21.5}" class="szt">Break ${Math.round(st.q * 100)} %</text>
+      <text x="${x + 15}" y="${y + 26.5}" class="szt">${st.ace} Ass${st.perf ? ' · ' + st.perf + '× /' : ''}</text>` : ''}`;
+  }).join('');
+  const out = serves.filter(a => serveZone(a) === 'aus').length;
+  const dot = c => `<svg width="10" height="10" viewBox="0 0 10 10" style="vertical-align:-1px;margin-right:3px"><circle cx="5" cy="5" r="5" fill="${c}"/></svg>`;
+  return `<svg viewBox="0 0 100 112" class="szsvg" xmlns="http://www.w3.org/2000/svg">
+      <text x="50" y="5.5" class="szb">gegnerische Grundlinie</text>${cells}
+      <line x1="2" y1="98" x2="98" y2="98" class="sznet"/><text x="50" y="104" class="szb">Netz (links / rechts aus unserer Sicht)</text>
+      <text x="50" y="110" class="szb">Aus / Netzfehler: ${out}</text></svg>
+    <div class="legend"><span><b>Farbe = Break-Quote</b> (Ballwechsel gewonnen):</span><span>${dot('#1a9e55')}≥ 60 %</span><span>${dot('#e39a1b')}40–59 %</span><span>${dot('#d0342c')}&lt; 40 %</span>
+      <span><b>Große Zahl</b> = Aufschläge in die Zone · <b>/</b> = perfekte Gegnerannahme · Zonen aus Sicht des Gegners, Tiefe je 3 m</span></div>`;
+}
+function serveZoneCard(serves, title){
+  if (!serves.some(a => serveZone(a) !== null)) return '';
+  return `<div class="card"><h3>${esc(title || 'Aufschlag-Zielzonen')} (${serves.length})</h3><div class="szwrap">${serveZoneGraphic(serves)}</div></div>`;
 }
 // Grafik je Annahmeort: Kreise an den Angriffspositionen (Größe = Anzahl, Farbe = Zuspielqualität, Zahl darunter = Angriffs-Effizienz)
 function laneGraphic(sets, zoneGroups, key, prefix, originName){
@@ -1041,6 +1093,7 @@ function vStats(){
         <div><h3>Aufschläge (${sDots.length})</h3>${courtSVG(sDots)}${legend('S')}</div>
         <div><h3>Angriffe (${aDots.length})</h3>${courtSVG(aDots)}${legend('A')}</div>
       </div></div>
+    ${serveZoneCard(D.actsP.filter(a => a.s === 'S'), 'Aufschlag-Zielzonen' + (f.player === 'all' ? '' : ' – ' + pname(t, f.player)))}
     ${DEFS_HTML}`;
 }
 
