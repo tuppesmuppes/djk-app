@@ -1353,7 +1353,12 @@ const A = {
   },
   finish: () => { const m = match(ui.matchId); m.finished = !m.finished; save(); render(); },
   fSkill: d => { ui.f.skill = d.s; render(); },
-  print: () => window.print(),
+  print: () => {
+    // Einzelbericht eines Spielers: Dateiname beim Speichern als PDF = Spieler_Gegner_Datum
+    const r = ui.report, old = document.title;
+    if (r && r.kind === 'player' && r.pid && r.pid !== 'all') { const D = statData(); if (D) document.title = reportFileBase(D, r.pid); }
+    window.print(); document.title = old;
+  },
   repTeam: () => { ui.report = {kind:'team'}; render(); },
   repPlayer: () => { ui.report = {kind:'player', pid:'all'}; render(); },
   repBack: () => { ui.report = null; render(); },
@@ -1527,6 +1532,14 @@ async function svgsToImages(root){
   }).filter(Boolean);
   await Promise.all(jobs);
 }
+// Dateiname Einzelbericht: Spieler_Gegner_Datum (mehrere Spiele: Gegner mit „+“, Datum als Zeitraum)
+function reportFileBase(D, p){
+  const pl = playerOf(D.t, p) || {};
+  const ms = [...new Set(D.acts.filter(a => a.p === p).map(a => a.mid))].map(match).filter(Boolean).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const clean = x => String(x || '').replace(/[\\/:*?"<>|#]+/g, '').trim().replace(/\s+/g, '-');
+  const d1 = ms.length ? fmtDate(ms[0].date) : '', d2 = ms.length ? fmtDate(ms[ms.length - 1].date) : '';
+  return [clean(pl.name || 'Spieler'), clean([...new Set(ms.map(m => m.opponent))].join('+')), d1 === d2 ? d1 : d1 + '-' + d2].filter(Boolean).join('_');
+}
 let pdfBusy = false;
 async function exportPlayerPdfs(){
   if (pdfBusy) return;
@@ -1571,7 +1584,7 @@ async function exportPlayerPdfs(){
         pdf.setFontSize(8); pdf.setTextColor(140);
         pdf.text(`${pname(D.t, p)} · ${D.t.name} · ${D.filterTxt} · Seite ${k + 1}/${pages.length}`, 148.5, 205, {align: 'center'});
       });
-      const fn = ('Einzelbericht ' + (pl.num ?? '') + ' ' + (pl.name || 'Spieler')).trim().replace(/[\\/:*?"<>|#]+/g, '').replace(/\s+/g, '_') + '.pdf';
+      const fn = reportFileBase(D, p) + '.pdf';
       files.push([fn, pdf.output('arraybuffer')]);
     }
     box.remove();
