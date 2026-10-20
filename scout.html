@@ -413,8 +413,11 @@ const STD_ORDER = ['Z','AA','MB','D','AA','MB']; // ab Zuspieler in Zonenreihenf
 const posOf = (t, id) => (playerOf(t, id) || {}).pos;
 // Ein als normaler Spieler eingewechselter Libero (Position L in der regulären Aufstellung) spielt die Rolle der Mitte
 const roleOf = (t, id) => { const p = posOf(t, id); return p === 'L' ? 'MB' : p; };
-function isStd51(lineup, t){
-  const pos = lineup.map(id => roleOf(t, id)), s = pos.indexOf('Z');
+// Rolle in diesem Spiel: beim Satzstart bzw. Wechsel festgelegt, sonst Position aus der Teamliste (ältere Spiele)
+const posIn = (st, t, id) => (st && st.roles && st.roles[id]) || posOf(t, id);
+const roleIn = (st, t, id) => { const p = posIn(st, t, id); return p === 'L' ? 'MB' : p; };
+function isStd51(lineup, t, roles){
+  const pos = lineup.map(id => roleIn({roles}, t, id)), s = pos.indexOf('Z');
   return s >= 0 && STD_ORDER.every((r, k) => pos[(s + k) % 6] === r);
 }
 function specZone(pos, front){
@@ -431,21 +434,21 @@ function specZoneFor(st, t, id, zone){
   if (front && st.serve === 'them' && rotOfState(st) === 1) return zone;
   if (!front && sysOf(t) === 'jugend') {
     // hinten wechselt nur die Zuspielerin auf I; wer auf I steht, tauscht mit ihr
-    if (posOf(t, id) === 'Z') return 1;
+    if (posIn(st, t, id) === 'Z') return 1;
     if (zone === 1) {
-      const sz = courtLineup(st, t).findIndex(x => posOf(t, x) === 'Z') + 1;
+      const sz = courtLineup(st, t).findIndex(x => posIn(st, t, x) === 'Z') + 1;
       if ([5,6].includes(sz)) return sz;
     }
     return zone;
   }
-  return specZone(id === st.libId ? 'L' : roleOf(t, id), front);
+  return specZone(id === st.libId ? 'L' : roleIn(st, t, id), front);
 }
 // Libero ersetzt automatisch die Mitte in der hinteren Reihe – außer wenn sie auf I aufschlägt
 function liberoFor(st, t){
   if (!st.libId || !st.lineup) return null;
   for (const i of [0,4,5]) {
     const id = st.lineup[i];
-    if (roleOf(t, id) === 'MB') return (i === 0 && st.serve === 'us') ? null : id;
+    if (roleIn(st, t, id) === 'MB') return (i === 0 && st.serve === 'us') ? null : id;
   }
   return null;
 }
@@ -455,7 +458,7 @@ function courtLineup(st, t){
 }
 const phaseOf = st => st.rallyFresh ? (st.serve === 'us' ? 'serve' : 'recv') : 'spec';
 function formation(st, t){
-  const cl = courtLineup(st, t), std = isStd51(st.lineup, t), rot = rotOfState(st), ph = phaseOf(st);
+  const cl = courtLineup(st, t), std = isStd51(st.lineup, t, st.roles), rot = rotOfState(st), ph = phaseOf(st);
   return cl.map((id, i) => {
     const zone = i + 1, front = zone >= 2 && zone <= 4;
     let xy;
@@ -500,21 +503,23 @@ function replay(m){
     switch (ev.t) {
       case 'set':
         Object.assign(st, {set:st.set + 1, us:0, them:0, lineup:ev.lineup.slice(), serve:ev.serve,
-          libId:ev.lib || null, ref:ev.ref, setOver:false, rallyFresh:true, rec:null, att:false});
+          libId:ev.lib || null, ref:ev.ref, setOver:false, rallyFresh:true, rec:null, att:false, roles:{...(ev.roles || {})}});
         a.set = st.set; a.us = 0; a.them = 0;
         break;
       case 'sub': {
         const i = st.lineup.indexOf(ev.out);
         if (i >= 0) st.lineup[i] = ev.in;
+        if (ev.role) st.roles[ev.in] = ev.role; else delete st.roles[ev.in];
         if (st.ref === ev.out) st.ref = ev.in;
         break;
       }
       case 'act': {
+        a.role = ev.p === st.libId ? 'L' : posIn(st, t, ev.p);
         const i = courtLineup(st, t).indexOf(ev.p);
         a.zone = i >= 0 ? i + 1 : null;
         // Spielposition (für Angriffsverteilung): nach Wechsel auf Spezialpositionen
         a.pz = a.zone;
-        if (a.zone && phaseOf(st) === 'spec' && isStd51(st.lineup, t))
+        if (a.zone && phaseOf(st) === 'spec' && isStd51(st.lineup, t, st.roles))
           a.pz = specZoneFor(st, t, ev.p, a.zone);
         // tatsächlicher Ort aus der aktuellen Formation: links = 5, Mitte = 6, rechts = 1
         const laneOf = id => { const f = formation(st, t).find(x => x.id === id); return f ? (f.xy[0] < 1/3 ? 5 : f.xy[0] < 2/3 ? 6 : 1) : null; };
@@ -608,7 +613,7 @@ function vMatches(){
     <div class="card"><h2>Spiele</h2>
     ${list.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>Datum</th><th style="text-align:left">Team</th><th style="text-align:left">Gegner</th><th>Ergebnis</th><th>Status</th><th></th></tr></thead><tbody>
     ${list.map(m => { const t = team(m.teamId); return `<tr><td>${fmtDate(m.date)}</td><td style="text-align:left">${esc(t ? t.name : '?')}</td><td style="text-align:left">${esc(m.opponent)}</td><td>${resultOf(m)}</td><td>${m.finished ? 'beendet' : 'offen'}</td>
-      <td><div class="row" style="justify-content:flex-end"><button data-act="openMatch" data-id="${m.id}">Scouten</button><button data-act="statsMatch" data-id="${m.id}">Statistik</button><button class="danger" data-act="delMatch" data-id="${m.id}">✕</button></div></td></tr>`; }).join('')}
+      <td><div class="row" style="justify-content:flex-end"><button data-act="openMatch" data-id="${m.id}">Scouten</button><button data-act="statsMatch" data-id="${m.id}">Statistik</button><button data-act="rolesMatch" data-id="${m.id}">Rollen</button><button class="danger" data-act="delMatch" data-id="${m.id}">✕</button></div></td></tr>`; }).join('')}
     </tbody></table></div>` : '<span class="muted">Noch keine Spiele.</span>'}</div>`;
 }
 
@@ -638,7 +643,7 @@ function vLive(){
   let hint = '';
   if (ui.mode === 'sub') hint = ui.subOut ? `Wechsel: ${esc(pname(t, ui.subOut))} geht raus – jetzt Bankspieler antippen` : 'Wechsel: Spieler auf dem Feld antippen, der rausgeht';
 
-  const ph = phaseOf(st), std = isStd51(st.lineup, t), rot = rotOfState(st);
+  const ph = phaseOf(st), std = isStd51(st.lineup, t, st.roles), rot = rotOfState(st);
   const top = y => ((y + 0.05) / 1.25 * 100).toFixed(1) + '%';
   // nur Anzeige: überlappende Spielfiguren auseinanderschieben (Figur ≈ 0,23 breit, 0,175 hoch in Feldkoordinaten)
   const F = formation(st, t).map(f => ({...f, xy: [Math.min(.88, Math.max(.12, f.xy[0])), f.xy[1]]}));
@@ -729,7 +734,9 @@ function vSetup(m, t, st){
   return `<div class="card">${banner}<h2>Aufstellung Satz ${st.set + 1}</h2>
     <p class="muted small">Rotationspositionen wie auf dem Feld: oben am Netz IV – III – II, hinten V – VI – I (I = Aufschläger). Für Annahme-Formationen und Spezialpositionen wird ein 5-1-System erwartet: ab Zuspieler in Zonenreihenfolge Zuspiel – Außen – Mitte – Diagonal – Außen – Mitte (z. B. Zuspiel I, Außen II, Mitte III, Diagonal IV, Außen V, Mitte VI). Der Libero wechselt automatisch für die hintere Mitte.</p>
     <div class="net">NETZ</div>
-    <div class="setup">${COURT_ORDER.map(i => `<label>Position ${ZN[i]}<select id="lz${i}">${opt(lu[i])}</select></label>`).join('')}</div>
+    <div class="setup">${COURT_ORDER.map(i => `<label>Position ${ZN[i]}<select id="lz${i}" data-change="suPlayer" data-i="${i}">${opt(lu[i])}</select>
+      <span class="small muted">spielt als</span><select id="lr${i}"><option value="">–</option>${posOptions(lu[i] ? ((prev && prev.roles && prev.roles[lu[i]]) || posOf(t, lu[i])) : '')}</select></label>`).join('')}</div>
+    <p class="muted small">„spielt als“ = Position in diesem Spiel. Vorausgewählt ist die Position aus der Teamliste – nur ändern, wenn jemand heute eine andere Position spielt. Die Teamliste und andere Spiele bleiben unverändert.</p>
     <div class="row" style="margin-top:14px">
       <label class="row">Libero <select id="suLib">${opt(defLib, 'kein Libero')}</select></label>
       <label class="row">Rotation zählt nach <select id="suRef">${opt(defRef, 'Zuspieler automatisch')}</select></label>
@@ -792,6 +799,9 @@ function statData(){
   tables.push({title:'Läufer', head:['Läufer','Ballwechsel','gewonnen','verloren','Side-out (bei Gegner-Aufschlag)','Break (bei eigenem Aufschlag)'],
     rows: [...[1,2,3,4,5,6].map(r => ['L' + r, ...rotRow(rallies.filter(x => x.rot === r))]), ['Gesamt', ...rotRow(rallies)]], totalLast:true});
   tables.push(serveZoneTable(acts.filter(a => a.s === 'S')));
+  const multi = pids.filter(p => new Set(acts.filter(a => a.p === p).map(a => a.role)).size > 1);
+  if (multi.length) tables.push({title:'Spieler nach Rolle (nur Spieler mit mehreren Rollen)', sheet:'Spieler nach Rolle', head:['Spieler · Rolle', ...tables[0].head.slice(1)],
+    rows: multi.flatMap(p => [...new Set(acts.filter(a => a.p === p).map(a => a.role))].map(r => [pname(t, p) + ' · ' + (POS[r] || r || '?'), ...ovRow(acts.filter(a => a.p === p && a.role === r))]))});
 
   // Angriffsverteilung
   const att = acts.filter(a => a.s === 'A');
@@ -1255,13 +1265,14 @@ const A = {
     const lib = document.getElementById('suLib').value || null;
     if (lib && lineup.includes(lib)) { alert('Der Libero darf nicht in der Startaufstellung stehen.'); return; }
     let ref = document.getElementById('suRef').value;
-    if (!ref) ref = lineup.find(id => (playerOf(t, id) || {}).pos === 'Z') || lineup[0];
+    if (!ref) ref = lineup.find((id, i) => (document.getElementById('lr' + i).value || posOf(t, id)) === 'Z') || lineup[0];
     if (!lineup.includes(ref)) { alert('Die Rotations-Referenz muss in der Aufstellung stehen.'); return; }
     const serve = document.querySelector('input[name=suServe]:checked').value;
-    if (!isStd51(lineup, t) && !confirm('Keine Standard-5-1-Aufstellung erkannt (ab Zuspieler in Zonenreihenfolge I→II→III…: Zuspiel, Außen, Mitte, Diagonal, Außen, Mitte).\nAnnahme-Formationen und Spezialpositionen werden dann nicht angezeigt, nur die Rotationspositionen. Trotzdem starten?')) return;
+    const roles = {}; lineup.forEach((id, i) => { roles[id] = document.getElementById('lr' + i).value || posOf(t, id); });
+    if (!isStd51(lineup, t, roles) && !confirm('Keine Standard-5-1-Aufstellung erkannt (ab Zuspieler in Zonenreihenfolge I→II→III…: Zuspiel, Außen, Mitte, Diagonal, Außen, Mitte).\nAnnahme-Formationen und Spezialpositionen werden dann nicht angezeigt, nur die Rotationspositionen. Trotzdem starten?')) return;
     if (lib && posOf(t, lib) !== 'L' && !confirm('Der gewählte Libero hat in der Teamliste nicht die Position „Libero“. Trotzdem starten?')) return;
     ui.preKey = null;
-    pushEv({t:'set', lineup, lib, ref, serve});
+    pushEv({t:'set', lineup, lib, ref, serve, roles});
   },
   selP: d => {
     const m = match(ui.matchId), st = replay(m).st;
@@ -1271,7 +1282,17 @@ const A = {
     }
     ui.selP = ui.selP === d.id ? null : d.id; render();
   },
-  benchP: d => { if (ui.mode === 'sub' && ui.subOut) pushEv({t:'sub', out: ui.subOut, in: d.id}); },
+  benchP: d => {
+    if (!(ui.mode === 'sub' && ui.subOut)) return;
+    const m = match(ui.matchId), t = team(m.teamId), st = replay(m).st, def = posIn(st, t, ui.subOut);
+    $modal.innerHTML = `<div class="modal-box"><h3>Wechsel</h3>
+      <p><b>${esc(pname(t, d.id))}</b> kommt für <b>${esc(pname(t, ui.subOut))}</b>.</p>
+      <label class="row">spielt als <select id="subRole">${posOptions(def)}</select></label>
+      <p class="small muted">Vorausgewählt: Position des ausgewechselten Spielers in diesem Spiel.</p>
+      <div class="row" style="margin-top:12px;justify-content:flex-end"><button data-act="trajCancel">Abbrechen</button><button class="primary" data-act="subOk" data-id="${d.id}">Wechseln</button></div></div>`;
+    $modal.classList.remove('hidden');
+  },
+  subOk: d => { const role = document.getElementById('subRole').value, out = ui.subOut; closeModal(); pushEv({t:'sub', out, in: d.id, role}); },
   selS: d => { ui.selS = ui.selS === d.s ? null : d.s; render(); },
   rate: d => {
     if (!ui.selP || !ui.selS) return;
@@ -1300,6 +1321,29 @@ const A = {
     closeModal(); render();
   },
   point: d => pushEv({t:'pt', w: d.w}),
+  rolesMatch: d => {
+    const m = match(d.id), t = team(m.teamId); if (!m || !t) return;
+    let set = 0;
+    const rows = m.events.map((ev, i) => {
+      if (ev.t === 'set') { set++; return `<h4 style="margin:12px 0 4px">Satz ${set}</h4><div class="row">${ev.lineup.map(id => `<label class="row small">${esc(pname(t, id))}<select data-rk="${i}" data-pid="${id}">${posOptions((ev.roles && ev.roles[id]) || posOf(t, id))}</select></label>`).join('')}</div>`; }
+      if (ev.t === 'sub') return `<div class="row small" style="margin-top:4px">Wechsel: ${esc(pname(t, ev.in))} für ${esc(pname(t, ev.out))} – spielt als <select data-rk="${i}" data-sub="1">${posOptions(ev.role || posOf(t, ev.in))}</select></div>`;
+      return '';
+    }).join('');
+    $modal.innerHTML = `<div class="modal-box"><h3>Rollen – ${esc(m.opponent)} (${fmtDate(m.date)})</h3>
+      <p class="small muted">Position je Spieler in diesem Spiel. Die Statistik wird mit den neuen Rollen neu berechnet; die Teamliste und andere Spiele bleiben unverändert.</p>
+      ${rows || '<p class="muted">Noch kein Satz gestartet.</p>'}
+      <div class="row" style="margin-top:12px;justify-content:flex-end"><button data-act="trajCancel">Abbrechen</button><button class="primary" data-act="rolesSave" data-id="${m.id}">Speichern</button></div></div>`;
+    $modal.classList.remove('hidden');
+  },
+  rolesSave: d => {
+    const m = match(d.id);
+    $modal.querySelectorAll('select[data-rk]').forEach(el => {
+      const ev = m.events[+el.dataset.rk];
+      if (el.dataset.sub) ev.role = el.value;
+      else { ev.roles = ev.roles || {}; ev.roles[el.dataset.pid] = el.value; }
+    });
+    save(); closeModal(); render();
+  },
   subMode: () => { ui.mode = ui.mode === 'sub' ? null : 'sub'; ui.subOut = null; render(); },
   cancelMode: () => { ui.mode = null; ui.subOut = null; render(); },
   undo: () => {
@@ -1316,7 +1360,7 @@ const A = {
   pdfBatch: () => exportPlayerPdfs(),
   xlsx: () => {
     const D = statData();
-    const raw = [['Spiel','Datum','Satz','Stand vorher','Stand nachher','Läufer','Spieler','Zone','Spielposition','Element','Bewertung','Bedeutung','Punkt',
+    const raw = [['Spiel','Datum','Satz','Stand vorher','Stand nachher','Läufer','Spieler','Rolle','Zone','Spielposition','Element','Bewertung','Bedeutung','Punkt',
       'Annahme davor','Zuspieler (bei Angriff)','Zuspielqualität (bei Angriff)','Angriff danach von (bei Zuspiel)','Angriffsergebnis (bei Zuspiel)',
       'Start X (m)','Start Y (m)','Ziel X (m)','Ziel Y (m)']];
     const posN = z => z === 4 ? 'IV' : z === 3 ? 'III' : z === 2 ? 'II' : z ? 'hinten' : '';
@@ -1324,11 +1368,11 @@ const A = {
     D.log.forEach(a => {
       const m = match(a.mid);
       if (a.t === 'pt') { // Punkt ohne eigene Aktion (z. B. Gegnerfehler, Gegnerpunkt ohne Ballkontakt)
-        raw.push([m.opponent, fmtDate(m.date), a.set, a.us + ':' + a.them, after(a), a.rot ? 'L' + a.rot : '', '', '', '', 'Punkt ohne eigene Aktion', '',
+        raw.push([m.opponent, fmtDate(m.date), a.set, a.us + ':' + a.them, after(a), a.rot ? 'L' + a.rot : '', '', '', '', '', 'Punkt ohne eigene Aktion', '',
           a.w === 'us' ? 'für uns (z. B. Gegnerfehler)' : 'für Gegner', a.w === 'us' ? 'wir' : 'Gegner', '', '', '', '', '', '', '', '', '']);
         return;
       }
-      raw.push([m.opponent, fmtDate(m.date), a.set, a.us + ':' + a.them, a.win ? after(a) : '', a.rot ? 'L' + a.rot : '', pname(D.t, a.p), a.zone ? ZN[a.zone - 1] : '',
+      raw.push([m.opponent, fmtDate(m.date), a.set, a.us + ':' + a.them, a.win ? after(a) : '', a.rot ? 'L' + a.rot : '', pname(D.t, a.p), POS[a.role] || '', a.zone ? ZN[a.zone - 1] : '',
         a.s === 'A' ? posN(a.pz ?? a.zone) : (a.pz ? ZN[a.pz - 1] : ''),
         SK[a.s], a.r, RL[a.s][RT.indexOf(a.r)], a.win === 'us' ? 'wir' : a.win === 'them' ? 'Gegner' : '',
         (a.s === 'E' || a.s === 'A') && a.recQ ? a.recQ : (a.s === 'E' ? 'Transition' : ''),
@@ -1411,6 +1455,7 @@ const CH = {
   pName: (d, el) => { playerOf(team(ui.editTeam), d.id).name = el.value.trim(); save(); },
   pPos: (d, el) => { playerOf(team(ui.editTeam), d.id).pos = el.value; save(); },
   traj: (d, el) => { ui.traj = el.checked; },
+  suPlayer: (d, el) => { const t = team(match(ui.matchId).teamId), r = document.getElementById('lr' + d.i); if (r) r.value = posOf(t, el.value) || ''; },
   repPlayer: (d, el) => { ui.report.pid = el.value; render(); },
   f: (d, el) => {
     ui.f[d.k] = el.value;
