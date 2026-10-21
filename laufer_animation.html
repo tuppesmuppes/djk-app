@@ -53,6 +53,8 @@
     @media(max-width:800px){ .chip .spec{ font-size:min(3.8vw,16px); } .chip .pname{ font-size:min(2.8vw,11px); } }
     .chip.dragging{ cursor:grabbing; box-shadow:0 12px 24px rgba(0,0,0,.25); z-index:10; }
     .chip.animating{ transition: left 2.4s cubic-bezier(.4,0,.2,1), top 2.4s cubic-bezier(.4,0,.2,1); cursor:default; pointer-events:none; }
+    @keyframes chipIn{ from{opacity:0} to{opacity:1} }
+    .chip.fadein{ animation: chipIn 1.6s ease; }
 
     /* Right panel */
     .panel{ display:grid; gap:12px; }
@@ -77,6 +79,7 @@
       <div>
         <div class="app-title">Volleyball <span>Läufer</span></div>
         <div class="laufer-label" id="lauferLabel">—</div>
+        <div id="statusMsg" style="font-size:12px;color:#888;min-height:16px;"></div>
       </div>
       <button class="btn" id="btnReset">Zurücksetzen</button>
     </div>
@@ -185,19 +188,54 @@ function getNameForPos(pos, laufer){
   const slot = getSlotForPos(pos, laufer);
   return assignedNames[slot] || "";
 }
+// Jeder Spieler behält seinen Kreis: Identität kommt aus der gespeicherten ID (S1..S6),
+// nur als Fallback aus Position + Läufer.
+const ID_SLOT = {S1:'Z', S2:'A1', S3:'M1', S4:'D', S5:'A2', S6:'M2'};
+const BASE_SPEC = {Z:'Z', A1:'A', A2:'A', M1:'M', M2:'M', D:'D'};
+function slotForPlayer(p){ return ID_SLOT[p.id] || getSlotForPos(p.pos, currentLaufer); }
+function slotAtPos(pos){
+  if(typeof formation!=="undefined" && formation){
+    const q=formation.players.find(function(x){ return x.pos===pos; });
+    if(q) return slotForPlayer(q);
+  }
+  return getSlotForPos(pos, currentLaufer);
+}
+function chipKeys(players){
+  const used={};
+  return players.map(function(p,i){
+    let k=slotForPlayer(p);
+    if(used[k]) k=k+"#"+i;      // doppelt gespeicherte Spieler nie auf denselben Kreis legen
+    used[k]=1; return k;
+  });
+}
 
-// ── Lib ──
-const libCache = {};
-async function loadLib(k){
+// ── Lib (Arbeitsspeicher + localStorage, Server wird im Hintergrund aktualisiert) ──
+const libMem = {};
+function setStatus(t){ const el=document.getElementById("statusMsg"); if(el) el.textContent=t||""; }
+function readLibLS(k){
+  try{ const c=localStorage.getItem("vb_la_lib_"+k); if(c){ const d=JSON.parse(c); if(Array.isArray(d)&&d.length) return d; } }catch{}
+  return null;
+}
+function writeLibLS(k,d){ try{ localStorage.setItem("vb_la_lib_"+k,JSON.stringify(d)); }catch{} }
+async function fetchLib(k,timeoutMs){
   try{
-    const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),6000);
+    const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),timeoutMs);
     const r=await fetch(`${SERVER}/lib/${k}?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
     clearTimeout(tid);
-    if(r.ok){ const d=await r.json(); if(d.length){ libCache[k]=d; return d; } }
+    if(r.ok){ const d=await r.json(); if(Array.isArray(d)&&d.length){ libMem[k]=d; writeLibLS(k,d); return d; } }
   }catch{}
-  if(libCache[k]) return libCache[k];
-  return[];
+  return null;
 }
+async function loadLib(k){
+  if(libMem[k]) return libMem[k];
+  const ls=readLibLS(k);
+  if(ls){ libMem[k]=ls; return ls; }
+  setStatus("Läufer werden vom Server geladen … (kann bis ca. 45 s dauern, wenn der Server schläft)");
+  const d=await fetchLib(k,45000);
+  setStatus(d?"":"Server nicht erreichbar – bitte später erneut versuchen.");
+  return d||[];
+}
+function preloadLibs(){ ["grund","annahme","aufschlag"].forEach(k=>{ fetchLib(k,45000); }); }
 
 // ── UI state ──
 let currentLaufer = 1;
@@ -225,8 +263,8 @@ function renderZones(){
 function renderNameGrid(){
   const grid=document.getElementById("nameGrid"); grid.innerHTML="";
   [1,2,3,4,5,6].forEach(pos=>{
-    const slot=getSlotForPos(pos,currentLaufer);
-    const spec=getSpecForPos(pos,currentLaufer);
+    const slot=slotAtPos(pos);
+    const spec=BASE_SPEC[slot]||"?";
     const cell=document.createElement("div"); cell.className="name-cell";
     const usedSlots=Object.entries(assignedNames).filter(([s,n])=>s!==slot&&n).map(([,n])=>n);
     const usedSet=new Set(usedSlots);
@@ -238,8 +276,9 @@ function renderNameGrid(){
     const sel=cell.querySelector("select"); sel.value=curName;
     sel.addEventListener("change",()=>{
       assignedNames[slot]=sel.value; saveNames();
-      const chip=field.querySelector(`.chip[data-pos="${pos}"]`);
-      if(chip) chip.querySelector(".pname").textContent=sel.value;
+      field.querySelectorAll(".chip").forEach(chip=>{
+        if((chip.dataset.slot||"").split("#")[0]===slot) chip.querySelector(".pname").textContent=sel.value;
+      });
       renderNameGrid();
     });
     grid.appendChild(cell);
@@ -249,7 +288,7 @@ function renderNameGrid(){
 let isAnimating=false;
 
 function renderField(players, animate, updateText){
-  // updateText=true → update spec/name in chips; false → keep existing text
+  // updateText=true → Spezialisierung/Nummer/Name im Kreis aktualisieren; false → alten Text behalten
   if(updateText===undefined) updateText=true;
   const {w,h}=getRect();
   const size=Math.min(w,h)*0.20;
@@ -261,56 +300,56 @@ function renderField(players, animate, updateText){
   }
   field.querySelectorAll(".empty-hint").forEach(function(n){n.remove();});
   renderZones();
-  // Map existing chips by slot
-  var existingBySlot={};
-  field.querySelectorAll(".chip").forEach(function(el){ existingBySlot[el.dataset.slot]=el; });
+  var existing={};
+  field.querySelectorAll(".chip").forEach(function(el){ existing[el.dataset.slot]=el; });
+  var keys=chipKeys(players);
 
-  players.forEach(function(p){
-    var slot=getSlotForPos(p.pos,currentLaufer);
+  players.forEach(function(p,i){
+    var key=keys[i], slot=slotForPlayer(p);
     var isFront=[2,3,4].includes(p.pos);
-    var spec=getSpecForPos(p.pos,currentLaufer);
-    var name=getNameForPos(p.pos,currentLaufer);
+    var spec=BASE_SPEC[slot]||p.spec||"?";
+    var name=assignedNames[slot]||"";
     var tl=p2px(p.x,w)+"px", tt=p2px(p.y,h)+"px";
-    if(existingBySlot[slot]){
-      var el=existingBySlot[slot];
+    var el=existing[key];
+    if(el){
       if(updateText){
         el.querySelector(".spec").textContent=spec+p.pos;
         el.querySelector(".pname").textContent=name;
       }
       el.dataset.pos=p.pos;
       el.className="chip"+(isFront?" front":"")+(animate?" animating":"");
+      el.style.width=size+"px"; el.style.height=size+"px";
       el.style.left=tl; el.style.top=tt;
-      delete existingBySlot[slot];
+      delete existing[key];
     } else {
-      var el=document.createElement("div");
-      el.className="chip"+(isFront?" front":"");
+      el=document.createElement("div");
+      el.className="chip"+(isFront?" front":"")+(animate?" fadein":"");
       el.dataset.pos=p.pos;
-      el.dataset.slot=slot;
-      el.style.cssText="width:"+size+"px;height:"+size+"px;left:"+tl+";top:"+tt+";opacity:"+(animate?"0":"1")+";";
+      el.dataset.slot=key;
+      el.style.cssText="width:"+size+"px;height:"+size+"px;left:"+tl+";top:"+tt+";";
       el.innerHTML="<div><div class=\"spec\">"+esc(spec)+p.pos+"</div><div class=\"pname\">"+esc(name)+"</div></div>";
       field.appendChild(el);
-      if(animate){ requestAnimationFrame(function(){ el.style.transition="opacity 1.6s"; el.style.opacity="1"; }); }
     }
   });
-  Object.values(existingBySlot).forEach(function(el){ el.remove(); });
+  Object.values(existing).forEach(function(el){ el.remove(); });
 }
 
-// Update text in chips after animation
+// Text in den Kreisen aktualisieren (nach Ankunft in der neuen Position)
 function updateChipTexts(players){
-  const {w,h}=getRect();
-  players.forEach(function(p){
-    var slot=getSlotForPos(p.pos,currentLaufer);
-    var el=field.querySelector(".chip[data-slot=\""+CSS.escape(slot)+"\"]");
+  var keys=chipKeys(players);
+  players.forEach(function(p,i){
+    var slot=slotForPlayer(p);
+    var el=field.querySelector('.chip[data-slot="'+keys[i]+'"]');
     if(!el) return;
-    var isFront=[2,3,4].includes(p.pos);
-    var spec=getSpecForPos(p.pos,currentLaufer);
-    var name=getNameForPos(p.pos,currentLaufer);
     el.dataset.pos=p.pos;
-    el.classList.toggle("front", isFront);
-    el.querySelector(".spec").textContent=spec+p.pos;
-    el.querySelector(".pname").textContent=name;
+    el.classList.toggle("front", [2,3,4].includes(p.pos));
+    el.querySelector(".spec").textContent=(BASE_SPEC[slot]||p.spec||"?")+p.pos;
+    el.querySelector(".pname").textContent=assignedNames[slot]||"";
   });
 }
+
+function wait(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+function stopAnimatingClass(){ field.querySelectorAll(".chip").forEach(function(el){ el.classList.remove("animating"); }); }
 
 async function loadAndRender(animate){
   document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · "+CAT_LABELS[currentCat];
@@ -323,34 +362,51 @@ async function loadAndRender(animate){
 
 async function navigateToLaufer(newLaufer){
   if(isAnimating) return;
-  var prevLaufer=currentLaufer;
-  currentLaufer=newLaufer;
-  document.querySelectorAll(".nav-btn").forEach(function(b){ b.classList.toggle("active",+b.dataset.l===newLaufer); });
-  if(currentCat==="grund"){ await loadAndRender(false); return; }
   isAnimating=true;
-  document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · Grundaufstellung…";
-  var grundLib=await loadLib("grund");
-  var grundEntry=grundLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
-  if(grundEntry){
-    // Phase 1: move chips to Grundaufstellung positions of new Läufer
-    // Keep old text (numbers), use new laufer's slot mapping for positioning
+  try{
     currentLaufer=newLaufer;
-    renderField(grundEntry.players,true,false);
-    await new Promise(function(r){ setTimeout(r,3000); });
-    // Now update text to show new positions
-    updateChipTexts(grundEntry.players);
+    document.querySelectorAll(".nav-btn").forEach(function(b){ b.classList.toggle("active",+b.dataset.l===newLaufer); });
+
+    if(currentCat==="grund"){
+      // Grundaufstellung: ein Gleitvorgang direkt in die neue Aufstellung, Nummern wechseln bei Ankunft
+      document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · "+CAT_LABELS[currentCat];
+      var gl=await loadLib("grund");
+      var ge=gl.find(function(e){ return e.name==="Läufer "+currentLaufer; });
+      formation=ge||null;
+      if(!formation){ renderField(null,false,true); renderNameGrid(); return; }
+      var hadChips=field.querySelectorAll(".chip").length>0;
+      renderField(formation.players, true, !hadChips);
+      if(hadChips){ await wait(3000); updateChipTexts(formation.players); }
+      stopAnimatingClass();
+      renderNameGrid();
+      return;
+    }
+
+    document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · Grundaufstellung…";
+    var grundLib=await loadLib("grund");
+    var grundEntry=grundLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
+    if(grundEntry){
+      // Phase 1: in die Grundaufstellung des neuen Läufers gleiten, alte Nummern behalten
+      var hadChips2=field.querySelectorAll(".chip").length>0;
+      renderField(grundEntry.players,true,!hadChips2);
+      if(hadChips2){ await wait(3000); updateChipTexts(grundEntry.players); }
+    }
+    document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · "+CAT_LABELS[currentCat];
+    var targetLib=await loadLib(CAT_KEYS[currentCat]);
+    var targetEntry=targetLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
+    formation=targetEntry||null;
+    await wait(800);
+    // Phase 2: in die Zielpositionen gleiten
+    renderField(formation?formation.players:null,true,true);
+    await wait(3000);
+    stopAnimatingClass();
+    renderNameGrid();
+  } catch(err){
+    console.error(err);
+    setStatus("Fehler bei der Animation: "+err.message);
+  } finally {
+    isAnimating=false;
   }
-  document.getElementById("lauferLabel").textContent="Läufer "+currentLaufer+" · "+CAT_LABELS[currentCat];
-  var targetLib=await loadLib(CAT_KEYS[currentCat]);
-  var targetEntry=targetLib.find(function(e){ return e.name==="Läufer "+currentLaufer; });
-  formation=targetEntry||null;
-  await new Promise(function(r){ setTimeout(r,800); });
-  // Phase 2: move to target positions, update text
-  renderField(formation?formation.players:null,true,true);
-  await new Promise(function(r){ setTimeout(r,3000); });
-  field.querySelectorAll(".chip").forEach(function(el){ el.classList.remove("animating"); });
-  renderNameGrid();
-  isAnimating=false;
 }
 
 document.getElementById("navRow").addEventListener("click",function(e){
@@ -415,7 +471,7 @@ window.addEventListener("resize",()=>{ renderField(formation?formation.players:n
 
 // ── Init ──
 renderZones();
-loadAndRender(false);
+loadAndRender(false).then(function(){ preloadLibs(); });
 
 })();
 </script>
