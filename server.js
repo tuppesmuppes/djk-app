@@ -13,7 +13,9 @@ let scoreState = {
 // In-memory field state (persisted to Supabase)
 let fieldState = null;
 
-const LIB_KEYS = ["annahme","grund","annahme_a","annahme_b","grund_a","grund_b","taktik"];
+// Any lib key of letters, digits and "_" (max 40 chars) is accepted.
+// Keys starting with "_" are reserved (e.g. "__field__").
+const LIB_KEY_RE = /^\/lib\/([A-Za-z0-9][A-Za-z0-9_]{0,39})$/;
 
 function corsHeaders() {
   return {
@@ -111,12 +113,14 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Lib endpoints
-  for (const k of LIB_KEYS) {
-    if (req.method === "GET" && req.url.startsWith(`/lib/${k}`)) {
+  const libMatch = new URL(req.url, "http://localhost").pathname.match(LIB_KEY_RE);
+  if (libMatch) {
+    const k = libMatch[1];
+    if (req.method === "GET") {
       const data = await getLib(k);
       res.writeHead(200, headers); res.end(JSON.stringify(data)); return;
     }
-    if (req.method === "PUT" && req.url === `/lib/${k}`) {
+    if (req.method === "PUT") {
       try { await setLib(k, await readBody(req)); res.writeHead(200, headers); res.end(JSON.stringify({ ok: true })); }
       catch { res.writeHead(400, headers); res.end(JSON.stringify({ error: "Invalid JSON" })); }
       return;
