@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>Volleyball Taktikboard</title>
+  <style>
+    :root{ --bg:#f5f5f5; --card:#fff; --red:#CC0000; --blue:#1565c0; --line:rgba(0,0,0,.12); --muted:#888; }
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    html,body{ background:var(--bg); }
+    body{ font-family:system-ui,sans-serif; color:#111; -webkit-tap-highlight-color:transparent; }
+    .wrap{ max-width:1400px; margin:0 auto; padding:10px; display:grid; gap:12px; }
+    .card{ background:var(--card); border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,.07); padding:12px; border:1px solid var(--line); }
+
+    /* Header */
+    .head{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .app-title{ font-size:22px; font-weight:900; }
+    .app-title span{ color:var(--red); }
+    .back{ font-size:13px; font-weight:800; color:var(--muted); text-decoration:none; margin-right:10px; }
+
+    /* Toolbar */
+    .toolbar{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+    .sep{ width:1px; align-self:stretch; background:var(--line); margin:0 4px; }
+    .btn{ -webkit-appearance:none; appearance:none; border:2px solid var(--line); background:#fff; color:#111; padding:8px 12px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; min-height:42px; touch-action:manipulation; }
+    .btn:active{ transform:translateY(1px); }
+    .btn.active{ background:var(--red); border-color:var(--red); color:#fff; }
+    .btn.red{ border-color:var(--red); color:var(--red); }
+    .btn:disabled{ opacity:.35; cursor:not-allowed; }
+    .swatch{ width:34px; height:34px; border-radius:999px; border:3px solid #fff; box-shadow:0 0 0 2px var(--line); cursor:pointer; padding:0; touch-action:manipulation; }
+    .swatch.active{ box-shadow:0 0 0 3px #111; }
+
+    /* Stage */
+    .stage{ position:relative; width:min(100%, calc((100dvh - 150px) * 2)); min-width:300px; aspect-ratio:2/1; margin:0 auto;
+      border-radius:10px; overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; container-type:inline-size; background:#dde8f4; }
+    .stage svg.layer{ position:absolute; inset:0; width:100%; height:100%; }
+    #courtSvg{ z-index:1; pointer-events:none; }
+    #drawSvg{ z-index:2; pointer-events:none; }
+    .stage.drawing{ cursor:crosshair; }
+    .stage.drawing .piece{ pointer-events:none; }
+
+    /* Pieces */
+    .piece{ position:absolute; transform:translate(-50%,-50%); touch-action:none; cursor:grab; }
+    .piece.dragging{ cursor:grabbing; z-index:20 !important; }
+    .chip{ width:7.2cqw; height:7.2cqw; border-radius:999px; background:#fff; z-index:3;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; line-height:1.05;
+      box-shadow:0 .5cqw 1.2cqw rgba(0,0,0,.18); border:.6cqw solid var(--red); }
+    .chip.opp{ border-color:var(--blue); background:#e3f0ff; }
+    .chip .spec{ font-weight:900; font-size:2.1cqw; color:var(--red); }
+    .chip .pname{ font-weight:700; font-size:1.15cqw; margin-top:.2cqw; max-width:6cqw; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .chip.dragging{ box-shadow:0 1cqw 2.4cqw rgba(0,0,0,.28); }
+    .ball{ width:3.8cqw; height:3.8cqw; z-index:4; filter:drop-shadow(0 .4cqw .6cqw rgba(0,0,0,.3)); }
+    .ball svg{ width:100%; height:100%; display:block; }
+
+    /* Panel */
+    .panel{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start; }
+    @media(max-width:800px){ .panel{ grid-template-columns:1fr; } }
+    .sec-title{ font-weight:900; font-size:15px; color:var(--red); margin-bottom:8px; }
+    .name-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    @media(max-width:500px){ .name-grid{ grid-template-columns:1fr 1fr; } }
+    .name-cell{ border:1px solid var(--line); border-radius:12px; padding:8px; }
+    .spec-badge{ display:inline-flex; min-width:44px; height:28px; padding:0 8px; border-radius:999px; border:2px solid var(--red); color:var(--red); align-items:center; justify-content:center; font-weight:900; font-size:13px; margin-bottom:6px; }
+    .name-sel{ width:100%; padding:8px; border-radius:10px; border:1px solid var(--line); font-size:15px; background:#fff; color:#111; }
+
+    .lib-btns{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; min-height:24px; }
+    .lib-item{ display:inline-flex; align-items:center; gap:2px; }
+    .lib-btn{ -webkit-appearance:none; appearance:none; border:1px solid var(--line); background:#f8f8f8; color:#111; padding:7px 11px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; }
+    .lib-btn.active{ border-color:var(--red); color:var(--red); }
+    .lib-del{ border:none; background:none; cursor:pointer; color:#e91e63; font-size:14px; padding:0 4px; font-weight:900; }
+    .lib-save-row{ display:flex; gap:6px; }
+    .lib-inp{ flex:1; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--line); font-size:15px; }
+    .lib-save-btn{ -webkit-appearance:none; appearance:none; background:#e3f2fd; border:1px solid #2196f3; color:#1565c0; padding:8px 12px; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .muted{ font-size:12px; color:var(--muted); }
+    .sync{ font-size:12px; font-weight:700; margin-top:8px; min-height:16px; }
+    .sync.ok{ color:#2e7d32; } .sync.warn{ color:#e65100; }
+  </style>
+</head>
+<body>
+<div style="background:var(--red);height:5px;"></div>
+<div class="wrap">
+
+  <div class="card">
+    <div class="head">
+      <div style="display:flex;align-items:center;">
+        <a class="back" href="index.html">← Start</a>
+        <div class="app-title">Volleyball <span>Taktik</span></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn red" id="btnResetPos">↺ Positionen</button>
+        <button class="btn red" id="btnResetAll">Alles zurücksetzen</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn mode active" data-mode="move">✋ Bewegen</button>
+      <button class="btn mode" data-mode="free">✏️ Freihand</button>
+      <button class="btn mode" data-mode="straight">📏 Gerade</button>
+      <button class="btn mode" data-mode="erase">🧽 Radierer</button>
+      <div class="sep"></div>
+      <button class="btn" id="btnArrow">➜ Pfeil</button>
+      <div class="sep"></div>
+      <div id="swatches" style="display:flex;gap:6px;"></div>
+      <div class="sep"></div>
+      <button class="btn" id="btnUndo">↶ Rückgängig</button>
+      <button class="btn" id="btnClearLines">🗑 Linien</button>
+    </div>
+
+    <div class="stage" id="stage">
+      <svg class="layer" id="courtSvg" viewBox="0 0 22 11" preserveAspectRatio="none" aria-hidden="true">
+        <!-- free zone -->
+        <rect x="0" y="0" width="22" height="11" fill="#dde8f4"/>
+        <!-- halves -->
+        <rect x="2" y="1" width="9" height="9" fill="#fff4f2"/>
+        <rect x="11" y="1" width="9" height="9" fill="#eef6ff"/>
+        <!-- attack lines + dashed extensions -->
+        <line x1="8" y1="1" x2="8" y2="10" stroke="#1565c0" stroke-width=".07"/>
+        <line x1="14" y1="1" x2="14" y2="10" stroke="#1565c0" stroke-width=".07"/>
+        <line x1="8" y1="0.2" x2="8" y2="1" stroke="#1565c0" stroke-width=".05" stroke-dasharray=".15 .15"/>
+        <line x1="8" y1="10" x2="8" y2="10.8" stroke="#1565c0" stroke-width=".05" stroke-dasharray=".15 .15"/>
+        <line x1="14" y1="0.2" x2="14" y2="1" stroke="#1565c0" stroke-width=".05" stroke-dasharray=".15 .15"/>
+        <line x1="14" y1="10" x2="14" y2="10.8" stroke="#1565c0" stroke-width=".05" stroke-dasharray=".15 .15"/>
+        <!-- outer lines -->
+        <rect x="2" y="1" width="18" height="9" fill="none" stroke="#1565c0" stroke-width=".1"/>
+        <!-- net + posts -->
+        <line x1="11" y1="0.35" x2="11" y2="10.65" stroke="#333" stroke-width=".16"/>
+        <line x1="11" y1="1" x2="11" y2="10" stroke="#fff" stroke-width=".05" stroke-dasharray=".12 .12"/>
+        <circle cx="11" cy="0.3" r=".18" fill="#333"/>
+        <circle cx="11" cy="10.7" r=".18" fill="#333"/>
+        <text x="8.15" y="9.8" font-size=".35" font-weight="800" fill="#1565c0" font-family="system-ui,sans-serif">3m</text>
+        <text x="13.85" y="9.8" font-size=".35" font-weight="800" fill="#1565c0" text-anchor="end" font-family="system-ui,sans-serif">3m</text>
+      </svg>
+      <svg class="layer" id="drawSvg" viewBox="0 0 22 11" preserveAspectRatio="none"></svg>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="card">
+      <div class="sec-title">Spieler</div>
+      <div class="name-grid" id="nameGrid"></div>
+    </div>
+    <div class="card">
+      <div class="sec-title">Gespeicherte Spielzüge</div>
+      <div class="lib-btns" id="libBtns"><span class="muted">Lade…</span></div>
+      <div class="lib-save-row">
+        <input class="lib-inp" id="libInp" placeholder="Name…" maxlength="40"/>
+        <button class="lib-save-btn" id="libSave">💾 Speichern</button>
+      </div>
+      <div class="sync" id="syncStatus"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ── Constants ──
+const SERVER  = "https://scoreboard-rzql.onrender.com";
+const LIB_KEY = "taktik";
+const LS_KEY  = "vb_taktik_v1";
+const W = 22, H = 11;           // stage in "units": court 18x9 (x 2–20, y 1–10), net at x=11
+
+const NAMES = ["Hendrik","Jannik","Simon (A)","Simon (M)","Finn","Laurin","Nico","Viveko","Felix","Aurelian","Vincent","David","Jaspal","Philipp","Stefan"];
+const SPECS = ["An","Z","Mn","Af","D","Mf"];
+const COLORS = ["#111111","#CC0000","#1565c0","#2e7d32","#ef6c00"];
+
+// Default positions (own team left, net on the right side of own half)
+// front row x=9.5, back row x=4.5; rows y=2.5 / 5.5 / 8.5
+const DEF_OWN = {
+  An:{x:9.5,y:2.5}, Mn:{x:9.5,y:5.5}, D:{x:9.5,y:8.5},
+  Af:{x:4.5,y:2.5}, Mf:{x:4.5,y:5.5}, Z:{x:4.5,y:8.5},
+};
+const DEF_OPP = [
+  {x:12.5,y:2.5},{x:12.5,y:5.5},{x:12.5,y:8.5},
+  {x:17.5,y:2.5},{x:17.5,y:5.5},{x:17.5,y:8.5},
+];
+const DEF_BALL = {x:1,y:10};
+
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
+const r2 = n => Math.round(n*100)/100;
+
+// ── State ──
+function defPositions(){
+  return {
+    own: SPECS.map(s => ({ id:s, x:DEF_OWN[s].x, y:DEF_OWN[s].y })),
+    opp: DEF_OPP.map((p,i) => ({ id:`G${i+1}`, x:p.x, y:p.y })),
+    ball: { ...DEF_BALL },
+  };
+}
+function defState(){
+  return { v:1, ...defPositions(), names: Object.fromEntries(SPECS.map(s=>[s,""])), lines: [] };
+}
+function loadState(){
+  try{
+    const s = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+    if(!s || s.v !== 1) return null;
+    return s;
+  }catch{ return null; }
+}
+let state = loadState() || defState();
+const save = () => { try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch{} };
+
+let mode = "move";
+let color = COLORS[0];
+let arrow = false;
+let history = [];               // snapshots of state.lines for undo
+let activeEntry = null;
+
+// ── DOM ──
+const stage   = document.getElementById("stage");
+const drawSvg = document.getElementById("drawSvg");
+
+function toUnits(e){
+  const r = stage.getBoundingClientRect();
+  return { x: clamp((e.clientX - r.left) / r.width * W, 0, W), y: clamp((e.clientY - r.top) / r.height * H, 0, H) };
+}
+function place(el, p){ el.style.left = `${p.x / W * 100}%`; el.style.top = `${p.y / H * 100}%`; }
+
+// ── Pieces ──
+const BALL_SVG = `<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ffd23f" stroke="#1a3d7c" stroke-width="2"/>
+  <path d="M20 2 C10 14 10 26 20 38" fill="none" stroke="#1a3d7c" stroke-width="2"/>
+  <path d="M3 15 C16 20 28 18 37 10" fill="none" stroke="#1a3d7c" stroke-width="2"/>
+  <path d="M5 30 C18 23 29 27 35 31" fill="none" stroke="#1a3d7c" stroke-width="2"/></svg>`;
+
+function renderPieces(){
+  stage.querySelectorAll(".piece").forEach(n => n.remove());
+  state.own.forEach(p => {
+    const el = document.createElement("div");
+    el.className = "piece chip"; el.dataset.kind = "own"; el.dataset.id = p.id;
+    el.innerHTML = `<div class="spec">${esc(p.id)}</div><div class="pname">${esc(state.names[p.id] || "")}</div>`;
+    place(el, p); stage.appendChild(el);
+  });
+  state.opp.forEach(p => {
+    const el = document.createElement("div");
+    el.className = "piece chip opp"; el.dataset.kind = "opp"; el.dataset.id = p.id;
+    place(el, p); stage.appendChild(el);
+  });
+  const b = document.createElement("div");
+  b.className = "piece ball"; b.dataset.kind = "ball"; b.dataset.id = "ball";
+  b.innerHTML = BALL_SVG; place(b, state.ball); stage.appendChild(b);
+}
+function pieceData(kind, id){
+  if(kind === "ball") return state.ball;
+  return (kind === "own" ? state.own : state.opp).find(p => p.id === id);
+}
+
+// ── Lines ──
+function arrowHead(pts, w){
+  const P = pts[pts.length-1];
+  let Q = pts[0];
+  for(let i = pts.length-2; i >= 0; i--){ if(Math.hypot(P.x-pts[i].x, P.y-pts[i].y) >= .4){ Q = pts[i]; break; } }
+  const len = Math.hypot(P.x-Q.x, P.y-Q.y); if(len < .01) return "";
+  const dx = (P.x-Q.x)/len, dy = (P.y-Q.y)/len;
+  const L = .2 + w*3, B = .12 + w*1.6;
+  const a = `${r2(P.x)},${r2(P.y)}`;
+  const b = `${r2(P.x - L*dx + B*dy)},${r2(P.y - L*dy - B*dx)}`;
+  const c = `${r2(P.x - L*dx - B*dy)},${r2(P.y - L*dy + B*dx)}`;
+  return `<polygon points="${a} ${b} ${c}" stroke-width="${w}" stroke-linejoin="round"/>`;
+}
+function lineSvg(l){
+  if(l.pts.length < 2) return "";
+  const d = l.pts.map((p,i) => `${i?"L":"M"}${r2(p.x)} ${r2(p.y)}`).join(" ");
+  return `<g fill="${l.c}" stroke="${l.c}"><path d="${d}" fill="none" stroke-width="${l.w}" stroke-linecap="round" stroke-linejoin="round"/>${l.a ? arrowHead(l.pts, l.w) : ""}</g>`;
+}
+function renderLines(extra){
+  drawSvg.innerHTML = state.lines.map(lineSvg).join("") + (extra ? lineSvg(extra) : "");
+  document.getElementById("btnUndo").disabled = history.length === 0;
+}
+function pushHistory(){ history.push(JSON.stringify(state.lines)); if(history.length > 50) history.shift(); }
+
+function distToSeg(p, a, b){
+  const dx = b.x-a.x, dy = b.y-a.y, l2 = dx*dx + dy*dy;
+  const t = l2 ? clamp(((p.x-a.x)*dx + (p.y-a.y)*dy) / l2, 0, 1) : 0;
+  return Math.hypot(p.x - (a.x + t*dx), p.y - (a.y + t*dy));
+}
+let eraseSnapshotTaken = false;
+function eraseAt(p){
+  const hit = state.lines.findIndex(l => l.pts.some((q,i) => i>0 && distToSeg(p, l.pts[i-1], q) < .3) || (l.pts.length===1 && Math.hypot(p.x-l.pts[0].x,p.y-l.pts[0].y) < .3));
+  if(hit < 0) return;
+  if(!eraseSnapshotTaken){ pushHistory(); eraseSnapshotTaken = true; }
+  state.lines.splice(hit, 1);
+  renderLines();
+}
+
+// ── Pointer handling ──
+const drags = new Map();   // pointerId -> {el, data, ox, oy}
+let drawing = null;        // {ptr, line}
+let erasing = null;        // pointerId
+
+stage.addEventListener("pointerdown", e => {
+  if(e.button && e.button !== 0) return;
+  const pt = toUnits(e);
+  if(mode === "move"){
+    const el = e.target.closest(".piece"); if(!el) return;
+    e.preventDefault();
+    const data = pieceData(el.dataset.kind, el.dataset.id); if(!data) return;
+    drags.set(e.pointerId, { el, data, ox: data.x - pt.x, oy: data.y - pt.y });
+    el.classList.add("dragging");
+    try{ stage.setPointerCapture(e.pointerId); }catch{}
+    return;
+  }
+  if(drawing || erasing !== null) return;   // one stroke at a time
+  e.preventDefault();
+  try{ stage.setPointerCapture(e.pointerId); }catch{}
+  if(mode === "erase"){ erasing = e.pointerId; eraseSnapshotTaken = false; eraseAt(pt); return; }
+  drawing = { ptr: e.pointerId, line: { c: color, w: .09, a: arrow, pts: [pt, {...pt}] } };
+  renderLines(drawing.line);
+});
+
+stage.addEventListener("pointermove", e => {
+  const d = drags.get(e.pointerId);
+  if(d){
+    const pt = toUnits(e);
+    d.data.x = r2(clamp(pt.x + d.ox, 0, W));
+    d.data.y = r2(clamp(pt.y + d.oy, 0, H));
+    place(d.el, d.data);
+    return;
+  }
+  if(erasing === e.pointerId){ eraseAt(toUnits(e)); return; }
+  if(drawing && drawing.ptr === e.pointerId){
+    const pt = toUnits(e), pts = drawing.line.pts;
+    if(mode === "straight"){ pts[pts.length-1] = pt; }
+    else {
+      const last = pts[pts.length-1];
+      if(Math.hypot(pt.x-last.x, pt.y-last.y) > .06) pts.push(pt);
+    }
+    renderLines(drawing.line);
+  }
+});
+
+function endPointer(e){
+  const d = drags.get(e.pointerId);
+  if(d){ d.el.classList.remove("dragging"); drags.delete(e.pointerId); save(); return; }
+  if(erasing === e.pointerId){ erasing = null; save(); return; }
+  if(drawing && drawing.ptr === e.pointerId){
+    const l = drawing.line; drawing = null;
+    const first = l.pts[0], last = l.pts[l.pts.length-1];
+    const isDot = l.pts.length <= 2 && Math.hypot(last.x-first.x, last.y-first.y) < .1;
+    if(!isDot){
+      l.pts = l.pts.map(p => ({ x:r2(p.x), y:r2(p.y) }));
+      pushHistory(); state.lines.push(l); save();
+    }
+    renderLines();
+  }
+}
+stage.addEventListener("pointerup", endPointer);
+stage.addEventListener("pointercancel", endPointer);
+stage.addEventListener("contextmenu", e => e.preventDefault());
+
+// ── Toolbar ──
+document.querySelectorAll(".btn.mode").forEach(b => b.addEventListener("click", () => {
+  mode = b.dataset.mode;
+  document.querySelectorAll(".btn.mode").forEach(x => x.classList.toggle("active", x === b));
+  stage.classList.toggle("drawing", mode !== "move");
+}));
+const btnArrow = document.getElementById("btnArrow");
+btnArrow.addEventListener("click", () => { arrow = !arrow; btnArrow.classList.toggle("active", arrow); });
+
+const sw = document.getElementById("swatches");
+COLORS.forEach((c,i) => {
+  const b = document.createElement("button");
+  b.className = "swatch" + (i===0 ? " active" : ""); b.style.background = c; b.title = "Farbe";
+  b.addEventListener("click", () => {
+    color = c;
+    sw.querySelectorAll(".swatch").forEach(x => x.classList.toggle("active", x === b));
+    if(mode === "move" || mode === "erase") document.querySelector('.btn.mode[data-mode="free"]').click();
+  });
+  sw.appendChild(b);
+});
+
+document.getElementById("btnUndo").addEventListener("click", () => {
+  if(!history.length) return;
+  state.lines = JSON.parse(history.pop()); save(); renderLines();
+});
+document.getElementById("btnClearLines").addEventListener("click", () => {
+  if(!state.lines.length) return;
+  pushHistory(); state.lines = []; save(); renderLines();
+});
+document.getElementById("btnResetPos").addEventListener("click", () => {
+  Object.assign(state, defPositions()); save(); renderPieces();
+});
+document.getElementById("btnResetAll").addEventListener("click", () => {
+  if(!confirm("Positionen, Namen und Linien zurücksetzen?")) return;
+  state = defState(); history = []; activeEntry = null; save();
+  renderPieces(); renderLines(); renderNameGrid(); renderLib(cachedLib);
+});
+
+// ── Names ──
+function renderNameGrid(){
+  const grid = document.getElementById("nameGrid");
+  grid.innerHTML = "";
+  SPECS.forEach(s => {
+    const used = new Set(SPECS.filter(x => x !== s).map(x => state.names[x]).filter(Boolean));
+    const cur = state.names[s] || "";
+    const opts = ["", ...NAMES].filter(n => n === "" || n === cur || !used.has(n))
+      .map(n => `<option value="${esc(n)}">${n ? esc(n) : "—"}</option>`).join("");
+    const cell = document.createElement("div"); cell.className = "name-cell";
+    cell.innerHTML = `<div class="spec-badge">${esc(s)}</div><select class="name-sel" aria-label="Spieler ${esc(s)}">${opts}</select>`;
+    const sel = cell.querySelector("select"); sel.value = cur;
+    sel.addEventListener("change", () => {
+      state.names[s] = sel.value; save();
+      renderNameGrid();
+      const chip = stage.querySelector(`.chip[data-kind="own"][data-id="${s}"] .pname`);
+      if(chip) chip.textContent = sel.value;
+    });
+    grid.appendChild(cell);
+  });
+}
+
+// ── Library (server + local cache) ──
+const syncEl = document.getElementById("syncStatus");
+function setSync(ok, msg){ syncEl.className = "sync " + (ok ? "ok" : "warn"); syncEl.textContent = msg; }
+
+async function fetchT(url, opts = {}){
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 8000);
+  try{ return await fetch(url, { ...opts, signal: ctrl.signal }); }
+  finally{ clearTimeout(tid); }
+}
+async function loadLib(){
+  try{
+    const r = await fetchT(`${SERVER}/lib/${LIB_KEY}?t=${Date.now()}`, { cache:"no-store" });
+    if(r.ok){
+      const d = await r.json();
+      if(Array.isArray(d) && d.length){
+        try{ localStorage.setItem(`vb_lib2_${LIB_KEY}`, JSON.stringify(d)); }catch{}
+        setSync(true, "☁ Mit Server synchronisiert");
+        return d;
+      }
+      if(Array.isArray(d)) setSync(true, "☁ Server erreichbar");
+    } else setSync(false, `⚠ Server antwortet mit ${r.status} – nur lokal gespeichert`);
+  }catch{ setSync(false, "⚠ Server nicht erreichbar – nur lokal gespeichert"); }
+  try{ const c = JSON.parse(localStorage.getItem(`vb_lib2_${LIB_KEY}`) || "[]"); if(Array.isArray(c)) return c; }catch{}
+  return [];
+}
+async function saveLib(lib){
+  try{ localStorage.setItem(`vb_lib2_${LIB_KEY}`, JSON.stringify(lib)); }catch{}
+  try{
+    const r = await fetchT(`${SERVER}/lib/${LIB_KEY}`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(lib) });
+    if(r.ok) setSync(true, "☁ Auf Server gespeichert");
+    else setSync(false, `⚠ Server antwortet mit ${r.status} – nur lokal gespeichert`);
+  }catch{ setSync(false, "⚠ Server nicht erreichbar – nur lokal gespeichert"); }
+}
+
+let cachedLib = [];
+function renderLib(lib){
+  const box = document.getElementById("libBtns");
+  box.innerHTML = "";
+  if(!lib.length){ box.innerHTML = `<span class="muted">Noch keine Spielzüge gespeichert.</span>`; return; }
+  lib.forEach(entry => {
+    const wrap = document.createElement("span"); wrap.className = "lib-item";
+    const b = document.createElement("button"); b.className = "lib-btn" + (entry.name === activeEntry ? " active" : ""); b.textContent = entry.name;
+    b.addEventListener("click", () => applyEntry(entry));
+    const del = document.createElement("button"); del.className = "lib-del"; del.textContent = "✕"; del.title = "Löschen";
+    del.addEventListener("click", async () => {
+      if(!confirm(`„${entry.name}" wirklich löschen?`)) return;
+      const cur = await loadLib();
+      cachedLib = cur.filter(x => x.name !== entry.name);
+      if(activeEntry === entry.name) activeEntry = null;
+      await saveLib(cachedLib); renderLib(cachedLib);
+    });
+    wrap.appendChild(b); wrap.appendChild(del); box.appendChild(wrap);
+  });
+}
+function applyEntry(entry){
+  const d = JSON.parse(JSON.stringify(entry));
+  const base = defState();
+  state = {
+    v:1,
+    own: SPECS.map(s => d.own?.find(p => p.id === s) || base.own.find(p => p.id === s)),
+    opp: base.opp.map(p => d.opp?.find(q => q.id === p.id) || p),
+    ball: d.ball || base.ball,
+    names: { ...base.names, ...(d.names || {}) },
+    lines: Array.isArray(d.lines) ? d.lines : [],
+  };
+  history = []; activeEntry = entry.name; save();
+  document.getElementById("libInp").value = entry.name;
+  renderPieces(); renderLines(); renderNameGrid(); renderLib(cachedLib);
+}
+async function saveCurrent(){
+  const inp = document.getElementById("libInp");
+  const name = inp.value.trim(); if(!name) { inp.focus(); return; }
+  const lib = await loadLib();
+  const entry = { name, own: state.own, opp: state.opp, ball: state.ball, names: state.names, lines: state.lines };
+  const idx = lib.findIndex(e => e.name === name);
+  if(idx >= 0){ if(!confirm(`„${name}" überschreiben?`)) return; lib[idx] = entry; }
+  else lib.push(entry);
+  cachedLib = lib; activeEntry = name;
+  await saveLib(lib); renderLib(lib);
+}
+document.getElementById("libSave").addEventListener("click", saveCurrent);
+document.getElementById("libInp").addEventListener("keydown", e => { if(e.key === "Enter") saveCurrent(); });
+
+// ── Init ──
+renderPieces();
+renderLines();
+renderNameGrid();
+loadLib().then(lib => { cachedLib = lib; renderLib(lib); });
+
+})();
+</script>
+</body>
+</html>

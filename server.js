@@ -13,7 +13,7 @@ let scoreState = {
 // In-memory field state (persisted to Supabase)
 let fieldState = null;
 
-const LIB_KEYS = ["annahme","grund","annahme_a","annahme_b","grund_a","grund_b"];
+const LIB_KEYS = ["annahme","grund","annahme_a","annahme_b","grund_a","grund_b","taktik"];
 
 function corsHeaders() {
   return {
