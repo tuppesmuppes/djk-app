@@ -166,8 +166,9 @@ const COLORS = ["#111111","#CC0000","#1565c0","#2e7d32","#ef6c00"];
 // Default positions (own team left, net on the right side of own half)
 // front row x=9.5, back row x=4.5; rows y=2.5 / 5.5 / 8.5
 const DEF_OWN = {
-  An:{x:9.5,y:2.5}, Mn:{x:9.5,y:5.5}, D:{x:9.5,y:8.5},
-  Af:{x:4.5,y:2.5}, Mf:{x:4.5,y:5.5}, Z:{x:4.5,y:8.5},
+  // Zone 4 = vorne oben, 3 = vorne Mitte, 2 = vorne unten, 5 = hinten oben, 6 = hinten Mitte, 1 = hinten unten
+  D:{x:9.5,y:2.5},  Mf:{x:9.5,y:5.5}, An:{x:9.5,y:8.5},   // 4 / 3 / 2
+  Af:{x:4.5,y:2.5}, Mn:{x:4.5,y:5.5}, Z:{x:4.5,y:8.5},    // 5 / 6 / 1
 };
 const DEF_OPP = [
   {x:12.5,y:2.5},{x:12.5,y:5.5},{x:12.5,y:8.5},
