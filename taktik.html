@@ -45,6 +45,7 @@
       display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; line-height:1.05;
       box-shadow:0 .5cqw 1.2cqw rgba(0,0,0,.18); border:.6cqw solid var(--red); }
     .chip.opp{ border-color:var(--blue); background:#e3f0ff; }
+    .chip.opp .spec{ color:var(--blue); }
     .chip.libero{ border-color:var(--purple); }
     .chip.libero .spec{ color:var(--purple); }
     .chip .spec{ font-weight:900; font-size:2.1cqw; color:var(--red); }
@@ -180,6 +181,9 @@ const DEF_OPP = [
   {x:12.5,y:2.5},{x:12.5,y:5.5},{x:12.5,y:8.5},
   {x:17.5,y:2.5},{x:17.5,y:5.5},{x:17.5,y:8.5},
 ];
+// Opponent labels (mirrored positions, same assignment as own team):
+// G1 = Pos 2 (vorne oben), G2 = Pos 3, G3 = Pos 4, G4 = Pos 1 (hinten oben), G5 = Pos 6, G6 = Pos 5
+const OPP_LABELS = { G1:"A", G2:"M", G3:"D", G4:"Z", G5:"L", G6:"A" };
 const DEF_BALL = {x:1,y:10};
 
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -239,7 +243,9 @@ function renderPieces(){
   updateOwnChips();
   state.opp.forEach(p => {
     const el = document.createElement("div");
-    el.className = "piece chip opp"; el.dataset.kind = "opp"; el.dataset.id = p.id;
+    const lbl = OPP_LABELS[p.id] || "";
+    el.className = "piece chip opp" + (lbl === "L" ? " libero" : ""); el.dataset.kind = "opp"; el.dataset.id = p.id;
+    el.innerHTML = `<div class="spec">${esc(lbl)}</div>`;
     place(el, p); stage.appendChild(el);
   });
   const b = document.createElement("div");
