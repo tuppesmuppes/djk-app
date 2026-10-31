@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
   <title>Volleyball Taktikboard</title>
   <style>
-    :root{ --bg:#f5f5f5; --card:#fff; --red:#CC0000; --blue:#1565c0; --line:rgba(0,0,0,.12); --muted:#888; }
+    :root{ --bg:#f5f5f5; --card:#fff; --red:#CC0000; --blue:#1565c0; --line:rgba(0,0,0,.12); --muted:#888; --purple:#6a1b9a; }
     *{ box-sizing:border-box; margin:0; padding:0; }
     html,body{ background:var(--bg); }
     body{ font-family:system-ui,sans-serif; color:#111; -webkit-tap-highlight-color:transparent; }
@@ -45,6 +45,8 @@
       display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; line-height:1.05;
       box-shadow:0 .5cqw 1.2cqw rgba(0,0,0,.18); border:.6cqw solid var(--red); }
     .chip.opp{ border-color:var(--blue); background:#e3f0ff; }
+    .chip.libero{ border-color:var(--purple); }
+    .chip.libero .spec{ color:var(--purple); }
     .chip .spec{ font-weight:900; font-size:2.1cqw; color:var(--red); }
     .chip .pname{ font-weight:700; font-size:1.15cqw; margin-top:.2cqw; max-width:6cqw; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     .chip.dragging{ box-shadow:0 1cqw 2.4cqw rgba(0,0,0,.28); }
@@ -59,6 +61,9 @@
     @media(max-width:500px){ .name-grid{ grid-template-columns:1fr 1fr; } }
     .name-cell{ border:1px solid var(--line); border-radius:12px; padding:8px; }
     .spec-badge{ display:inline-flex; min-width:44px; height:28px; padding:0 8px; border-radius:999px; border:2px solid var(--red); color:var(--red); align-items:center; justify-content:center; font-weight:900; font-size:13px; margin-bottom:6px; }
+    .spec-badge.lib{ border-color:var(--purple); color:var(--purple); }
+    .lib-check{ display:flex; align-items:center; gap:8px; margin-top:8px; font-size:13px; font-weight:700; cursor:pointer; }
+    .lib-check input{ width:22px; height:22px; accent-color:var(--purple); }
     .name-sel{ width:100%; padding:8px; border-radius:10px; border:1px solid var(--line); font-size:15px; background:#fff; color:#111; }
 
     .lib-btns{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; min-height:24px; }
@@ -161,6 +166,7 @@ const W = 22, H = 11;           // stage in "units": court 18x9 (x 2–20, y 1�
 
 const NAMES = ["Hendrik","Jannik","Simon (A)","Simon (M)","Finn","Laurin","Nico","Viveko","Felix","Aurelian","Vincent","David","Jaspal","Philipp","Stefan"];
 const SPECS = ["An","Z","Mn","Af","D","Mf"];
+const NAME_KEYS = [...SPECS, "L"];   // "L" = Libero
 const COLORS = ["#111111","#CC0000","#1565c0","#2e7d32","#ef6c00"];
 
 // Default positions (own team left, net on the right side of own half)
@@ -189,12 +195,14 @@ function defPositions(){
   };
 }
 function defState(){
-  return { v:1, ...defPositions(), names: Object.fromEntries(SPECS.map(s=>[s,""])), lines: [] };
+  return { v:1, ...defPositions(), names: Object.fromEntries(NAME_KEYS.map(s=>[s,""])), libero: false, lines: [] };
 }
 function loadState(){
   try{
     const s = JSON.parse(localStorage.getItem(LS_KEY) || "null");
     if(!s || s.v !== 1) return null;
+    if(s.names.L === undefined) s.names.L = "";
+    if(s.libero === undefined) s.libero = false;
     return s;
   }catch{ return null; }
 }
@@ -225,9 +233,10 @@ function renderPieces(){
   state.own.forEach(p => {
     const el = document.createElement("div");
     el.className = "piece chip"; el.dataset.kind = "own"; el.dataset.id = p.id;
-    el.innerHTML = `<div class="spec">${esc(p.id)}</div><div class="pname">${esc(state.names[p.id] || "")}</div>`;
+    el.innerHTML = `<div class="spec"></div><div class="pname"></div>`;
     place(el, p); stage.appendChild(el);
   });
+  updateOwnChips();
   state.opp.forEach(p => {
     const el = document.createElement("div");
     el.className = "piece chip opp"; el.dataset.kind = "opp"; el.dataset.id = p.id;
@@ -236,6 +245,21 @@ function renderPieces(){
   const b = document.createElement("div");
   b.className = "piece ball"; b.dataset.kind = "ball"; b.dataset.id = "ball";
   b.innerHTML = BALL_SVG; place(b, state.ball); stage.appendChild(b);
+}
+// Libero replaces the middle blocker (Mn or Mf) that is farther from the net (smaller x)
+function liberoTarget(){
+  if(!state.libero) return null;
+  const mn = state.own.find(p => p.id === "Mn"), mf = state.own.find(p => p.id === "Mf");
+  return mf.x < mn.x ? "Mf" : "Mn";
+}
+function updateOwnChips(){
+  const target = liberoTarget();
+  stage.querySelectorAll('.chip[data-kind="own"]').forEach(el => {
+    const id = el.dataset.id, isL = id === target;
+    el.classList.toggle("libero", isL);
+    el.querySelector(".spec").textContent = isL ? "L" : id;
+    el.querySelector(".pname").textContent = state.names[isL ? "L" : id] || "";
+  });
 }
 function pieceData(kind, id){
   if(kind === "ball") return state.ball;
@@ -328,7 +352,7 @@ stage.addEventListener("pointermove", e => {
 
 function endPointer(e){
   const d = drags.get(e.pointerId);
-  if(d){ d.el.classList.remove("dragging"); drags.delete(e.pointerId); save(); return; }
+  if(d){ d.el.classList.remove("dragging"); drags.delete(e.pointerId); save(); updateOwnChips(); return; }
   if(erasing === e.pointerId){ erasing = null; save(); return; }
   if(drawing && drawing.ptr === e.pointerId){
     const l = drawing.line; drawing = null;
@@ -387,19 +411,23 @@ document.getElementById("btnResetAll").addEventListener("click", () => {
 function renderNameGrid(){
   const grid = document.getElementById("nameGrid");
   grid.innerHTML = "";
-  SPECS.forEach(s => {
-    const used = new Set(SPECS.filter(x => x !== s).map(x => state.names[x]).filter(Boolean));
+  NAME_KEYS.forEach(s => {
+    const used = new Set(NAME_KEYS.filter(x => x !== s).map(x => state.names[x]).filter(Boolean));
     const cur = state.names[s] || "";
     const opts = ["", ...NAMES].filter(n => n === "" || n === cur || !used.has(n))
       .map(n => `<option value="${esc(n)}">${n ? esc(n) : "—"}</option>`).join("");
     const cell = document.createElement("div"); cell.className = "name-cell";
-    cell.innerHTML = `<div class="spec-badge">${esc(s)}</div><select class="name-sel" aria-label="Spieler ${esc(s)}">${opts}</select>`;
+    const isL = s === "L";
+    cell.innerHTML = `<div class="spec-badge${isL ? " lib" : ""}">${isL ? "L · Libero" : esc(s)}</div><select class="name-sel" aria-label="Spieler ${esc(s)}">${opts}</select>`
+      + (isL ? `<label class="lib-check"><input type="checkbox"${state.libero ? " checked" : ""}/> ersetzt hinteren M</label>` : "");
     const sel = cell.querySelector("select"); sel.value = cur;
     sel.addEventListener("change", () => {
       state.names[s] = sel.value; save();
       renderNameGrid();
-      const chip = stage.querySelector(`.chip[data-kind="own"][data-id="${s}"] .pname`);
-      if(chip) chip.textContent = sel.value;
+      updateOwnChips();
+    });
+    if(isL) cell.querySelector("input").addEventListener("change", e => {
+      state.libero = e.target.checked; save(); updateOwnChips();
     });
     grid.appendChild(cell);
   });
@@ -469,6 +497,7 @@ function applyEntry(entry){
     opp: base.opp.map(p => d.opp?.find(q => q.id === p.id) || p),
     ball: d.ball || base.ball,
     names: { ...base.names, ...(d.names || {}) },
+    libero: !!d.libero,
     lines: Array.isArray(d.lines) ? d.lines : [],
   };
   history = []; activeEntry = entry.name; save();
@@ -479,7 +508,7 @@ async function saveCurrent(){
   const inp = document.getElementById("libInp");
   const name = inp.value.trim(); if(!name) { inp.focus(); return; }
   const lib = await loadLib();
-  const entry = { name, own: state.own, opp: state.opp, ball: state.ball, names: state.names, lines: state.lines };
+  const entry = { name, own: state.own, opp: state.opp, ball: state.ball, names: state.names, libero: state.libero, lines: state.lines };
   const idx = lib.findIndex(e => e.name === name);
   if(idx >= 0){ if(!confirm(`„${name}" überschreiben?`)) return; lib[idx] = entry; }
   else lib.push(entry);
