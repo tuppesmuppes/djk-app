@@ -94,8 +94,9 @@ input.w4{width:70px}
 .tbl.narrow th{white-space:normal;vertical-align:bottom}
 .tbl.narrow th:nth-child(3){max-width:4.5em}
 .szwrap{max-width:360px;margin:0 auto}.szsvg{width:100%;display:block}
-.szsvg .szl{font-size:4px;fill:#fff;font-weight:700;opacity:.8}.szsvg .szn{font-size:8px;fill:#fff;text-anchor:middle;font-weight:800}
-.szsvg .szt{font-size:3.6px;fill:#fff;text-anchor:middle;font-weight:600}.szsvg .szb{font-size:3.6px;fill:var(--muted);text-anchor:middle}
+.szsvg .szl{font-size:4px;fill:#fff;font-weight:700;opacity:.8;text-anchor:middle}.szsvg .szn{font-size:8px;fill:#fff;text-anchor:middle;font-weight:800}
+.szsvg .szt{font-size:3.6px;fill:#fff;text-anchor:middle;font-weight:600}
+.szsvg .szls{font-size:3.2px;fill:#fff;font-weight:700;opacity:.85;text-anchor:middle}.szsvg .szns{font-size:6px;fill:#fff;text-anchor:middle;font-weight:800}.szsvg .szts{font-size:2.8px;fill:#fff;text-anchor:middle;font-weight:700}.szsvg .szb{font-size:3.6px;fill:var(--muted);text-anchor:middle}
 .szsvg .sznet{stroke:var(--ink);stroke-width:1.6}
 .pdfcap .szwrap{max-width:none;width:420px}
 .lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
@@ -1012,14 +1013,18 @@ function systemTables(t, acts){
     rows: ps.map(p => { const o = items.filter(x => x.sys === 'OOS' && x.a.p === p); return [pname(t, p), cell(o.filter(x => x.a.s === 'A')), cell(o.filter(x => x.a.s === 'F')), cell(items.filter(x => x.sys === 'IS' && x.a.p === p)), systemRow(o)[4]]; })};
   return ps.length ? [main, pl] : [main];
 }
-// Aufschlag-Zielzonen im 9-Zonen-System (Sicht des Gegners): tief 1·6·5, halblang 9·8·7, am Netz 2·3·4 – je 3 m
-const SZ_ORDER = ['1','6','5','9','8','7','2','3','4'];
+// Aufschlag-Zielzonen (Sicht des Gegners): je 5 Bahnen hinten (bis Angriffslinie) und vorne (Angriffslinie bis Netz).
+// Bahnen von links nach rechts aus unserer Sicht: Position 0–2,5 m · Zwischenraum 2,5–3,5 m · Position 3,5–5,5 m · Zwischenraum 5,5–6,5 m · Position 6,5–9 m
+const SZ_LANES = [[0, 2.5], [2.5, 3.5], [3.5, 5.5], [5.5, 6.5], [6.5, 9]];
+const SZ_BACK = ['1','1/6','6','6/5','5'], SZ_FRONT = ['2','2/3','3','3/4','4'];
+const SZ_ORDER = [...SZ_BACK, ...SZ_FRONT];
+const szLabel = z => (z.includes('/') ? 'Zwischenraum ' : 'Zone ') + z + (SZ_BACK.includes(z) ? ' (hinten)' : ' (vorne)');
 function serveZone(a){
   const l = trajOf(a); if (!l || l[2] == null) return null;
-  const x = l[2], y = l[3] * 18; // y: 0 = gegnerische Grundlinie, 9 = Netz
-  if (x < 0 || x > 1 || y < 0 || y > 9) return 'aus';
-  const c = x < 1/3 ? 0 : x < 2/3 ? 1 : 2;
-  return (y < 3 ? ['1','6','5'] : y < 6 ? ['9','8','7'] : ['2','3','4'])[c];
+  const x = l[2] * 9, y = l[3] * 18; // Meter: x ab linker Seitenlinie (unsere Sicht), y: 0 = gegnerische Grundlinie, 9 = Netz
+  if (x < 0 || x > 9 || y < 0 || y > 9) return 'aus';
+  const c = SZ_LANES.findIndex(([lo, hi], i) => x >= lo && (x < hi || i === SZ_LANES.length - 1));
+  return (y < 6 ? SZ_BACK : SZ_FRONT)[c];
 }
 function szStats(list){
   const c = r => list.filter(a => a.r === r).length, br = list.filter(a => a.rwin === 'us').length;
@@ -1028,30 +1033,35 @@ function szStats(list){
 function serveZoneTable(serves, title){
   const inField = serves.filter(a => SZ_ORDER.includes(serveZone(a)));
   const row = (lab, l, share) => { const z = szStats(l); return [lab, z.n, share ? pct(z.n, inField.length) : '', z.ace, z.plus, z.perf, z.err, z.n ? pct(z.br, z.n) + ' (' + z.br + ')' : '–']; };
-  const rows = SZ_ORDER.map(z => row('Zone ' + z, serves.filter(a => serveZone(a) === z), true));
+  const rows = SZ_ORDER.map(z => row(szLabel(z), serves.filter(a => serveZone(a) === z), true));
   rows.push(row('Aus / Netz', serves.filter(a => serveZone(a) === 'aus')));
   const none = serves.filter(a => serveZone(a) === null); if (none.length) rows.push(row('ohne Zielpunkt', none));
   rows.push(row('Gesamt', serves));
-  return {title: title || 'Aufschlag nach Zielzone (9 Zonen)', sheet: 'Aufschlag-Zonen', head: ['Zielzone','Aufschläge','Anteil im Feld','Ass','+ Druck','/ perfekte Gegnerannahme','Fehler','Break (Ballwechsel gewonnen)'], rows, totalLast: true};
+  return {title: title || 'Aufschlag nach Zielzone (Positionen und Zwischenräume)', sheet: 'Aufschlag-Zonen', head: ['Zielzone','Aufschläge','Anteil im Feld','Ass','+ Druck','/ perfekte Gegnerannahme','Fehler','Break (Ballwechsel gewonnen)'], rows, totalLast: true};
 }
 function serveZoneGraphic(serves){
   const COL = q => q == null ? '#9aa3b2' : q >= .6 ? '#1a9e55' : q >= .4 ? '#e39a1b' : '#d0342c';
+  const U = 10; // 1 m = 10 Einheiten; Feld 90 × 90 ab (5, 8)
   const cells = SZ_ORDER.map((z, i) => {
-    const r = Math.floor(i / 3), c = i % 3, x = 5 + c * 30, y = 8 + r * 30, st = szStats(serves.filter(a => serveZone(a) === z));
-    return `<rect x="${x}" y="${y}" width="30" height="30" fill="${COL(st.q)}" opacity="${st.n ? .9 : .35}" stroke="#fff" stroke-width=".8"/>
-      <text x="${x + 2.5}" y="${y + 5.5}" class="szl">${z}</text>
-      ${st.n ? `<text x="${x + 15}" y="${y + 15}" class="szn">${st.n}</text>
-      <text x="${x + 15}" y="${y + 21.5}" class="szt">Break ${Math.round(st.q * 100)} %</text>
-      <text x="${x + 15}" y="${y + 26.5}" class="szt">${st.ace} Ass${st.perf ? ' · ' + st.perf + '× /' : ''}</text>` : ''}`;
+    const [lo, hi] = SZ_LANES[i % 5], back = i < 5, x = 5 + lo * U, w = (hi - lo) * U, y = back ? 8 : 8 + 6 * U, h = (back ? 6 : 3) * U;
+    const st = szStats(serves.filter(a => serveZone(a) === z)), nar = w < 15, cx = x + w / 2, cy = y + h / 2;
+    const rect = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${COL(st.q)}" opacity="${st.n ? .9 : .35}" stroke="#fff" stroke-width=".8"/>`;
+    const lab = `<text x="${cx}" y="${y + 4.5}" class="${nar ? 'szls' : 'szl'}">${z}</text>`;
+    if (!st.n) return rect + lab;
+    const lines = nar ? [[st.n, 'szns', back ? -4 : -2], [Math.round(st.q * 100) + '%', 'szts', back ? 3 : 4], [st.ace + ' A', 'szts', back ? 8 : 9], ...(back && st.perf ? [[st.perf + ' /', 'szts', 13]] : [])]
+      : [[st.n, 'szn', back ? -4 : -2], ['Break ' + Math.round(st.q * 100) + ' %', 'szt', back ? 4 : 5], [st.ace + ' Ass' + (st.perf ? ' · ' + st.perf + '× /' : ''), 'szt', back ? 9 : 10]];
+    return rect + lab + lines.map(([t, c, dy]) => `<text x="${cx}" y="${cy + dy}" class="${c}">${t}</text>`).join('');
   }).join('');
   const out = serves.filter(a => serveZone(a) === 'aus').length;
   const dot = c => `<svg width="10" height="10" viewBox="0 0 10 10" style="vertical-align:-1px;margin-right:3px"><circle cx="5" cy="5" r="5" fill="${c}"/></svg>`;
   return `<svg viewBox="0 0 100 112" class="szsvg" xmlns="http://www.w3.org/2000/svg">
       <text x="50" y="5.5" class="szb">gegnerische Grundlinie</text>${cells}
+      <line x1="5" y1="68" x2="95" y2="68" stroke="#fff" stroke-width="1.2" stroke-dasharray="2 1"/>
       <line x1="2" y1="98" x2="98" y2="98" class="sznet"/><text x="50" y="104" class="szb">Netz (links / rechts aus unserer Sicht)</text>
       <text x="50" y="110" class="szb">Aus / Netzfehler: ${out}</text></svg>
     <div class="legend"><span><b>Farbe = Break-Quote</b> (Ballwechsel gewonnen):</span><span>${dot('#1a9e55')}≥ 60 %</span><span>${dot('#e39a1b')}40–59 %</span><span>${dot('#d0342c')}&lt; 40 %</span>
-      <span><b>Große Zahl</b> = Aufschläge in die Zone · <b>/</b> = perfekte Gegnerannahme · Zonen aus Sicht des Gegners, Tiefe je 3 m</span></div>`;
+      <span><b>Große Zahl</b> = Aufschläge · <b>A</b> = Ass · <b>/</b> = perfekte Gegnerannahme · Zonen aus Sicht des Gegners; hinten = bis zur Angriffslinie (gestrichelt), vorne = Angriffslinie bis Netz;
+      Zwischenräume (1/6, 6/5 …) je 1 m breit, Positionen 1 und 5 je 2,5 m, Mitte 2 m</span></div>`;
 }
 function serveZoneCard(serves, title){
   if (!serves.some(a => serveZone(a) !== null)) return '';
