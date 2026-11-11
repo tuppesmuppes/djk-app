@@ -57,7 +57,7 @@ input.w4{width:70px}
 .bench{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .bench button{padding:6px 10px;font-size:14px}
 .bench button.sel{background:var(--sel);color:var(--sel-ink)}
-.skills{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.skills{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .skills button{height:58px;font-weight:700}
 .skills button.sel{background:var(--sel);color:var(--sel-ink);border-color:#d9a900}
 .ratings{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
@@ -134,20 +134,22 @@ input.w4{width:70px}
 'use strict';
 /* ---------- Konstanten ---------- */
 const KEY = 'vbscout_v1';
-const SK = {S:'Aufschlag', R:'Annahme', E:'Zuspiel', A:'Angriff', B:'Block', D:'Abwehr'};
-const SKILLS = ['S','R','E','A','B','D'];
+const SK = {S:'Aufschlag', R:'Annahme', E:'Zuspiel', A:'Angriff', F:'Freeball', B:'Block', D:'Abwehr'};
+const SKILLS = ['S','R','E','A','F','B','D'];
 const RT = ['#','+','!','-','/','='];
 const RL = {
   S:['Ass','Gegner unter Druck','Gegner Annahme mittel','Gegner gute Annahme','Gegner perfekte Annahme','Fehler'],
   R:['Perfekt','Gut','Mittel','Schlecht','Overpass','Fehler (Ass)'],
   E:['Perfekt','Gut','Ok','Schlecht','Sehr schlecht','Fehler'],
   A:['Punkt','Gut','Abgewehrt','Schlecht','Geblockt','Fehler'],
+  // Freeball: Ball ohne Angriffsschlag rübergespielt (gepritscht oder gebaggert), bewertet nach der gegnerischen Abwehr
+  F:['Punkt','Gegner unter Druck','Gegner Abwehr mittel','Gegner gute Abwehr','Gegner perfekte Abwehr','Fehler'],
   B:['Punkt','Gut (Abwehr leicht)','Neutral (Ball im Spiel)','Schlecht (Angreifer frei)','Block-out','Fehler'],
   D:['Perfekt','Gut','Ok','Schlecht','Kaum spielbar','Fehler']
 };
 // Welche Bewertung beendet den Ballwechsel zu wessen Gunsten
 const POINT = {
-  S:{'#':'us','=':'them'}, R:{'=':'them'}, E:{'=':'them'},
+  S:{'#':'us','=':'them'}, R:{'=':'them'}, E:{'=':'them'}, F:{'#':'us','=':'them'},
   A:{'#':'us','/':'them','=':'them'}, B:{'#':'us','/':'them','=':'them'}, D:{'=':'them'}
 };
 const POS = {Z:'Zuspiel', AA:'Außen', D:'Diagonal', MB:'Mitte', L:'Libero', U:'Universal'};
@@ -530,8 +532,8 @@ function replay(m){
           a.recQ = st.fromRec ? st.rec : null; a.recLane = st.fromRec ? st.recLane : null;
           a.digLane = !st.fromRec && st.fromDig ? st.digLane : null;
         }
-        if (ev.s === 'A' || ev.s === 'D' || ev.s === 'B') st.fromRec = false;
-        if (ev.s === 'A' || ev.s === 'B') st.fromDig = false;
+        if (ev.s === 'A' || ev.s === 'F' || ev.s === 'D' || ev.s === 'B') st.fromRec = false;
+        if (ev.s === 'A' || ev.s === 'F' || ev.s === 'B') st.fromDig = false;
         if (ev.s === 'A') {
           a.recQ = st.rec; a.firstAtt = !st.att; st.att = true;
           // Zuspiel mit dem folgenden Angriff verknüpfen
@@ -909,7 +911,7 @@ function filterText(t){
   return [m ? fmtDate(m.date) + ' vs. ' + m.opponent : 'Alle Spiele', f.set === 'all' ? null : 'Satz ' + f.set, f.rot === 'all' ? null : 'Läufer L' + f.rot].filter(Boolean).join(' · ');
 }
 const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = (# + +) / Gesamt · perfekt = # / Gesamt ·
-      Effizienz = (gute − schlechte Aktionen) / Gesamt: Angriff und Block (# − / − =), Annahme (# + + − / − =), Aufschlag, Zuspiel, Abwehr (# − =); Werte von −100 % bis +100 % möglich ·
+      Effizienz = (gute − schlechte Aktionen) / Gesamt: Angriff und Block (# − / − =), Annahme (# + + − / − =), Aufschlag, Freeball, Zuspiel, Abwehr (# − =); Werte von −100 % bis +100 % möglich ·
       Side-out = gewonnene Ballwechsel bei Gegner-Aufschlag · Break = gewonnene Ballwechsel bei eigenem Aufschlag · Läufer L1–L6 = Position des Zuspielers.
       Angriffsverteilung „nach Annahme“ zählt jeweils den ersten Angriff nach einer eigenen Annahme; Positionen = Spielposition nach dem Wechsel auf Spezialpositionen.
       Angriff nach Zuspielqualität: Bewertung des Zuspiels direkt vor dem Angriff; „ohne erfasstes Zuspiel“ = kein Zuspiel unmittelbar davor gescoutet. Kill-Quote = Anteil direkter Punkte.
@@ -918,7 +920,9 @@ const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = 
       Annahme → Zuspiel → Angriff: Ausgangslage = Qualität der eigenen Annahme direkt vor dem Zuspiel; „Transition“ = Zuspiel nach Abwehr oder Block. Zellen „n · Eff.“ = Anzahl Angriffe von dieser Position und deren Effizienz.<br>
       <b>Block</b> (bewertet wird die Wirkung, eine Berührung ist nicht nötig): # Punkt · + Gut – Block lenkt kontrolliert ab oder stellt die Hauptschlagrichtung zu, Abwehr bekommt einen leicht spielbaren Ball ·
       ! Neutral – Block steht, bewirkt aber nichts Entscheidendes, Ball bleibt im Spiel · − Schlecht – Block falsch, zu spät oder offen, Angreifer hat freie Bahn ·
-      / Block-out – Angreifer nutzt den Block aus (Punkt Gegner) · = Fehler (z. B. Netz, Punkt Gegner).</div>`;
+      / Block-out – Angreifer nutzt den Block aus (Punkt Gegner) · = Fehler (z. B. Netz, Punkt Gegner).<br>
+      <b>Freeball</b> = Ball ohne Angriffsschlag rübergespielt (gepritscht oder gebaggert), weil kein Angriff möglich war; ein gezielter Lob/Leger nach Angriffsanlauf zählt als Angriff.
+      Bewertung nach der gegnerischen Abwehr: # Punkt · + Gegner unter Druck · ! Gegner Abwehr mittel · − Gegner gute Abwehr · / Gegner perfekte Abwehr · = Fehler.</div>`;
 function courtsCard(list){
   const sD = list.filter(a => a.s === 'S' && trajOf(a)), aD = list.filter(a => a.s === 'A' && trajOf(a));
   return `<div class="card"><div class="grid2"><div><h3>Aufschläge (${sD.length})</h3>${courtSVG(sD)}${legend('S')}</div><div><h3>Angriffe (${aD.length})</h3>${courtSVG(aD)}${legend('A')}</div></div></div>`;
@@ -950,7 +954,7 @@ function vReport(D){
 function ovRow(l){
   const g = s => l.filter(a => a.s === s);
   const S = evalList('S', g('S')), R = evalList('R', g('R')), A = evalList('A', g('A')), D = evalList('D', g('D'));
-  const pts = l.filter(a => a.r === '#' && 'SAB'.includes(a.s)).length;
+  const pts = l.filter(a => a.r === '#' && 'SAFB'.includes(a.s)).length;
   const err = l.filter(a => a.r === '=').length;
   return [pts, err, S.n, S.c['#'], S.c['='], S.eff, R.n, R.pos, R.perf, A.n, A.c['#'], A.eff, g('B').filter(a => a.r === '#').length, D.n, D.pos];
 }
