@@ -1014,8 +1014,8 @@ function systemTables(t, acts){
   return ps.length ? [main, pl] : [main];
 }
 // Aufschlag-Zielzonen (Sicht des Gegners): je 5 Bahnen hinten (bis Angriffslinie) und vorne (Angriffslinie bis Netz).
-// Bahnen von links nach rechts aus unserer Sicht: Position 0–2,5 m · Zwischenraum 2,5–3,5 m · Position 3,5–5,5 m · Zwischenraum 5,5–6,5 m · Position 6,5–9 m
-const SZ_LANES = [[0, 2.5], [2.5, 3.5], [3.5, 5.5], [5.5, 6.5], [6.5, 9]];
+// Bahnen von links nach rechts aus unserer Sicht: fünf gleich breite Bahnen à 1,8 m
+const SZ_LANES = [[0, 1.8], [1.8, 3.6], [3.6, 5.4], [5.4, 7.2], [7.2, 9]];
 const SZ_BACK = ['1','1/6','6','6/5','5'], SZ_FRONT = ['2','2/3','3','3/4','4'];
 const SZ_ORDER = [...SZ_BACK, ...SZ_FRONT];
 const szLabel = z => (z.includes('/') ? 'Zwischenraum ' : 'Zone ') + z + (SZ_BACK.includes(z) ? ' (hinten)' : ' (vorne)');
@@ -1049,7 +1049,7 @@ function serveZoneGraphic(serves){
     const lab = `<text x="${cx}" y="${y + 4.5}" class="${nar ? 'szls' : 'szl'}">${z}</text>`;
     if (!st.n) return rect + lab;
     const lines = nar ? [[st.n, 'szns', back ? -4 : -2], [Math.round(st.q * 100) + '%', 'szts', back ? 3 : 4], [st.ace + ' A', 'szts', back ? 8 : 9], ...(back && st.perf ? [[st.perf + ' /', 'szts', 13]] : [])]
-      : [[st.n, 'szn', back ? -4 : -2], ['Break ' + Math.round(st.q * 100) + ' %', 'szt', back ? 4 : 5], [st.ace + ' Ass' + (st.perf ? ' · ' + st.perf + '× /' : ''), 'szt', back ? 9 : 10]];
+      : [[st.n, 'szn', back ? -4 : -2], [Math.round(st.q * 100) + ' %', 'szt', back ? 4 : 5], [st.ace + ' Ass', 'szt', back ? 9 : 10], ...(st.perf ? [[st.perf + '× /', 'szt', back ? 14 : 14.5]] : [])];
     return rect + lab + lines.map(([t, c, dy]) => `<text x="${cx}" y="${cy + dy}" class="${c}">${t}</text>`).join('');
   }).join('');
   const out = serves.filter(a => serveZone(a) === 'aus').length;
@@ -1060,8 +1060,8 @@ function serveZoneGraphic(serves){
       <line x1="2" y1="98" x2="98" y2="98" class="sznet"/><text x="50" y="104" class="szb">Netz (links / rechts aus unserer Sicht)</text>
       <text x="50" y="110" class="szb">Aus / Netzfehler: ${out}</text></svg>
     <div class="legend"><span><b>Farbe = Break-Quote</b> (Ballwechsel gewonnen):</span><span>${dot('#1a9e55')}≥ 60 %</span><span>${dot('#e39a1b')}40–59 %</span><span>${dot('#d0342c')}&lt; 40 %</span>
-      <span><b>Große Zahl</b> = Aufschläge · <b>A</b> = Ass · <b>/</b> = perfekte Gegnerannahme · Zonen aus Sicht des Gegners; hinten = bis zur Angriffslinie (gestrichelt), vorne = Angriffslinie bis Netz;
-      Zwischenräume (1/6, 6/5 …) je 1 m breit, Positionen 1 und 5 je 2,5 m, Mitte 2 m</span></div>`;
+      <span><b>Große Zahl</b> = Aufschläge · <b>%</b> = Break-Quote · <b>/</b> = perfekte Gegnerannahme · Zonen aus Sicht des Gegners; hinten = bis zur Angriffslinie (gestrichelt), vorne = Angriffslinie bis Netz;
+      fünf gleich breite Bahnen à 1,8 m</span></div>`;
 }
 function serveZoneCard(serves, title){
   if (!serves.some(a => serveZone(a) !== null)) return '';
