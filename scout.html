@@ -801,6 +801,7 @@ function statData(){
   tables.push({title:'Läufer', head:['Läufer','Ballwechsel','gewonnen','verloren','Side-out (bei Gegner-Aufschlag)','Break (bei eigenem Aufschlag)'],
     rows: [...[1,2,3,4,5,6].map(r => ['L' + r, ...rotRow(rallies.filter(x => x.rot === r))]), ['Gesamt', ...rotRow(rallies)]], totalLast:true});
   tables.push(serveZoneTable(acts.filter(a => a.s === 'S')));
+  tables.push(...systemTables(t, acts));
   const multi = pids.filter(p => new Set(acts.filter(a => a.p === p).map(a => a.role)).size > 1);
   if (multi.length) tables.push({title:'Spieler nach Rolle (nur Spieler mit mehreren Rollen)', sheet:'Spieler nach Rolle', head:['Spieler · Rolle', ...tables[0].head.slice(1)],
     rows: multi.flatMap(p => [...new Set(acts.filter(a => a.p === p).map(a => a.role))].map(r => [pname(t, p) + ' · ' + (POS[r] || r || '?'), ...ovRow(acts.filter(a => a.p === p && a.role === r))]))});
@@ -921,6 +922,9 @@ const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = 
       <b>Block</b> (bewertet wird die Wirkung, eine Berührung ist nicht nötig): # Punkt · + Gut – Block lenkt kontrolliert ab oder stellt die Hauptschlagrichtung zu, Abwehr bekommt einen leicht spielbaren Ball ·
       ! Neutral – Block steht, bewirkt aber nichts Entscheidendes, Ball bleibt im Spiel · − Schlecht – Block falsch, zu spät oder offen, Angreifer hat freie Bahn ·
       / Block-out – Angreifer nutzt den Block aus (Punkt Gegner) · = Fehler (z. B. Netz, Punkt Gegner).<br>
+      <b>In System / Out of System</b>: eingeordnet wird jeder Angriff und jeder Freeball. In System = erster Kontakt (Annahme, Abwehr, Block) # oder + und Zuspiel durch den Zuspieler (Rolle Zuspiel im Spiel);
+      Out of System = erster Kontakt ! , − oder / oder Zuspiel durch einen anderen Spieler; ein Freeball zählt immer als Out of System. „Nicht zuordenbar“ = kein erster Kontakt oder kein Zuspiel erfasst.
+      Effizienz: Angriff (# − / − =), Freeball (# − =). Freeball-Quote = Anteil der Out-of-System-Abschlüsse, die als Freeball gespielt wurden.<br>
       <b>Freeball</b> = Ball ohne Angriffsschlag rübergespielt (gepritscht oder gebaggert), weil kein Angriff möglich war; ein gezielter Lob/Leger nach Angriffsanlauf zählt als Angriff.
       Bewertung nach der gegnerischen Abwehr: # Punkt · + Gegner unter Druck · ! Gegner Abwehr mittel · − Gegner gute Abwehr · / Gegner perfekte Abwehr · = Fehler.</div>`;
 function courtsCard(list){
@@ -945,7 +949,7 @@ function vReport(D){
   if (r.kind === 'team') {
     const [lauf, dist] = D.tables.filter(x => x.title === 'Läufer' || x.title === 'Angriffsverteilung');
     return bar + `<h2>Teambericht ${esc(t.name)} – ${esc(D.filterTxt)}</h2>
-      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${tableHtml(attBySetTable(t, D.acts, null))}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${courtsCard(D.acts)}${tableHtml(serveZoneTable(D.acts.filter(a => a.s === 'S')))}${serveZoneCard(D.acts.filter(a => a.s === 'S'))}${DEFS_HTML}`;
+      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${tableHtml(attBySetTable(t, D.acts, null))}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${D.tables.filter(x => x.sheet === 'System' || x.sheet === 'System Spieler').map(tableHtml).join('')}${courtsCard(D.acts)}${tableHtml(serveZoneTable(D.acts.filter(a => a.s === 'S')))}${serveZoneCard(D.acts.filter(a => a.s === 'S'))}${DEFS_HTML}`;
   }
   const ids = r.pid && r.pid !== 'all' ? [r.pid] : D.pids;
   if (!ids.length) return bar + '<div class="card">Keine Aktionen für die gewählten Filter.</div>';
@@ -957,6 +961,56 @@ function ovRow(l){
   const pts = l.filter(a => a.r === '#' && 'SAFB'.includes(a.s)).length;
   const err = l.filter(a => a.r === '=').length;
   return [pts, err, S.n, S.c['#'], S.c['='], S.eff, R.n, R.pos, R.perf, A.n, A.c['#'], A.eff, g('B').filter(a => a.r === '#').length, D.n, D.pos];
+}
+/* In System / Out of System: jeder Angriff und jeder Freeball wird nach seiner Ausgangslage eingeordnet.
+   In System = erster Kontakt (Annahme, Abwehr, Block) # oder + und Zuspiel durch einen Spieler mit Rolle Zuspiel.
+   Out of System = erster Kontakt ! - / oder Zuspiel durch einen anderen Spieler; ein Freeball zählt immer als Out of System. */
+function systemItems(acts){
+  const byR = new Map();
+  acts.forEach(a => { const k = a.mid + '|' + a.ri; if (!byR.has(k)) byR.set(k, []); byR.get(k).push(a); });
+  const items = [];
+  byR.forEach(list => {
+    let fc = null, set = null;
+    list.forEach(a => {
+      if (a.s === 'R' || a.s === 'D' || a.s === 'B') { fc = a; set = null; }
+      else if (a.s === 'E') set = a;
+      else if (a.s === 'A' || a.s === 'F') {
+        const lage = !fc ? null : fc.s === 'R' ? 'R' : 'D';
+        let sys;
+        if (a.s === 'F') sys = 'OOS';
+        else if (!fc || !set) sys = 'unklar';
+        else sys = (set.role === 'Z' && (fc.r === '#' || fc.r === '+')) ? 'IS' : 'OOS';
+        items.push({a, sys, lage});
+        fc = null; set = null;
+      }
+    });
+  });
+  return items;
+}
+function systemRow(items){
+  const n = items.length, c = r => items.filter(x => x.a.r === r).length;
+  const err = items.filter(x => x.a.r === '=' || (x.a.s === 'A' && x.a.r === '/')).length;
+  const eff = items.reduce((v, x) => v + (x.a.r === '#' ? 1 : (x.a.r === '=' || (x.a.s === 'A' && x.a.r === '/')) ? -1 : 0), 0);
+  return [n, pct(c('#'), n), pct(err, n), n ? pct(eff, n) : '–', pct(items.filter(x => x.a.rwin === 'us').length, n)];
+}
+function systemTables(t, acts){
+  const items = systemItems(acts);
+  if (!items.length) return [];
+  const kinds = [['In System', 'Angriff', x => x.sys === 'IS' && x.a.s === 'A'], ['Out of System', 'Angriff', x => x.sys === 'OOS' && x.a.s === 'A'], ['Out of System', 'Freeball', x => x.a.s === 'F']];
+  const rows = [];
+  [['alle', () => true], ['nach Annahme (Side-out)', x => x.lage === 'R'], ['nach Abwehr/Block (Transition)', x => x.lage === 'D']].forEach(([lab, fn]) => {
+    const L = items.filter(fn), oos = L.filter(x => x.sys === 'OOS');
+    kinds.forEach(([sys, what, k]) => { const l = L.filter(k); rows.push([lab, sys, what, ...systemRow(l).slice(0, 1), pct(l.length, L.length), ...systemRow(l).slice(1)]); });
+    rows.push([lab, 'Out of System', 'Freeball-Quote', '', pct(oos.filter(x => x.a.s === 'F').length, oos.length), '', '', '', '']);
+  });
+  const unk = items.filter(x => x.sys === 'unklar');
+  if (unk.length) rows.push(['alle', 'nicht zuordenbar', 'Angriff', unk.length, pct(unk.length, items.length), ...systemRow(unk).slice(1)]);
+  const main = {title:'In System / Out of System', sheet:'System', head:['Ausgangslage','System','Abschluss','Anzahl','Anteil','Punkt','Fehler / geblockt','Effizienz','Ballwechsel gewonnen'], rows};
+  const ps = [...new Set(items.filter(x => x.sys === 'OOS').map(x => x.a.p))].sort((a, b) => ((playerOf(t, a) || {num:999}).num) - ((playerOf(t, b) || {num:999}).num));
+  const cell = l => l.length ? l.length + ' · ' + systemRow(l)[3] : '–';
+  const pl = {title:'Out of System nach Spieler', sheet:'System Spieler', head:['Spieler','Angriffe OoS (n · Eff.)','Freeballs (n · Eff.)','Angriffe In System (n · Eff.)','Ballwechsel gewonnen OoS'],
+    rows: ps.map(p => { const o = items.filter(x => x.sys === 'OOS' && x.a.p === p); return [pname(t, p), cell(o.filter(x => x.a.s === 'A')), cell(o.filter(x => x.a.s === 'F')), cell(items.filter(x => x.sys === 'IS' && x.a.p === p)), systemRow(o)[4]]; })};
+  return ps.length ? [main, pl] : [main];
 }
 // Aufschlag-Zielzonen im 9-Zonen-System (Sicht des Gegners): tief 1·6·5, halblang 9·8·7, am Netz 2·3·4 – je 3 m
 const SZ_ORDER = ['1','6','5','9','8','7','2','3','4'];
