@@ -699,7 +699,7 @@ function vLive(){
       <div class="card">
         <div class="skills">${SKILLS.map(s => `<button class="${ui.selS === s ? 'sel' : ''}" data-act="selS" data-s="${s}">${SK[s]}</button>`).join('')}</div>
         <div class="ratings">${RT.map((r, i) => `<button class="c${i}" data-act="rate" data-r="${esc(r)}" ${canRate ? '' : 'disabled'}><span class="sym">${esc(r)}</span><span class="lb">${labels[i]}</span></button>`).join('')}</div>
-        <label class="row small" style="margin-top:10px"><input type="checkbox" data-change="traj" ${ui.traj ? 'checked' : ''}> Flugbahn bei Aufschlag und Angriff erfassen</label>
+        <label class="row small" style="margin-top:10px"><input type="checkbox" data-change="traj" ${ui.traj ? 'checked' : ''}> Flugbahn bei Aufschlag, Angriff und Freeball erfassen</label>
         <div class="pts">
           <button data-act="point" data-w="us" style="color:var(--r0)">+1 ${esc(t.name)}<br><span class="small muted">(z. B. Gegnerfehler)</span></button>
           <button data-act="point" data-w="them" style="color:var(--r5)">+1 ${esc(m.opponent)}<br><span class="small muted">(z. B. Gegner-Punkt)</span></button>
@@ -924,8 +924,8 @@ const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = 
       <b>Freeball</b> = Ball ohne Angriffsschlag rübergespielt (gepritscht oder gebaggert), weil kein Angriff möglich war; ein gezielter Lob/Leger nach Angriffsanlauf zählt als Angriff.
       Bewertung nach der gegnerischen Abwehr: # Punkt · + Gegner unter Druck · ! Gegner Abwehr mittel · − Gegner gute Abwehr · / Gegner perfekte Abwehr · = Fehler.</div>`;
 function courtsCard(list){
-  const sD = list.filter(a => a.s === 'S' && trajOf(a)), aD = list.filter(a => a.s === 'A' && trajOf(a));
-  return `<div class="card"><div class="grid2"><div><h3>Aufschläge (${sD.length})</h3>${courtSVG(sD)}${legend('S')}</div><div><h3>Angriffe (${aD.length})</h3>${courtSVG(aD)}${legend('A')}</div></div></div>`;
+  const sD = list.filter(a => a.s === 'S' && trajOf(a)), aD = list.filter(a => a.s === 'A' && trajOf(a)), fD = list.filter(a => a.s === 'F' && trajOf(a));
+  return `<div class="card"><div class="grid2"><div><h3>Aufschläge (${sD.length})</h3>${courtSVG(sD)}${legend('S')}</div><div><h3>Angriffe (${aD.length})</h3>${courtSVG(aD)}${legend('A')}</div>${fD.length ? `<div><h3>Freeballs (${fD.length})</h3>${courtSVG(fD)}${legend('F')}</div>` : ''}</div></div>`;
 }
 function playerSectionHtml(D, p, cls){
   const t = D.t, l = D.acts.filter(a => a.p === p), att = l.filter(a => a.s === 'A');
@@ -1087,7 +1087,7 @@ function vStats(){
   const pOpts = [['all','Alle Spieler'], ...t.players.slice().sort((a,b) => a.num - b.num).map(p => [p.id, '#' + p.num + ' ' + p.name])];
   const filterTxt = [mOpts.find(o => o[0] === f.match), f.set === 'all' ? null : ['', 'Satz ' + f.set], f.rot === 'all' ? null : ['', 'Läufer L' + f.rot]].filter(Boolean).map(o => o[1]).join(' · ');
   const ov = D.tables[0], det = D.details.find(x => x.skill === f.skill), rest = D.tables.slice(1 + SKILLS.length);
-  const sDots = D.actsP.filter(a => a.s === 'S' && trajOf(a)), aDots = D.actsP.filter(a => a.s === 'A' && trajOf(a));
+  const sDots = D.actsP.filter(a => a.s === 'S' && trajOf(a)), aDots = D.actsP.filter(a => a.s === 'A' && trajOf(a)), fDots = D.actsP.filter(a => a.s === 'F' && trajOf(a));
   return `<div class="card noprint"><div class="row">
       ${db.teams.length > 1 ? sel('team', db.teams.map(x => [x.id, x.name])) : ''}
       ${sel('match', mOpts)}
@@ -1106,6 +1106,7 @@ function vStats(){
       <div class="grid2">
         <div><h3>Aufschläge (${sDots.length})</h3>${courtSVG(sDots)}${legend('S')}</div>
         <div><h3>Angriffe (${aDots.length})</h3>${courtSVG(aDots)}${legend('A')}</div>
+        ${fDots.length ? `<div><h3>Freeballs (${fDots.length})</h3>${courtSVG(fDots)}${legend('F')}</div>` : ''}
       </div></div>
     ${serveZoneCard(D.actsP.filter(a => a.s === 'S'), 'Aufschlag-Zielzonen' + (f.player === 'all' ? '' : ' – ' + pname(t, f.player)))}
     ${DEFS_HTML}`;
@@ -1301,7 +1302,7 @@ const A = {
   rate: d => {
     if (!ui.selP || !ui.selS) return;
     const ev = {t:'act', p: ui.selP, s: ui.selS, r: d.r};
-    if (ui.traj && (ev.s === 'S' || ev.s === 'A')) openTraj(ev); else pushEv(ev);
+    if (ui.traj && 'SAF'.includes(ev.s)) openTraj(ev); else pushEv(ev);
   },
   trajSkip: () => { const ev = ui.pending; closeModal(); pushEv(ev); },
   trajCancel: () => closeModal(),
