@@ -57,6 +57,7 @@ input.w4{width:70px}
 .bench{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .bench button{padding:6px 10px;font-size:14px}
 .bench button.sel{background:var(--sel);color:var(--sel-ink)}
+.blkrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.blkrow button{height:64px;font-size:22px;font-weight:800}
 .skills{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .skills button{height:58px;font-weight:700}
 .skills button.sel{background:var(--sel);color:var(--sel-ink);border-color:#d9a900}
@@ -386,7 +387,7 @@ const ui = {
   tab: openMatch ? 'live' : (db.teams.length ? 'matches' : 'teams'),
   matchId: openMatch ? openMatch.id : null,
   selP: null, selS: null, mode: null, subOut: null, preKey: null,
-  traj: true, pending: null,
+  traj: true, blk: true, pending: null,
   editTeam: db.teams[0] ? db.teams[0].id : null,
   f: {team: db.teams[0] ? db.teams[0].id : null, match:'all', set:'all', rot:'all', player:'all', skill:'A'}
 };
@@ -704,6 +705,7 @@ function vLive(){
         <div class="skills">${SKILLS.map(s => `<button class="${ui.selS === s ? 'sel' : ''}" data-act="selS" data-s="${s}">${SK[s]}</button>`).join('')}</div>
         <div class="ratings">${RT.map((r, i) => `<button class="c${i}" data-act="rate" data-r="${esc(r)}" ${canRate ? '' : 'disabled'}><span class="sym">${esc(r)}</span><span class="lb">${labels[i]}</span></button>`).join('')}</div>
         <label class="row small" style="margin-top:10px"><input type="checkbox" data-change="traj" ${ui.traj ? 'checked' : ''}> Flugbahn bei Aufschlag, Angriff und Freeball erfassen</label>
+        <label class="row small"><input type="checkbox" data-change="blk" ${ui.blk ? 'checked' : ''}> Anzahl Blockspieler beim Angriff erfassen</label>
         <div class="pts">
           <button data-act="point" data-w="us" style="color:var(--r0)">+1 ${esc(t.name)}<br><span class="small muted">(z. B. Gegnerfehler)</span></button>
           <button data-act="point" data-w="them" style="color:var(--r5)">+1 ${esc(m.opponent)}<br><span class="small muted">(z. B. Gegner-Punkt)</span></button>
@@ -806,6 +808,8 @@ function statData(){
     rows: [...[1,2,3,4,5,6].map(r => ['L' + r, ...rotRow(rallies.filter(x => x.rot === r))]), ['Gesamt', ...rotRow(rallies)]], totalLast:true});
   tables.push(serveZoneTable(acts.filter(a => a.s === 'S')));
   tables.push(...systemTables(t, acts));
+  tables.push(...fbsoTables(acts, rallies), ...phaseTables(acts, rallies));
+  const blkT = blockerTable(t, acts, null); if (blkT) tables.push(blkT);
   const fcT = firstContactTeamTable(t, acts, pids); if (fcT) tables.push(fcT);
   const multi = pids.filter(p => new Set(acts.filter(a => a.p === p).map(a => a.role)).size > 1);
   if (multi.length) tables.push({title:'Spieler nach Rolle (nur Spieler mit mehreren Rollen)', sheet:'Spieler nach Rolle', head:['Spieler · Rolle', ...tables[0].head.slice(1)],
@@ -933,6 +937,9 @@ const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = 
       <b>In System / Out of System</b>: eingeordnet wird jeder Angriff und jeder Freeball. In System = erster Kontakt (Annahme, Abwehr, Block) # oder + und Zuspiel durch den Zuspieler (Rolle Zuspiel im Spiel);
       Out of System = erster Kontakt ! , − oder / oder Zuspiel durch einen anderen Spieler; ein Freeball zählt immer als Out of System. „Nicht zuordenbar“ = kein erster Kontakt oder kein Zuspiel erfasst.
       Effizienz: Angriff (# − / − =), Freeball (# − =). Freeball-Quote = Anteil der Out-of-System-Abschlüsse, die als Freeball gespielt wurden.<br>
+      <b>First-Ball-Side-out</b> = Ballwechsel bei gegnerischem Aufschlag, der mit dem ersten eigenen Angriff nach der Annahme direkt gewonnen wird (Angriffspunkt); Anteil an allen Ballwechseln bei gegnerischem Aufschlag.
+      <b>Spielstand-Phasen</b>: Einordnung nach dem Stand vor dem Ballwechsel – Satzphase nach der Punktzahl des führenden Teams, Lage nach der Differenz aus unserer Sicht.
+      <b>Blockspieler</b>: Anzahl gegnerischer Blockspieler beim eigenen Angriff, beim Scouten erfasst (0–3).<br>
       <b>Angriff nach eigenem ersten Kontakt</b>: Angriff eines Spielers, der den Ball im selben Spielzug selbst angenommen bzw. abgewehrt hat (erster Kontakt = letzte eigene Annahme/Abwehr vor dem Angriff); nur für Spieler, die nicht überwiegend Zuspieler oder Libero sind.<br>
       <b>Freeball</b> = Ball ohne Angriffsschlag rübergespielt (gepritscht oder gebaggert), weil kein Angriff möglich war; ein gezielter Lob/Leger nach Angriffsanlauf zählt als Angriff.
       Bewertung nach der gegnerischen Abwehr: # Punkt · + Gegner unter Druck · ! Gegner Abwehr mittel · − Gegner gute Abwehr · / Gegner perfekte Abwehr · = Fehler.</div>`;
@@ -945,7 +952,7 @@ function playerSectionHtml(D, p, cls){
   const dist = {title:'Angriffe nach Position', head:['Angriff von','Anzahl','Punkte','Effizienz'],
     rows: D.zoneGroups.map(([lab, fn]) => { const z = att.filter(fn); return [lab, z.length + ' (' + pct(z.length, att.length) + ')', z.filter(a => a.r === '#').length, evalList('A', z).eff]; })};
   return `<section class="${cls || ''}"><h2>Einzelbericht ${esc(pname(t, p))} – ${esc(t.name)}</h2><p class="muted">${esc(D.filterTxt)}</p>
-    ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) + tableHtml(attBySetTable(t, D.acts, p)) + (fcEligible(D.acts, p) ? tableHtml(firstContactTable(t, D.acts, p)) : '') : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courtsCard(l)}${serveZoneCard(l.filter(a => a.s === 'S'))}${DEFS_HTML}</section>`;
+    ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) + tableHtml(attBySetTable(t, D.acts, p)) + (fcEligible(D.acts, p) ? tableHtml(firstContactTable(t, D.acts, p)) : '') + (blockerTable(t, D.acts, p) ? tableHtml(blockerTable(t, D.acts, p)) : '') : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courtsCard(l)}${serveZoneCard(l.filter(a => a.s === 'S'))}${DEFS_HTML}</section>`;
 }
 function vReport(D){
   const r = ui.report, t = D.t;
@@ -958,7 +965,7 @@ function vReport(D){
   if (r.kind === 'team') {
     const [lauf, dist] = D.tables.filter(x => x.title === 'Läufer' || x.title === 'Angriffsverteilung');
     return bar + `<h2>Teambericht ${esc(t.name)} – ${esc(D.filterTxt)}</h2>
-      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${tableHtml(attBySetTable(t, D.acts, null))}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${D.tables.filter(x => x.sheet === 'System' || x.sheet === 'System Spieler').map(tableHtml).join('')}${courtsCard(D.acts)}${tableHtml(serveZoneTable(D.acts.filter(a => a.s === 'S')))}${serveZoneCard(D.acts.filter(a => a.s === 'S'))}${DEFS_HTML}`;
+      ${tableHtml(elemTable('Elemente (Team)', D.acts))}${tableHtml(lauf)}${tableHtml(dist)}${tableHtml(attBySetTable(t, D.acts, null))}${setterTables(t, D.acts, null, D.zoneGroups).map(tableHtml).join('')}${D.tables.filter(x => ['System', 'System Spieler', 'First-Ball-Side-out', 'FBSO nach Annahme', 'Phasen Satz', 'Phasen Spielstand', 'Angriff nach Block'].includes(x.sheet)).map(tableHtml).join('')}${courtsCard(D.acts)}${tableHtml(serveZoneTable(D.acts.filter(a => a.s === 'S')))}${serveZoneCard(D.acts.filter(a => a.s === 'S'))}${DEFS_HTML}`;
   }
   const ids = r.pid && r.pid !== 'all' ? [r.pid] : D.pids;
   if (!ids.length) return bar + '<div class="card">Keine Aktionen für die gewählten Filter.</div>';
@@ -1038,6 +1045,46 @@ function firstContactTeamTable(t, acts, pids){
   return {title: 'Angriff nach eigenem ersten Kontakt (je Spieler)', sheet: 'Angriff nach 1. Kontakt',
     head: ['Spieler', 'eigene Annahme (n · Eff.)', 'Annahme Mitspieler (n · Eff.)', 'eigene Abwehr (n · Eff.)', 'Abwehr Mitspieler (n · Eff.)', 'sonstige (n · Eff.)'],
     rows: ps.map(p => { const l = it.filter(x => x.a.p === p); return [pname(t, p), ...FC_ROWS.map(([, k]) => cell(l.filter(x => x.k === k)))]; })};
+}
+/* First-Ball-Side-out: Ballwechsel bei gegnerischem Aufschlag, die mit dem ersten eigenen Angriff nach der Annahme gewonnen werden */
+function fbsoTables(acts, rallies){
+  const byR = new Map(); acts.forEach(a => { const k = a.mid + '|' + a.ri; if (!byR.has(k)) byR.set(k, []); byR.get(k).push(a); });
+  const so = rallies.filter(r => r.serve === 'them').map(r => {
+    const l = byR.get(r.mid + '|' + r.ri) || [], rec = l.find(a => a.s === 'R'), i = rec ? l.indexOf(rec) : -1;
+    const att = i >= 0 ? l.slice(i + 1).find(a => a.s === 'A' || a.s === 'F') : null;
+    return {r, rec, fb: !!(att && att.s === 'A' && att.r === '#')};
+  });
+  const row = (lab, L) => [lab, L.length, L.filter(x => x.fb).length, pct(L.filter(x => x.fb).length, L.length), pct(L.filter(x => x.r.win === 'us').length, L.length)];
+  const head = ['', 'Ballwechsel (Gegner-Aufschlag)', 'First-Ball-Side-out', 'Anteil', 'Side-out gesamt'];
+  return [{title: 'First-Ball-Side-out nach Läufer', sheet: 'First-Ball-Side-out', head: ['Läufer', ...head.slice(1)],
+      rows: [...[1,2,3,4,5,6].map(n => row('L' + n, so.filter(x => x.r.rot === n))), row('Gesamt', so)], totalLast: true},
+    {title: 'First-Ball-Side-out nach Annahmequalität', sheet: 'FBSO nach Annahme', head: ['Annahme', ...head.slice(1)],
+      rows: [...RT.map((q, i) => row(q + ' ' + RL.R[i], so.filter(x => x.rec && x.rec.r === q))), row('ohne erfasste Annahme', so.filter(x => !x.rec)), row('Gesamt', so)], totalLast: true}];
+}
+/* Spielstand-Phasen: Ballwechsel nach Satzphase und Spielstand-Lage (Stand vor dem Ballwechsel) */
+function phaseTables(acts, rallies){
+  const errs = new Map(); acts.forEach(a => { if (a.win === 'them') errs.set(a.mid + '|' + a.ri, true); });
+  const att = new Map(); acts.forEach(a => { if (a.s === 'A') { const k = a.mid + '|' + a.ri; if (!att.has(k)) att.set(k, []); att.get(k).push(a); } });
+  const row = (lab, L) => {
+    const so = L.filter(r => r.serve === 'them'), br = L.filter(r => r.serve === 'us'), A = L.flatMap(r => att.get(r.mid + '|' + r.ri) || []);
+    return [lab, L.length, pct(L.filter(r => r.win === 'us').length, L.length), pct(so.filter(r => r.win === 'us').length, so.length) + ' (' + so.length + ')',
+      pct(br.filter(r => r.win === 'us').length, br.length) + ' (' + br.length + ')', A.length ? evalList('A', A).eff : '–', L.filter(r => errs.get(r.mid + '|' + r.ri)).length];
+  };
+  const head = ['Ballwechsel', 'gewonnen', 'Side-out', 'Break', 'Angriffs-Eff.', 'Gegnerpunkte durch eigene Fehler'];
+  const lead = r => Math.max(r.us0, r.them0), t5 = r => r.set === 5;
+  const ph = [['Satzbeginn (bis 7 Punkte, Satz 5: bis 4)', r => lead(r) < (t5(r) ? 5 : 8)], ['Satzmitte (8–19, Satz 5: 5–9)', r => lead(r) >= (t5(r) ? 5 : 8) && lead(r) < (t5(r) ? 10 : 20)], ['Schlussphase (ab 20, Satz 5: ab 10)', r => lead(r) >= (t5(r) ? 10 : 20)]];
+  const lg = [['Rückstand 3+ Punkte', r => r.us0 - r.them0 <= -3], ['knapp (−2 bis +2)', r => Math.abs(r.us0 - r.them0) <= 2], ['Führung 3+ Punkte', r => r.us0 - r.them0 >= 3]];
+  return [{title: 'Spielstand-Phasen: Satzphase', sheet: 'Phasen Satz', head: ['Phase', ...head], rows: [...ph.map(([l, f]) => row(l, rallies.filter(f))), row('Gesamt', rallies)], totalLast: true},
+    {title: 'Spielstand-Phasen: Spielstand-Lage', sheet: 'Phasen Spielstand', head: ['Lage', ...head], rows: [...lg.map(([l, f]) => row(l, rallies.filter(f))), row('Gesamt', rallies)], totalLast: true}];
+}
+/* Angriff nach Anzahl gegnerischer Blockspieler */
+function blockerTable(t, acts, p){
+  const A = acts.filter(a => a.s === 'A' && (p == null || a.p === p));
+  if (!A.some(a => a.blk != null)) return null;
+  const row = (lab, l) => { const e = evalList('A', l); return [lab, l.length, pct(l.length, A.length), e.c['#'], e.c['/'], e.c['='], l.length ? e.eff : '–']; };
+  return {title: 'Angriff nach Anzahl Blockspieler' + (p == null ? '' : ' ' + pname(t, p)), sheet: p == null ? 'Angriff nach Block' : undefined, narrow: true,
+    head: ['Blockspieler', 'Angriffe', 'Anteil', 'Punkte', 'geblockt', 'Fehler', 'Effizienz'],
+    rows: [...[0,1,2,3].map(n => row(n + (n === 1 ? ' Blockspieler' : ' Blockspieler'), A.filter(a => a.blk === n))), row('ohne Angabe', A.filter(a => a.blk == null)), row('Gesamt', A)], totalLast: true};
 }
 function systemTables(t, acts){
   const items = systemItems(acts);
@@ -1263,6 +1310,16 @@ function vData(){
 }
 
 /* ---------- Flugbahn-Erfassung (Wischen) ---------- */
+// Anzahl gegnerischer Blockspieler beim eigenen Angriff (ein Tipp)
+function openBlk(ev){
+  const t = team(match(ui.matchId).teamId);
+  ui.pending = ev;
+  $modal.innerHTML = `<div class="modal-box"><h3>${SK[ev.s]} ${esc(ev.r)} · ${esc(pname(t, ev.p))}</h3>
+    <p>Gegen wie viele Blockspieler?</p>
+    <div class="blkrow">${[0,1,2,3].map(n => `<button class="primary" data-act="blkSet" data-n="${n}">${n}</button>`).join('')}</div>
+    <div class="row" style="margin-top:12px;justify-content:space-between"><button data-act="blkSet" data-n="">ohne Angabe</button><button class="danger" data-act="trajCancel">Abbrechen</button></div></div>`;
+  $modal.classList.remove('hidden');
+}
 function openTraj(ev){
   const t = team(match(ui.matchId).teamId);
   ui.pending = ev;
@@ -1411,7 +1468,13 @@ const A = {
   rate: d => {
     if (!ui.selP || !ui.selS) return;
     const ev = {t:'act', p: ui.selP, s: ui.selS, r: d.r};
-    if (ui.traj && 'SAF'.includes(ev.s)) openTraj(ev); else pushEv(ev);
+    if (ev.s === 'A' && ui.blk) openBlk(ev);
+    else if (ui.traj && 'SAF'.includes(ev.s)) openTraj(ev); else pushEv(ev);
+  },
+  blkSet: d => {
+    const ev = {...ui.pending}; closeModal();
+    if (d.n !== '') ev.blk = +d.n;
+    if (ui.traj) openTraj(ev); else pushEv(ev);
   },
   trajSkip: () => { const ev = ui.pending; closeModal(); pushEv(ev); },
   trajCancel: () => closeModal(),
@@ -1480,7 +1543,7 @@ const A = {
   xlsx: () => {
     const D = statData();
     const raw = [['Spiel','Datum','Satz','Stand vorher','Stand nachher','Läufer','Spieler','Rolle','Zone','Spielposition','Element','Bewertung','Bedeutung','Punkt',
-      'Annahme davor','Zuspieler (bei Angriff)','Zuspielqualität (bei Angriff)','Angriff danach von (bei Zuspiel)','Angriffsergebnis (bei Zuspiel)',
+      'Annahme davor','Zuspieler (bei Angriff)','Zuspielqualität (bei Angriff)','Angriff danach von (bei Zuspiel)','Angriffsergebnis (bei Zuspiel)','Blockspieler (bei Angriff)',
       'Start X (m)','Start Y (m)','Ziel X (m)','Ziel Y (m)']];
     const posN = z => z === 4 ? 'IV' : z === 3 ? 'III' : z === 2 ? 'II' : z ? 'hinten' : '';
     const after = a => a.us1 != null ? a.us1 + ':' + a.them1 : a.us + ':' + a.them;
@@ -1488,7 +1551,7 @@ const A = {
       const m = match(a.mid);
       if (a.t === 'pt') { // Punkt ohne eigene Aktion (z. B. Gegnerfehler, Gegnerpunkt ohne Ballkontakt)
         raw.push([m.opponent, fmtDate(m.date), a.set, a.us + ':' + a.them, after(a), a.rot ? 'L' + a.rot : '', '', '', '', '', 'Punkt ohne eigene Aktion', '',
-          a.w === 'us' ? 'für uns (z. B. Gegnerfehler)' : 'für Gegner', a.w === 'us' ? 'wir' : 'Gegner', '', '', '', '', '', '', '', '', '']);
+          a.w === 'us' ? 'für uns (z. B. Gegnerfehler)' : 'für Gegner', a.w === 'us' ? 'wir' : 'Gegner', '', '', '', '', '', '', '', '', '', '']);
         return;
       }
       raw.push([m.opponent, fmtDate(m.date), a.set, a.us + ':' + a.them, a.win ? after(a) : '', a.rot ? 'L' + a.rot : '', pname(D.t, a.p), POS[a.role] || '', a.zone ? ZN[a.zone - 1] : '',
@@ -1497,6 +1560,7 @@ const A = {
         (a.s === 'E' || a.s === 'A') && a.recQ ? a.recQ : (a.s === 'E' ? 'Transition' : ''),
         a.s === 'A' && a.setBy ? pname(D.t, a.setBy) : '', a.s === 'A' && a.setQ ? a.setQ : '',
         a.s === 'E' && a.attPz ? posN(a.attPz) : '', a.s === 'E' && a.attR ? a.attR : '',
+        a.s === 'A' && a.blk != null ? a.blk : '',
         ...trajMeters(a)]);
     });
     // Ballwechsel: jeder Punkt, auch ohne eigene Aktion
@@ -1574,6 +1638,7 @@ const CH = {
   pName: (d, el) => { playerOf(team(ui.editTeam), d.id).name = el.value.trim(); save(); },
   pPos: (d, el) => { playerOf(team(ui.editTeam), d.id).pos = el.value; save(); },
   traj: (d, el) => { ui.traj = el.checked; },
+  blk: (d, el) => { ui.blk = el.checked; },
   suPlayer: (d, el) => { const t = team(match(ui.matchId).teamId), r = document.getElementById('lr' + d.i); if (r) r.value = posOf(t, el.value) || ''; },
   repPlayer: (d, el) => { ui.report.pid = el.value; render(); },
   f: (d, el) => {
