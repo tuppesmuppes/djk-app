@@ -806,6 +806,7 @@ function statData(){
     rows: [...[1,2,3,4,5,6].map(r => ['L' + r, ...rotRow(rallies.filter(x => x.rot === r))]), ['Gesamt', ...rotRow(rallies)]], totalLast:true});
   tables.push(serveZoneTable(acts.filter(a => a.s === 'S')));
   tables.push(...systemTables(t, acts));
+  const fcT = firstContactTeamTable(t, acts, pids); if (fcT) tables.push(fcT);
   const multi = pids.filter(p => new Set(acts.filter(a => a.p === p).map(a => a.role)).size > 1);
   if (multi.length) tables.push({title:'Spieler nach Rolle (nur Spieler mit mehreren Rollen)', sheet:'Spieler nach Rolle', head:['Spieler · Rolle', ...tables[0].head.slice(1)],
     rows: multi.flatMap(p => [...new Set(acts.filter(a => a.p === p).map(a => a.role))].map(r => [pname(t, p) + ' · ' + (POS[r] || r || '?'), ...ovRow(acts.filter(a => a.p === p && a.role === r))]))});
@@ -932,6 +933,7 @@ const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = 
       <b>In System / Out of System</b>: eingeordnet wird jeder Angriff und jeder Freeball. In System = erster Kontakt (Annahme, Abwehr, Block) # oder + und Zuspiel durch den Zuspieler (Rolle Zuspiel im Spiel);
       Out of System = erster Kontakt ! , − oder / oder Zuspiel durch einen anderen Spieler; ein Freeball zählt immer als Out of System. „Nicht zuordenbar“ = kein erster Kontakt oder kein Zuspiel erfasst.
       Effizienz: Angriff (# − / − =), Freeball (# − =). Freeball-Quote = Anteil der Out-of-System-Abschlüsse, die als Freeball gespielt wurden.<br>
+      <b>Angriff nach eigenem ersten Kontakt</b>: Angriff eines Spielers, der den Ball im selben Spielzug selbst angenommen bzw. abgewehrt hat (erster Kontakt = letzte eigene Annahme/Abwehr vor dem Angriff); nur für Spieler, die nicht überwiegend Zuspieler oder Libero sind.<br>
       <b>Freeball</b> = Ball ohne Angriffsschlag rübergespielt (gepritscht oder gebaggert), weil kein Angriff möglich war; ein gezielter Lob/Leger nach Angriffsanlauf zählt als Angriff.
       Bewertung nach der gegnerischen Abwehr: # Punkt · + Gegner unter Druck · ! Gegner Abwehr mittel · − Gegner gute Abwehr · / Gegner perfekte Abwehr · = Fehler.</div>`;
 function courtsCard(list){
@@ -943,7 +945,7 @@ function playerSectionHtml(D, p, cls){
   const dist = {title:'Angriffe nach Position', head:['Angriff von','Anzahl','Punkte','Effizienz'],
     rows: D.zoneGroups.map(([lab, fn]) => { const z = att.filter(fn); return [lab, z.length + ' (' + pct(z.length, att.length) + ')', z.filter(a => a.r === '#').length, evalList('A', z).eff]; })};
   return `<section class="${cls || ''}"><h2>Einzelbericht ${esc(pname(t, p))} – ${esc(t.name)}</h2><p class="muted">${esc(D.filterTxt)}</p>
-    ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) + tableHtml(attBySetTable(t, D.acts, p)) : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courtsCard(l)}${serveZoneCard(l.filter(a => a.s === 'S'))}${DEFS_HTML}</section>`;
+    ${tableHtml(elemTable('Elemente', l))}${att.length ? tableHtml(dist) + tableHtml(attBySetTable(t, D.acts, p)) + (fcEligible(D.acts, p) ? tableHtml(firstContactTable(t, D.acts, p)) : '') : ''}${l.some(a => a.s === 'E') ? setterTables(t, D.acts, p, D.zoneGroups).map(tableHtml).join('') : ''}${courtsCard(l)}${serveZoneCard(l.filter(a => a.s === 'S'))}${DEFS_HTML}</section>`;
 }
 function vReport(D){
   const r = ui.report, t = D.t;
@@ -999,6 +1001,43 @@ function systemRow(items){
   const err = items.filter(x => x.a.r === '=' || (x.a.s === 'A' && x.a.r === '/')).length;
   const eff = items.reduce((v, x) => v + (x.a.r === '#' ? 1 : (x.a.r === '=' || (x.a.s === 'A' && x.a.r === '/')) ? -1 : 0), 0);
   return [n, pct(c('#'), n), pct(err, n), n ? pct(eff, n) : '–', pct(items.filter(x => x.a.rwin === 'us').length, n)];
+}
+/* Angriff nach eigenem ersten Kontakt: hat der Angreifer den Ball selbst angenommen bzw. abgewehrt? */
+function firstContactItems(acts){
+  const byR = new Map();
+  acts.forEach(a => { const k = a.mid + '|' + a.ri; if (!byR.has(k)) byR.set(k, []); byR.get(k).push(a); });
+  const items = [];
+  byR.forEach(list => {
+    let fc = null;
+    list.forEach(a => {
+      if (a.s === 'R' || a.s === 'D' || a.s === 'B') fc = a;
+      else if (a.s === 'A') { items.push({a, k: !fc || fc.s === 'B' ? 'X' : (fc.s === 'R' ? 'R' : 'D') + (fc.p === a.p ? 'own' : 'other')}); fc = null; }
+      else if (a.s === 'F') fc = null;
+    });
+  });
+  return items;
+}
+const FC_ROWS = [['nach eigener Annahme', 'Rown'], ['nach Annahme eines Mitspielers', 'Rother'], ['nach eigener Abwehr', 'Down'], ['nach Abwehr eines Mitspielers', 'Dother'], ['sonstige (nach Block / ohne erfassten 1. Kontakt)', 'X']];
+// Für alle außer Zuspieler und Libero (überwiegende Rolle im gefilterten Zeitraum)
+const fcEligible = (acts, p) => { const r = acts.filter(a => a.p === p).map(a => a.role), n = r.length; return n > 0 && r.filter(x => x === 'Z' || x === 'L').length * 2 < n; };
+function firstContactRow(items){
+  const l = items.map(x => x.a), e = evalList('A', l);
+  return [l.length, e.c['#'], e.c['/'] + e.c['='], l.length ? e.eff : '–', pct(l.filter(a => a.rwin === 'us').length, l.length)];
+}
+function firstContactTable(t, acts, p){
+  const it = firstContactItems(acts).filter(x => x.a.p === p);
+  if (!it.length) return null;
+  return {title: 'Angriff nach eigenem ersten Kontakt ' + pname(t, p), narrow: true,
+    head: ['Ausgangslage', 'Angriffe', 'Punkte', 'Fehler / geblockt', 'Effizienz', 'Ballwechsel gewonnen'],
+    rows: [...FC_ROWS.map(([lab, k]) => [lab, ...firstContactRow(it.filter(x => x.k === k))]), ['Gesamt', ...firstContactRow(it)]], totalLast: true};
+}
+function firstContactTeamTable(t, acts, pids){
+  const it = firstContactItems(acts), ps = pids.filter(p => fcEligible(acts, p) && it.some(x => x.a.p === p));
+  if (!ps.length) return null;
+  const cell = l => l.length ? l.length + ' · ' + evalList('A', l.map(x => x.a)).eff : '–';
+  return {title: 'Angriff nach eigenem ersten Kontakt (je Spieler)', sheet: 'Angriff nach 1. Kontakt',
+    head: ['Spieler', 'eigene Annahme (n · Eff.)', 'Annahme Mitspieler (n · Eff.)', 'eigene Abwehr (n · Eff.)', 'Abwehr Mitspieler (n · Eff.)', 'sonstige (n · Eff.)'],
+    rows: ps.map(p => { const l = it.filter(x => x.a.p === p); return [pname(t, p), ...FC_ROWS.map(([, k]) => cell(l.filter(x => x.k === k)))]; })};
 }
 function systemTables(t, acts){
   const items = systemItems(acts);
