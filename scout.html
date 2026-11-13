@@ -121,7 +121,10 @@ input.w4{width:70px}
   header,.noprint{display:none!important}
   .printonly{display:block}
   .pagebreak{break-after:page}
-  .courtsvg{height:9cm}
+  .courtsvg{height:8cm}
+  .card.courts{break-inside:auto}
+  .courts .grid2{grid-template-columns:1fr 1fr!important}
+  .courts .grid2>div{break-inside:avoid}
   body{background:#fff;color:#000}
   .card{border:none;padding:0;break-inside:avoid}
 }
@@ -834,7 +837,9 @@ function statData(){
 function setterTables(t, acts, p, zoneGroups){
   const sets = acts.filter(a => a.s === 'E' && (p == null || a.p === p));
   const att = acts.filter(a => a.s === 'A' && a.setBy != null && (p == null || a.setBy === p));
-  const who = p == null ? 'Team' : pname(t, p);
+  // Spieler ohne Rolle Zuspiel: Bälle, die er selbst gestellt hat (Hilfszuspiel), deutlich kennzeichnen
+  const helper = p != null && sets.length > 0 && sets.filter(a => a.role === 'Z').length * 2 < sets.length;
+  const who = p == null ? 'Team' : pname(t, p) + (helper ? ' – eigene Hilfszuspiele' : '');
   const zp = a => a.pz ?? a.zone;
   const good = att.filter(a => a.setQ === '#' || a.setQ === '+'), weak = att.filter(a => a.setQ === '!' || a.setQ === '-' || a.setQ === '/');
   const share = (list, fn) => { const k = list.filter(fn).length; return k + ' (' + pct(k, list.length) + ')'; };
@@ -869,17 +874,18 @@ function setterTables(t, acts, p, zoneGroups){
       chainRow('Gesamt', sets)], totalLast:true};
   // kurze Blattnamen für Excel (max. 31 Zeichen)
   const sw = p == null ? 'Team' : ('#' + ((playerOf(t, p) || {}).num ?? '?') + ' ' + ((playerOf(t, p) || {}).name || '')).trim();
-  dist.sheet = ('Zusp-Verteilung ' + sw).slice(0, 31);
-  byRot.sheet = ('Zusp-Läufer ' + sw).slice(0, 31);
-  qual.sheet = ('Zusp-Qualität ' + sw).slice(0, 31);
-  chain.sheet = ('Ann-Zusp-Angr ' + sw).slice(0, 31);
+  const hz = helper ? 'Hilfszusp ' : '';
+  dist.sheet = (hz + 'Zusp-Verteilung ' + sw).slice(0, 31);
+  byRot.sheet = (hz + 'Zusp-Läufer ' + sw).slice(0, 31);
+  qual.sheet = (hz + 'Zusp-Qualität ' + sw).slice(0, 31);
+  chain.sheet = (hz + 'Ann-Zusp-Angr ' + sw).slice(0, 31);
   // Annahmeort (5 | 6 | 1) → Zuspiel → Angriffsposition, als Tabelle und Pfeilgrafik
   const lanes = [5, 6, 1];
   const laneT = {title: 'Annahmeort → Zuspiel → Angriff ' + who, narrow:true,
     head:['Annahme von','Zuspiele','Zuspiel pos.', ...zoneGroups.map(([l]) => (l.startsWith('Hinten') ? 'hinten' : l.replace('Position ', '')) + ' (n · Eff.)'), 'Angriffs-Eff.'],
     rows: lanes.map(L => { const r = chainRow('Position ' + L, sets.filter(x => x.recLane === L)); return [r[0], r[1], r[2], ...r.slice(4, 8), r[9]]; })};
   laneT.graphic = laneGraphic(sets, zoneGroups, 'recLane', 'Annahme von', 'Annahmeort');
-  laneT.sheet = ('Ann-Ort ' + sw).slice(0, 31);
+  laneT.sheet = (hz + 'Ann-Ort ' + sw).slice(0, 31);
   const nRec = sets.filter(x => x.recQ != null).length, nTr = sets.length - nRec, nDig = sets.filter(x => x.digLane).length;
   laneT.note = `${sets.length} Zuspiele: ${nRec} direkt nach eigener Annahme (hier nach Annahmeort), ${nTr} in der Transition (eigene Grafik unten).`;
   // Transition: Abwehrort (5 | 6 | 1) → Zuspiel → Angriffsposition
@@ -889,7 +895,7 @@ function setterTables(t, acts, p, zoneGroups){
       (() => { const r = chainRow('ohne erfasste Abwehr', sets.filter(x => x.recQ == null && !x.digLane)); return [r[0], r[1], r[2], ...r.slice(4, 8), r[9]]; })()]};
   digT.graphic = laneGraphic(sets, zoneGroups, 'digLane', 'Abwehr von', 'Abwehrort');
   digT.note = `${nTr} Transition-Zuspiele: ${nDig} nach eigener Abwehr (hier nach Abwehrort), ${nTr - nDig} ohne erfasste Abwehr davor (z. B. nach Block, Freeball oder abgewehrtem eigenem Angriff).`;
-  digT.sheet = ('Abw-Ort ' + sw).slice(0, 31);
+  digT.sheet = (hz + 'Abw-Ort ' + sw).slice(0, 31);
   return [dist, byRot, qual, chain, laneT, digT];
 }
 // Angriffe eines Angreifers (bzw. des Teams) nach der Qualität des vorherigen Zuspiels
@@ -930,7 +936,7 @@ const DEFS_HTML = `<div class="card small muted"><b>Definitionen:</b> positiv = 
       Bewertung nach der gegnerischen Abwehr: # Punkt · + Gegner unter Druck · ! Gegner Abwehr mittel · − Gegner gute Abwehr · / Gegner perfekte Abwehr · = Fehler.</div>`;
 function courtsCard(list){
   const sD = list.filter(a => a.s === 'S' && trajOf(a)), aD = list.filter(a => a.s === 'A' && trajOf(a)), fD = list.filter(a => a.s === 'F' && trajOf(a));
-  return `<div class="card"><div class="grid2"><div><h3>Aufschläge (${sD.length})</h3>${courtSVG(sD)}${legend('S')}</div><div><h3>Angriffe (${aD.length})</h3>${courtSVG(aD)}${legend('A')}</div>${fD.length ? `<div><h3>Freeballs (${fD.length})</h3>${courtSVG(fD)}${legend('F')}</div>` : ''}</div></div>`;
+  return `<div class="card courts"><div class="grid2"><div><h3>Aufschläge (${sD.length})</h3>${courtSVG(sD)}${legend('S')}</div><div><h3>Angriffe (${aD.length})</h3>${courtSVG(aD)}${legend('A')}</div>${fD.length ? `<div><h3>Freeballs (${fD.length})</h3>${courtSVG(fD)}${legend('F')}</div>` : ''}</div></div>`;
 }
 function playerSectionHtml(D, p, cls){
   const t = D.t, l = D.acts.filter(a => a.p === p), att = l.filter(a => a.s === 'A');
@@ -1166,7 +1172,7 @@ function vStats(){
     <div class="noprint">${tableHtml(det)}</div>
     <div class="printonly">${D.details.map(tableHtml).join('')}</div>
     ${rest.map(tableHtml).join('')}
-    <div class="card"><div class="row noprint" style="margin-bottom:10px">Flugbahnen für ${sel('player', pOpts)}</div>
+    <div class="card courts"><div class="row noprint" style="margin-bottom:10px">Flugbahnen für ${sel('player', pOpts)}</div>
       <div class="grid2">
         <div><h3>Aufschläge (${sDots.length})</h3>${courtSVG(sDots)}${legend('S')}</div>
         <div><h3>Angriffe (${aDots.length})</h3>${courtSVG(aDots)}${legend('A')}</div>
