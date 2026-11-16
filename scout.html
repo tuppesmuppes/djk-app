@@ -1740,29 +1740,34 @@ async function exportPlayerPdfs(){
       await new Promise(r => setTimeout(r, 30));
       await svgsToImages(box); // html2canvas zeichnet Inline-SVGs unzuverlässig → vorher in Bilder umwandeln
       const sec = box.firstElementChild, totalH = box.scrollHeight;
-      // Seitenumbrüche an Blockgrenzen (Überschrift, Absatz, Karte)
+      // Seitenumbrüche an Blockgrenzen (Überschrift, Absatz, Karte); im Grafikblock an jeder einzelnen Grafik
+      const blocks = [...sec.children].flatMap(el => el.classList.contains('courts') ? [...el.querySelectorAll('.grid2 > div')] : [el]);
+      const top0 = sec.getBoundingClientRect().top;
       const pages = []; let start = 0;
-      for (const b of sec.children) {
-        const top = b.offsetTop, bottom = top + b.offsetHeight;
+      for (const b of blocks) {
+        const r = b.getBoundingClientRect(), top = r.top - top0, bottom = r.bottom - top0;
         if (bottom - start > PAGE_H) {
           if (top > start) { pages.push([start, top]); start = top; }
           while (bottom - start > PAGE_H) { pages.push([start, start + PAGE_H]); start += PAGE_H; }
         }
       }
-      pages.push([start, totalH]);
+      if (totalH > start) pages.push([start, totalH]);
+      // Jede Seite einzeln zeichnen: ein Bild über den ganzen Bericht überschreitet auf iPad/iPhone
+      // die Canvas-Größengrenze von Safari, der untere Teil (Grafiken) bliebe dann leer
+      // (Seitenfenster: Box auf Seitenhöhe begrenzt, Inhalt nach oben verschoben)
       const SC = 2;
-      const canvas = await html2canvas(box, {scale: SC, backgroundColor: '#ffffff', width: W, windowWidth: W, logging: false});
       const pdf = new window.jspdf.jsPDF({orientation: 'landscape', unit: 'mm', format: 'a4'});
-      pages.forEach(([a, b], k) => {
-        const h = Math.max(1, b - a), c = document.createElement('canvas');
-        c.width = W * SC; c.height = Math.ceil(h * SC);
-        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
-        g.drawImage(canvas, 0, a * SC, W * SC, h * SC, 0, 0, W * SC, h * SC);
+      box.style.overflow = 'hidden';
+      for (let k = 0; k < pages.length; k++) {
+        const [a, b] = pages[k], h = Math.max(1, Math.ceil(b - a));
+        box.style.height = h + 'px'; sec.style.marginTop = (-a) + 'px';
+        const c = await html2canvas(box, {scale: SC, backgroundColor: '#ffffff', width: W, height: h, windowWidth: W, logging: false});
         if (k) pdf.addPage();
         pdf.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', 8, 8, MM_W, MM_W * h / W);
         pdf.setFontSize(8); pdf.setTextColor(140);
         pdf.text(`${pname(D.t, p)} · ${D.t.name} · ${D.filterTxt} · Seite ${k + 1}/${pages.length}`, 148.5, 205, {align: 'center'});
-      });
+      }
+      box.style.height = ''; box.style.overflow = '';
       const fn = reportFileBase(D, p) + '.pdf';
       files.push([fn, pdf.output('arraybuffer')]);
     }
