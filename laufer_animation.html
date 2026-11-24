@@ -133,6 +133,9 @@
 'use strict';
 
 const SERVER  = "https://scoreboard-rzql.onrender.com";
+// Lesen direkt aus Supabase (schnell, kein Aufwachen des Render-Servers nötig); öffentlicher anon-Schlüssel wie in server.js
+const SB_URL  = "https://pgftkscaubdqprdvwvmt.supabase.co";
+const SB_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnZnRrc2NhdWJkcXByZHZ3dm10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMjcyODAsImV4cCI6MjA5MzkwMzI4MH0.pvUMfEMCxwKjBDc3yJ4pG2wcgdElmcjxWeAzMlMxYzU";
 const LS_KEY  = "vb_laufer_view_v1";
 const LAUFER_ORDER = [1,6,5,4,3,2];
 const SPECS   = {1:'Z', 2:'A', 3:'M', 4:'D', 5:'A', 6:'M'};
@@ -217,22 +220,29 @@ function readLibLS(k){
   return null;
 }
 function writeLibLS(k,d){ try{ localStorage.setItem("vb_la_lib_"+k,JSON.stringify(d)); }catch{} }
+// Ergebnis: Array (auch leer = erreichbar, aber nichts gespeichert) oder null (nicht erreichbar)
+async function fetchJson(url,opts,timeoutMs){
+  const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{ const r=await fetch(url,{...opts,cache:"no-store",signal:ctrl.signal}); return r.ok?await r.json():null; }
+  catch{ return null; } finally{ clearTimeout(tid); }
+}
 async function fetchLib(k,timeoutMs){
-  try{
-    const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),timeoutMs);
-    const r=await fetch(`${SERVER}/lib/${k}?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
-    clearTimeout(tid);
-    if(r.ok){ const d=await r.json(); if(Array.isArray(d)&&d.length){ libMem[k]=d; writeLibLS(k,d); return d; } }
-  }catch{}
-  return null;
+  let d=null;
+  const sb=await fetchJson(`${SB_URL}/rest/v1/lib?key=eq.${encodeURIComponent(k)}&select=data`,{headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}},10000);
+  if(Array.isArray(sb)) d=sb.length&&Array.isArray(sb[0].data)?sb[0].data:[];
+  if(d===null){ const sv=await fetchJson(`${SERVER}/lib/${k}?t=${Date.now()}`,{},timeoutMs); if(Array.isArray(sv)) d=sv; }
+  if(d&&d.length){ libMem[k]=d; writeLibLS(k,d); }
+  return d;
 }
 async function loadLib(k){
-  if(libMem[k]) return libMem[k];
+  if(libMem[k]){ setStatus(""); return libMem[k]; }
   const ls=readLibLS(k);
-  if(ls){ libMem[k]=ls; return ls; }
-  setStatus("Läufer werden vom Server geladen … (kann bis ca. 45 s dauern, wenn der Server schläft)");
+  if(ls){ libMem[k]=ls; setStatus(""); fetchLib(k,45000); return ls; }   // sofort aus dem Speicher, im Hintergrund aktualisieren
+  setStatus("Läufer werden geladen …");
   const d=await fetchLib(k,45000);
-  setStatus(d?"":"Server nicht erreichbar – bitte später erneut versuchen.");
+  if(d===null) setStatus("Daten nicht erreichbar – bitte Internetverbindung prüfen und später erneut versuchen.");
+  else if(!d.length) setStatus("Für „"+(CAT_LABELS[Object.keys(CAT_KEYS).find(c=>CAT_KEYS[c]===k)]||k)+"“ sind noch keine Läufer gespeichert.");
+  else setStatus("");
   return d||[];
 }
 function preloadLibs(){ ["grund","annahme","aufschlag"].forEach(k=>{ fetchLib(k,45000); }); }
