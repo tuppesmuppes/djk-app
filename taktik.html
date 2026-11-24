@@ -161,6 +161,25 @@
 
 // ── Constants ──
 const SERVER  = "https://scoreboard-rzql.onrender.com";
+
+// ── Datenablage: direkt Supabase (öffentlicher anon-Schlüssel wie in server.js), Render-Server nur als Ausweichweg ──
+const SB_URL = "https://pgftkscaubdqprdvwvmt.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnZnRrc2NhdWJkcXByZHZ3dm10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMjcyODAsImV4cCI6MjA5MzkwMzI4MH0.pvUMfEMCxwKjBDc3yJ4pG2wcgdElmcjxWeAzMlMxYzU";
+async function fetchTO(url,opts,ms){ const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms); try{ return await fetch(url,{...opts,signal:c.signal}); } finally{ clearTimeout(t); } }
+// Array (auch leer = erreichbar, nichts gespeichert) oder null (nicht erreichbar)
+async function libGet(k){
+  try{ const r=await fetchTO(`${SB_URL}/rest/v1/lib?key=eq.${encodeURIComponent(k)}&select=data`,{cache:"no-store",headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}},10000);
+    if(r.ok){ const d=await r.json(); return Array.isArray(d)&&d.length&&Array.isArray(d[0].data)?d[0].data:[]; } }catch{}
+  try{ const r=await fetchTO(`${SERVER}/lib/${k}?t=${Date.now()}`,{cache:"no-store"},20000); if(r.ok){ const d=await r.json(); if(Array.isArray(d)) return d; } }catch{}
+  return null;
+}
+// true = gespeichert
+async function libPut(k,data){
+  try{ const r=await fetchTO(`${SB_URL}/rest/v1/lib`,{method:"POST",headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates"},body:JSON.stringify({key:k,data})},10000);
+    if(r.ok) return true; }catch{}
+  try{ const r=await fetchTO(`${SERVER}/lib/${k}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)},20000); return r.ok; }catch{}
+  return false;
+}
 const LIB_KEY = "taktik";
 const LS_KEY  = "vb_taktik_v1";
 const W = 22, H = 11;           // stage in "units": court 18x9 (x 2–20, y 1–10), net at x=11
@@ -450,28 +469,20 @@ async function fetchT(url, opts = {}){
   finally{ clearTimeout(tid); }
 }
 async function loadLib(){
-  try{
-    const r = await fetchT(`${SERVER}/lib/${LIB_KEY}?t=${Date.now()}`, { cache:"no-store" });
-    if(r.ok){
-      const d = await r.json();
-      if(Array.isArray(d) && d.length){
-        try{ localStorage.setItem(`vb_lib2_${LIB_KEY}`, JSON.stringify(d)); }catch{}
-        setSync(true, "☁ Mit Server synchronisiert");
-        return d;
-      }
-      if(Array.isArray(d)) setSync(true, "☁ Server erreichbar");
-    } else setSync(false, `⚠ Server antwortet mit ${r.status} – nur lokal gespeichert`);
-  }catch{ setSync(false, "⚠ Server nicht erreichbar – nur lokal gespeichert"); }
+  const d = await libGet(LIB_KEY);
+  if(d === null) setSync(false, "⚠ Daten nicht erreichbar – nur lokal gespeichert");
+  else if(d.length){
+    try{ localStorage.setItem(`vb_lib2_${LIB_KEY}`, JSON.stringify(d)); }catch{}
+    setSync(true, "☁ Synchronisiert");
+    return d;
+  } else setSync(true, "☁ Verbunden");
   try{ const c = JSON.parse(localStorage.getItem(`vb_lib2_${LIB_KEY}`) || "[]"); if(Array.isArray(c)) return c; }catch{}
   return [];
 }
 async function saveLib(lib){
   try{ localStorage.setItem(`vb_lib2_${LIB_KEY}`, JSON.stringify(lib)); }catch{}
-  try{
-    const r = await fetchT(`${SERVER}/lib/${LIB_KEY}`, { method:"PUT", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(lib) });
-    if(r.ok) setSync(true, "☁ Auf Server gespeichert");
-    else setSync(false, `⚠ Server antwortet mit ${r.status} – nur lokal gespeichert`);
-  }catch{ setSync(false, "⚠ Server nicht erreichbar – nur lokal gespeichert"); }
+  if(await libPut(LIB_KEY, lib)) setSync(true, "☁ Gespeichert");
+  else setSync(false, "⚠ Speichern nicht erreichbar – nur lokal gespeichert");
 }
 
 let cachedLib = [];

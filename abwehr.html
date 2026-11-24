@@ -153,6 +153,25 @@
 'use strict';
 
 const SERVER   = "https://scoreboard-rzql.onrender.com";
+
+// ── Datenablage: direkt Supabase (öffentlicher anon-Schlüssel wie in server.js), Render-Server nur als Ausweichweg ──
+const SB_URL = "https://pgftkscaubdqprdvwvmt.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBnZnRrc2NhdWJkcXByZHZ3dm10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMjcyODAsImV4cCI6MjA5MzkwMzI4MH0.pvUMfEMCxwKjBDc3yJ4pG2wcgdElmcjxWeAzMlMxYzU";
+async function fetchTO(url,opts,ms){ const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms); try{ return await fetch(url,{...opts,signal:c.signal}); } finally{ clearTimeout(t); } }
+// Array (auch leer = erreichbar, nichts gespeichert) oder null (nicht erreichbar)
+async function libGet(k){
+  try{ const r=await fetchTO(`${SB_URL}/rest/v1/lib?key=eq.${encodeURIComponent(k)}&select=data`,{cache:"no-store",headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY}},10000);
+    if(r.ok){ const d=await r.json(); return Array.isArray(d)&&d.length&&Array.isArray(d[0].data)?d[0].data:[]; } }catch{}
+  try{ const r=await fetchTO(`${SERVER}/lib/${k}?t=${Date.now()}`,{cache:"no-store"},20000); if(r.ok){ const d=await r.json(); if(Array.isArray(d)) return d; } }catch{}
+  return null;
+}
+// true = gespeichert
+async function libPut(k,data){
+  try{ const r=await fetchTO(`${SB_URL}/rest/v1/lib`,{method:"POST",headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates"},body:JSON.stringify({key:k,data})},10000);
+    if(r.ok) return true; }catch{}
+  try{ const r=await fetchTO(`${SERVER}/lib/${k}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)},20000); return r.ok; }catch{}
+  return false;
+}
 const LIB_KEY  = "abwehr";
 const LS_NAMES = "vb_abwehr_names_v1";
 const LS_STATE = "vb_abwehr_state_v1";
@@ -197,21 +216,13 @@ let ball = {x:50, y:15};
 // ── Lib ──
 let libCache = null;
 async function loadLib(){
-  try{
-    const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),6000);
-    const r=await fetch(`${SERVER}/lib/${LIB_KEY}?t=${Date.now()}`,{cache:"no-store",signal:ctrl.signal});
-    clearTimeout(tid);
-    if(r.ok){ const d=await r.json(); if(d.length){ libCache=d; return d; } }
-  }catch{}
+  const d=await libGet(LIB_KEY);
+  if(d&&d.length){ libCache=d; return d; }
   return libCache||[];
 }
 async function saveLib(lib){
   libCache=lib;
-  try{
-    const ctrl=new AbortController(); const tid=setTimeout(()=>ctrl.abort(),6000);
-    await fetch(`${SERVER}/lib/${LIB_KEY}`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(lib),signal:ctrl.signal});
-    clearTimeout(tid);
-  }catch{}
+  return await libPut(LIB_KEY,lib);
 }
 
 // ── Active formation ──
